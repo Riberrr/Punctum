@@ -5,7 +5,14 @@ from .raw_loader import RawImage, load_raw, load_thumbnail
 from .metadata import PhotoMetadata, read_metadata
 from .pipeline import develop, develop_region, geometry_size, histogram
 from .auto import auto_tone
-from .export import save_image, output_path_for
+from .export import (
+    ExportOptions,
+    ExportPlan,
+    plan_export,
+    resolve_conflicts,
+    save_image,
+    output_path_for,
+)
 
 __all__ = [
     "EditParams",
@@ -19,6 +26,10 @@ __all__ = [
     "geometry_size",
     "histogram",
     "auto_tone",
+    "ExportOptions",
+    "ExportPlan",
+    "plan_export",
+    "resolve_conflicts",
     "save_image",
     "output_path_for",
 ]

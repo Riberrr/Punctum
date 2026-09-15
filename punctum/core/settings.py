@@ -79,6 +79,13 @@ class Settings:
     export_max_side: int = 0  # 0 = pelna rozdzielczosc
     export_noise_quality: str = "high"
     export_folder: str = ""
+    export_use_subfolder: bool = False
+    export_subfolder: str = "Eksport"
+    export_naming: str = "original"  # original | custom
+    export_custom_name: str = ""
+    export_start_number: int = 1
+    export_number_digits: int = 3
+    export_on_existing: str = "ask"  # ask | overwrite | skip | unique
 
     # --- ogolne ---------------------------------------------------------
     reopen_last_folder: bool = True
@@ -106,6 +113,12 @@ class Settings:
         clean.export_max_side = max(0, min(20000, int(clean.export_max_side)))
         if clean.export_format not in (".jpg", ".png", ".tif"):
             clean.export_format = ".jpg"
+        if clean.export_naming not in ("original", "custom"):
+            clean.export_naming = "original"
+        if clean.export_on_existing not in ("ask", "overwrite", "skip", "unique"):
+            clean.export_on_existing = "ask"
+        clean.export_start_number = max(0, min(999999, int(clean.export_start_number)))
+        clean.export_number_digits = max(1, min(8, int(clean.export_number_digits)))
         return clean
 
     # -------------------------------------------------------- zapis/odczyt

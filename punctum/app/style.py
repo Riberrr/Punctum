@@ -1,6 +1,25 @@
-"""Ciemny motyw okna - fotografie oglada sie na neutralnym tle."""
+"""Ciemny motyw okna - fotografie oglada sie na neutralnym tle.
 
-STYLESHEET = """
+Arkusz jest szablonem: `@ASSETS@` zamieniamy w czasie dzialania na sciezke
+do katalogu z grafikami. Qt wymaga w `url()` sciezki bezwzglednej albo
+wzgledem katalogu roboczego, a ten zalezy od sposobu uruchomienia programu.
+Zawsze uzywac funkcji `stylesheet()`, nie stalej `STYLESHEET_TEMPLATE`.
+"""
+
+from __future__ import annotations
+
+import os
+
+ASSETS_DIRECTORY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
+
+
+def stylesheet() -> str:
+    """Gotowy arkusz stylow z podstawiona sciezka do grafik."""
+    # Qt oczekuje w url() ukosnikow w przod, takze na Windowsie
+    return STYLESHEET_TEMPLATE.replace("@ASSETS@", ASSETS_DIRECTORY.replace("\\", "/"))
+
+
+STYLESHEET_TEMPLATE = """
 QWidget {
     background: #1e1e20;
     color: #c8c8cc;
@@ -104,6 +123,58 @@ QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus, QLineEdit:focus {
     border-color: #6a6a76;
 }
 QComboBox::drop-down { border: none; width: 18px; }
+
+/* Geometria strzałek w polach liczbowych.  Gdy arkusz stylów dotknie samego
+   QSpinBox (tło, ramka, wypełnienie), Qt przestaje wyliczać położenie
+   podelementów natywnie i przycisk strzałki kurczy się do paru pikseli przy
+   prawej krawędzi — widać go w całości, ale klika się tylko jego skrawek.
+   Dlatego trzeba podać wymiary jawnie. */
+QSpinBox, QDoubleSpinBox { padding-right: 20px; }
+QSpinBox::up-button, QDoubleSpinBox::up-button,
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    subcontrol-origin: border;
+    width: 18px;
+    background: #2f2f35;
+    border-left: 1px solid #3c3c42;
+}
+QSpinBox::up-button, QDoubleSpinBox::up-button {
+    subcontrol-position: top right;
+    border-top-right-radius: 3px;
+}
+QSpinBox::down-button, QDoubleSpinBox::down-button {
+    subcontrol-position: bottom right;
+    border-bottom-right-radius: 3px;
+    border-top: 1px solid #3c3c42;
+}
+QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
+QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover { background: #3c3c44; }
+QSpinBox::up-button:pressed, QDoubleSpinBox::up-button:pressed,
+QSpinBox::down-button:pressed, QDoubleSpinBox::down-button:pressed { background: #26262b; }
+/* Strzalki podajemy jako obrazki.  Arkusze stylow Qt nie potrafia narysowac
+   trojkata obramowaniem (wychodzi szary prostokat), a gdy przycisk jest
+   ostylowany, Qt przestaje rysowac takze wlasny wskaznik - pole zostaje puste.
+   Pliki powstaja z tools/make_assets.py; Qt sam siega po wariant @2x
+   na ekranach o duzej gestosci pikseli. */
+QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
+    image: url("@ASSETS@/arrow-up.png");
+    width: 9px; height: 5px;
+}
+QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
+    image: url("@ASSETS@/arrow-down.png");
+    width: 9px; height: 5px;
+}
+QSpinBox::up-arrow:disabled, QSpinBox::up-arrow:off,
+QDoubleSpinBox::up-arrow:disabled, QDoubleSpinBox::up-arrow:off {
+    image: url("@ASSETS@/arrow-up-disabled.png");
+}
+QSpinBox::down-arrow:disabled, QSpinBox::down-arrow:off,
+QDoubleSpinBox::down-arrow:disabled, QDoubleSpinBox::down-arrow:off {
+    image: url("@ASSETS@/arrow-down-disabled.png");
+}
+QComboBox::down-arrow {
+    image: url("@ASSETS@/arrow-down.png");
+    width: 9px; height: 5px;
+}
 QComboBox QAbstractItemView {
     background: #26262a; border: 1px solid #3c3c42;
     selection-background-color: #3a3a44;

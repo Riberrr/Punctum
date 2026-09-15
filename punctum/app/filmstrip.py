@@ -28,7 +28,10 @@ class Filmstrip(QListWidget):
         self.setGridSize(QSize(THUMB_SIZE.width() + 14, THUMB_SIZE.height() + 30))
         self.setResizeMode(QListWidget.Adjust)
         self.setMovement(QListWidget.Static)
-        self.setSelectionMode(QListWidget.SingleSelection)
+        # Wielokrotny wybor sluzy eksportowi wsadowemu. Podglad pokazuje
+        # zawsze zdjecie biezace (currentItem), a zaznaczenie decyduje tylko
+        # o tym, co trafi do eksportu.
+        self.setSelectionMode(QListWidget.ExtendedSelection)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setHorizontalScrollMode(QListWidget.ScrollPerPixel)
         self.setSpacing(2)
@@ -61,6 +64,15 @@ class Filmstrip(QListWidget):
     def current_path(self) -> str | None:
         item = self.currentItem()
         return None if item is None else item.data(Qt.UserRole)
+
+    def selected_paths(self) -> list[str]:
+        """Zaznaczone zdjecia w kolejnosci, w jakiej leza w pasku."""
+        chosen = {item.data(Qt.UserRole) for item in self.selectedItems()}
+        return [
+            self.item(row).data(Qt.UserRole)
+            for row in range(self.count())
+            if self.item(row).data(Qt.UserRole) in chosen
+        ]
 
     def _on_current_changed(self, current, previous) -> None:
         if current is not None:

@@ -8,13 +8,12 @@ import numpy as np
 from PySide6.QtCore import QRect, QRectF, Qt, QThreadPool, QTimer
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
-    QApplication,
     QFileDialog,
     QHBoxLayout,
     QLabel,
     QMainWindow,
     QMessageBox,
-    QProgressDialog,
+    QProgressBar,
     QPushButton,
     QSplitter,
     QVBoxLayout,
@@ -22,20 +21,30 @@ from PySide6.QtWidgets import (
 )
 
 from ..core import EditParams, RawImage, develop, geometry_size, histogram
-from ..core import output_path_for, save_image
+from ..core.export import (
+    ON_EXISTING_ASK,
+    ON_EXISTING_OVERWRITE,
+    ON_EXISTING_SKIP,
+    ON_EXISTING_UNIQUE,
+    ExportOptions,
+    plan_export,
+    resolve_conflicts,
+)
 from ..core.hardware import system_info
 from ..core.metadata import PhotoMetadata
 from ..core.settings import ENGINE_CPU, ENGINE_GPU, Settings
 from .edit_panel import EditPanel, HistogramWidget, InfoPanel
+from .export_dialog import ExportDialog
 from .filmstrip import Filmstrip
 from .gpu_renderer import GpuRenderer
 from .image_view import ImageView
 from .navigator import Navigator
 from .settings_dialog import SettingsDialog
-from .style import STYLESHEET
+from .style import stylesheet
 from .workers import (
     AutoToneTask,
     DetailRenderTask,
+    ExportTask,
     LoadRawTask,
     NoiseReductionTask,
     RenderTask,
@@ -56,7 +65,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Punctum")
         self.resize(1560, 980)
-        self.setStyleSheet(STYLESHEET)
+        self.setStyleSheet(stylesheet())
 
         self.settings = Settings.load()
         self.pool = QThreadPool.globalInstance()
@@ -64,6 +73,12 @@ class MainWindow(QMainWindow):
 
         self.paths: list[str] = []
         self.metadata: dict[str, PhotoMetadata] = {}
+        # Nastawy edycji per zdjecie. Bez tego powrot do wczesniej poprawionego
+        # zdjecia gubilby prace, a eksport wsadowy nakladalby na wszystkie
+        # pliki ustawienia tego jednego, ktore akurat jest otwarte.
+        self.edits: dict[str, EditParams] = {}
+        self.export_task: ExportTask | None = None
+        self._skipped_in_export = 0
         self.current_path: str | None = None
         self.full_raw: RawImage | None = None
         self.proxy: RawImage | None = None
@@ -196,11 +211,30 @@ class MainWindow(QMainWindow):
         self.status = self.statusBar()
         self.status.showMessage("Otwórz folder ze zdjęciami:  Ctrl+O")
 
+        # pasek postepu eksportu - siedzi po prawej stronie paska stanu
+        # i pojawia sie tylko na czas pracy
+        self.progress_widget = QWidget()
+        progress_layout = QHBoxLayout(self.progress_widget)
+        progress_layout.setContentsMargins(0, 0, 6, 0)
+        progress_layout.setSpacing(8)
+        self.progress_label = QLabel()
+        self.progress_label.setObjectName("metaLabel")
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setFixedWidth(180)
+        self.progress_bar.setTextVisible(False)
+        self.cancel_export_button = QPushButton("Przerwij")
+        self.cancel_export_button.clicked.connect(self._cancel_export)
+        progress_layout.addWidget(self.progress_label)
+        progress_layout.addWidget(self.progress_bar)
+        progress_layout.addWidget(self.cancel_export_button)
+        self.progress_widget.hide()
+        self.status.addPermanentWidget(self.progress_widget)
+
     def _build_menu(self) -> None:
         file_menu = self.menuBar().addMenu("&Plik")
         for text, shortcut, slot in (
             ("&Otwórz folder…", QKeySequence.Open, self.open_folder),
-            ("&Eksportuj zdjęcie…", QKeySequence("Ctrl+E"), self.export_current),
+            ("&Eksportuj…", QKeySequence("Ctrl+E"), self.export_current),
         ):
             action = QAction(text, self)
             action.setShortcut(shortcut)
@@ -346,7 +380,15 @@ class MainWindow(QMainWindow):
 
     # ---------------------------------------------------------------- zdjecie
 
+    def remember_current_edits(self) -> None:
+        """Zapisuje nastawy biezacego zdjecia, zanim przejdziemy na inne."""
+        if self.current_path and self.full_raw is not None:
+            self.edits[self.current_path] = self.export_params()
+
     def open_photo(self, path: str) -> None:
+        if path == self.current_path:
+            return
+        self.remember_current_edits()
         self.current_path = path
         self.full_raw = self.proxy = None
         self.before_image = self.current_image = None
@@ -373,6 +415,15 @@ class MainWindow(QMainWindow):
         self.edit_panel.set_as_shot_temp(raw.as_shot_temp, raw.as_shot_tint)
         self.before_image = develop(self.proxy, EditParams(), denoise=False)
         self.export_button.setEnabled(True)
+
+        # Zdjecie bez zapisanych korekt musi pokazac czyste suwaki. Zostawienie
+        # nastaw z poprzedniego zdjecia bylo mylace: panel twierdzil, ze jest
+        # korekta, ktorej podglad nie pokazywal.
+        saved = self.edits.get(path)
+        if saved is not None:
+            self.orientation, self.crop = saved.orientation, saved.crop
+        self.edit_panel.load_params(saved if saved is not None else EditParams())
+        self.view.set_crop_fractions(self.crop)
 
         # Do pamieci karty wgrywamy PELNA rozdzielczosc, nie proxy. Dzieki temu
         # z jednej tekstury powstaje i podglad dopasowany do okna, i ostry
@@ -602,37 +653,150 @@ class MainWindow(QMainWindow):
 
     # ---------------------------------------------------------------- eksport
 
+    def _export_options(self) -> ExportOptions:
+        s = self.settings
+        return ExportOptions(
+            folder=s.export_folder,
+            use_subfolder=s.export_use_subfolder,
+            subfolder=s.export_subfolder,
+            naming=s.export_naming,
+            custom_name=s.export_custom_name,
+            start_number=s.export_start_number,
+            number_digits=s.export_number_digits,
+            on_existing=s.export_on_existing,
+            file_format=s.export_format,
+            quality=s.export_quality,
+            max_side=s.export_max_side,
+            noise_quality=s.export_noise_quality,
+        )
+
+    def _remember_export_options(self, o: ExportOptions) -> None:
+        s = self.settings
+        (s.export_folder, s.export_use_subfolder, s.export_subfolder) = (
+            o.folder, o.use_subfolder, o.subfolder
+        )
+        (s.export_naming, s.export_custom_name) = (o.naming, o.custom_name)
+        (s.export_start_number, s.export_number_digits) = (o.start_number, o.number_digits)
+        s.export_on_existing = o.on_existing
+        (s.export_format, s.export_quality) = (o.file_format, o.quality)
+        (s.export_max_side, s.export_noise_quality) = (o.max_side, o.noise_quality)
+        s.save()
+
+    def _ask_about_conflicts(self, plan) -> str | None:
+        """Jedno pytanie o wszystkie kolizje naraz, zadane przed startem."""
+        count = len(plan.conflicts)
+        box = QMessageBox(self)
+        box.setWindowTitle("Pliki już istnieją")
+        box.setIcon(QMessageBox.Question)
+        box.setText(
+            f"W katalogu docelowym jest już {count} "
+            + ("plik" if count == 1 else "pliki" if 2 <= count <= 4 else "plików")
+            + " o takich nazwach."
+        )
+        box.setInformativeText("\n".join(os.path.basename(p) for p in plan.conflicts[:6])
+                               + ("\n…" if count > 6 else ""))
+        overwrite = box.addButton("Zastąp", QMessageBox.DestructiveRole)
+        skip = box.addButton("Pomiń istniejące", QMessageBox.AcceptRole)
+        unique = box.addButton("Nowe nazwy", QMessageBox.AcceptRole)
+        box.addButton("Anuluj", QMessageBox.RejectRole)
+        box.setDefaultButton(unique)
+        box.exec()
+
+        clicked = box.clickedButton()
+        if clicked is overwrite:
+            return ON_EXISTING_OVERWRITE
+        if clicked is skip:
+            return ON_EXISTING_SKIP
+        if clicked is unique:
+            return ON_EXISTING_UNIQUE
+        return None
+
     def export_current(self) -> None:
-        if self.full_raw is None or self.current_path is None:
+        if self.current_path is None:
             return
-        folder = self.settings.export_folder
-        if not folder or not os.path.isdir(folder):
-            folder = QFileDialog.getExistingDirectory(self, "Katalog docelowy")
-        if not folder:
+        if self.export_task is not None:
+            QMessageBox.information(
+                self, "Punctum", "Eksport już trwa. Poczekaj albo go przerwij."
+            )
             return
 
-        progress = QProgressDialog("Eksportowanie w pełnej rozdzielczości…", "", 0, 0, self)
-        progress.setCancelButton(None)
-        progress.setWindowModality(Qt.WindowModal)
-        progress.show()
-        QApplication.processEvents()
+        self.remember_current_edits()
+        sources = self.filmstrip.selected_paths() or [self.current_path]
+        edited = sum(1 for path in sources if path in self.edits)
+
+        dialog = ExportDialog(self._export_options(), sources, self)
+        dialog.set_edited_count(edited)
+        if dialog.exec() != ExportDialog.Accepted:
+            return
+
+        options = dialog.options
+        self._remember_export_options(options)
+
+        plan = plan_export(sources, options)
+        policy = options.on_existing
+        if plan.has_conflicts and policy == ON_EXISTING_ASK:
+            policy = self._ask_about_conflicts(plan)
+            if policy is None:
+                return
+        pairs, skipped = resolve_conflicts(plan, policy)
+
+        if not pairs:
+            self.status.showMessage("Nie zapisano nic — wszystkie pliki pominięto.")
+            return
 
         try:
-            rgb8 = develop(
-                self.full_raw, self.export_params(),
-                denoise=True, quality=self.settings.export_noise_quality,
-            )
-            out_path = output_path_for(self.current_path, folder, self.settings.export_format)
-            save_image(
-                rgb8, out_path,
-                quality=self.settings.export_quality,
-                max_side=self.settings.export_max_side or None,
-            )
-        except Exception as exc:
-            progress.close()
-            QMessageBox.warning(self, "Punctum", f"Eksport nie powiódł się:\n{exc}")
+            os.makedirs(options.target_folder(), exist_ok=True)
+        except OSError as exc:
+            QMessageBox.warning(self, "Punctum", f"Nie udało się utworzyć katalogu:\n{exc}")
             return
 
-        progress.close()
-        size_mb = os.path.getsize(out_path) / (1024 * 1024)
-        self.status.showMessage(f"Zapisano {out_path}  ({size_mb:.1f} MB)")
+        params = {source: self.edits.get(source, EditParams()) for source, _ in pairs}
+        task = ExportTask(pairs, params, options)
+        task.signals.export_progress.connect(self._on_export_progress)
+        task.signals.export_finished.connect(self._on_export_finished)
+        self.export_task = task
+        self._skipped_in_export = skipped
+
+        self.progress_bar.setRange(0, len(pairs))
+        self.progress_bar.setValue(0)
+        self.progress_label.setText(f"Eksport 0 / {len(pairs)}")
+        self.progress_widget.show()
+        self.cancel_export_button.setEnabled(True)
+        self.export_button.setEnabled(False)
+        self.pool.start(task)
+
+    def _on_export_progress(self, done: int, total: int, name: str) -> None:
+        self.progress_bar.setRange(0, total)
+        self.progress_bar.setValue(done)
+        self.progress_label.setText(
+            f"Eksport {done} / {total}" + (f"  •  {name}" if name else "")
+        )
+
+    def _on_export_finished(self, saved: int, failed: int, errors: list) -> None:
+        cancelled = self.export_task is not None and self.export_task.cancelled
+        self.export_task = None
+        self.progress_widget.hide()
+        self.export_button.setEnabled(True)
+
+        parts = [f"Zapisano {saved}"]
+        if getattr(self, "_skipped_in_export", 0):
+            parts.append(f"pominięto {self._skipped_in_export}")
+        if failed:
+            parts.append(f"błędów: {failed}")
+        if cancelled:
+            parts.append("przerwano")
+        self.status.showMessage("Eksport zakończony  •  " + ", ".join(parts))
+
+        if errors:
+            box = QMessageBox(self)
+            box.setWindowTitle("Eksport — problemy")
+            box.setIcon(QMessageBox.Warning)
+            box.setText(f"{failed} zdjęć nie udało się zapisać.")
+            box.setDetailedText("\n".join(errors))
+            box.exec()
+
+    def _cancel_export(self) -> None:
+        if self.export_task is not None:
+            self.export_task.cancel()
+            self.progress_label.setText("Przerywanie…")
+            self.cancel_export_button.setEnabled(False)

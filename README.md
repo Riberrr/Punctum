@@ -47,8 +47,20 @@ pokazuje zdjęcie bez korekt, histogram na żywo.
 
 **Redukcja szumu** — osobno luminancja i kolor.
 
-**Eksport** — pełna rozdzielczość, dokładniejsze odszumianie, do wskazanego
-katalogu.
+**Eksport** — `Ctrl+E` otwiera okno z kompletem opcji: katalog docelowy,
+opcjonalny podfolder, zachowanie wobec istniejących plików, nazwa z numeratorem,
+format, jakość, ograniczenie dłuższego boku i dokładność odszumiania. Na dole
+widać pełną ścieżkę pierwszego pliku, więc skutek wszystkich nastaw naraz jest
+widoczny przed kliknięciem.
+
+Eksport idzie w tle — pasek postępu z licznikiem siedzi w pasku stanu i można
+go przerwać. Błąd pojedynczego pliku nie zatrzymuje reszty; lista problemów
+pokazuje się na końcu.
+
+Zaznaczenie kilku zdjęć w pasku miniatur (`Ctrl`, `Shift`) eksportuje je razem.
+Program pamięta nastawy **osobno dla każdego zdjęcia**, więc powrót do wcześniej
+poprawionego kadru przywraca suwaki. Zdjęcia, których nigdy nie otwarto, wychodzą
+bez zmian — okno eksportu mówi o tym wprost, zanim zaczniesz.
 
 ## Ustawienia
 

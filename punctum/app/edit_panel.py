@@ -242,6 +242,33 @@ class EditPanel(QWidget):
         self.sliders["tint"].set_value(0.0)
         self._loading = False
 
+    def load_params(self, p: EditParams) -> None:
+        """Wpisuje komplet nastaw do suwakow, bez przeliczania po drodze.
+
+        Uzywane przy powrocie do wczesniej edytowanego zdjecia. Temperatura
+        None oznacza "jak na ujeciu", wiec pokazujemy nastawe z aparatu.
+        """
+        self._loading = True
+        values = {
+            "temperature": p.temperature if p.temperature is not None else self._as_shot_temp,
+            "tint": p.tint,
+            "exposure": p.exposure,
+            "contrast": p.contrast,
+            "highlights": p.highlights,
+            "shadows": p.shadows,
+            "whites": p.whites,
+            "blacks": p.blacks,
+            "vibrance": p.vibrance,
+            "saturation": p.saturation,
+            "rotation": p.rotation,
+            "noise_luminance": p.noise_luminance,
+            "noise_color": p.noise_color,
+        }
+        for key, value in values.items():
+            if key in self.sliders:
+                self.sliders[key].set_value(value)
+        self._loading = False
+
     def apply_values(self, values: dict[str, float]) -> None:
         """Wpisuje komplet wartosci naraz i przelicza podglad tylko raz."""
         self._loading = True
