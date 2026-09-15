@@ -256,6 +256,7 @@ class MainWindow(QMainWindow):
         self.noise_timer.setInterval(s.noise_delay_ms)
         self.view.set_detail_delay(s.detail_delay_ms)
         self.navigator.setVisible(s.show_navigator)
+        self.edit_panel.set_wheel_protection(s.wheel_lockout_ms, s.wheel_dwell_ms)
 
         if self.gpu.available and self.settings.render_engine == ENGINE_CPU:
             if self.gpu_source_ready:

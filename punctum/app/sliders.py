@@ -1,6 +1,8 @@
-"""Suwaki: zwykle oraz te z kolorowym rowkiem dla balansu bieli."""
+"""Suwaki: zwykle, te z kolorowym rowkiem oraz obsluga kolka myszy."""
 
 from __future__ import annotations
+
+import time
 
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal
 from PySide6.QtGui import QColor, QLinearGradient, QPainter, QPainterPath, QPen
@@ -31,11 +33,81 @@ TINT_STOPS = [
 ]
 
 
-class GradientSlider(QSlider):
+class WheelGuard:
+    """Rozstrzyga, czy kolko myszy nalezy do suwaka, czy do listy suwakow.
+
+    Problem bierze sie stad, ze Qt kieruje zdarzenie kolka do widzetu pod
+    kursorem. Przy przewijaniu dlugiej listy suwaki same podjezdzaja pod
+    nieruchomy kursor i po drodze lapia zdarzenie - uzytkownik chcial
+    przewinac panel, a zmienil ekspozycje.
+
+    Stosujemy dwa niezalezne warunki:
+
+    1. Blokada po przewinieciu. Kazde przewiniecie listy ustawia znacznik
+       czasu; przez nastepne `lockout_ms` suwaki sa gluche na kolko. Dzieki
+       temu ciagle przewijanie nigdy nie zahacza o zaden z nich.
+    2. Wymog zatrzymania. Suwak przyjmuje kolko dopiero, gdy kursor jest nad
+       nim od co najmniej `dwell_ms`. To lapie sytuacje, w ktorej suwak
+       dopiero co podjechal pod kursor - `enterEvent` zeruje wtedy licznik.
+
+    Celowe uzycie (najedz i kreci) dziala bez zmian, bo kursor stoi nad
+    suwakiem dluzej niz prog, a lista nie byla ostatnio przewijana.
+    """
+
+    def __init__(self, lockout_ms: int = 400, dwell_ms: int = 220):
+        self.lockout_ms = lockout_ms
+        self.dwell_ms = dwell_ms
+        self._last_scroll = 0.0
+
+    def note_panel_scroll(self) -> None:
+        self._last_scroll = time.monotonic()
+
+    def allows(self, hovering_since: float) -> bool:
+        if self.lockout_ms <= 0:
+            return True  # zabezpieczenie wylaczone w ustawieniach
+        now = time.monotonic()
+        if (now - self._last_scroll) * 1000.0 < self.lockout_ms:
+            return False
+        if not hovering_since or (now - hovering_since) * 1000.0 < self.dwell_ms:
+            return False
+        return True
+
+
+class WheelSlider(QSlider):
+    """Suwak, ktory oddaje kolko liscie, gdy nie jest jego adresatem."""
+
+    def __init__(self, guard: WheelGuard | None = None, parent=None):
+        super().__init__(Qt.Horizontal, parent)
+        self._guard = guard
+        self._hovering_since = 0.0
+        # StrongFocus zamiast domyslnego WheelFocus: samo krecenie kolkiem
+        # nie ma przejmowac ogniska klawiatury
+        self.setFocusPolicy(Qt.StrongFocus)
+
+    def set_guard(self, guard: WheelGuard) -> None:
+        self._guard = guard
+
+    def enterEvent(self, event) -> None:
+        self._hovering_since = time.monotonic()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event) -> None:
+        self._hovering_since = 0.0
+        super().leaveEvent(event)
+
+    def wheelEvent(self, event) -> None:
+        if self._guard is None or self._guard.allows(self._hovering_since):
+            super().wheelEvent(event)
+        else:
+            # ignore() przekazuje zdarzenie wyzej - do obszaru przewijania
+            event.ignore()
+
+
+class GradientSlider(WheelSlider):
     """Suwak, ktorego rowek jest wypelniony gradientem barwnym."""
 
-    def __init__(self, stops, parent=None):
-        super().__init__(Qt.Horizontal, parent)
+    def __init__(self, stops, guard: WheelGuard | None = None, parent=None):
+        super().__init__(guard, parent)
         self._stops = stops
         self.setMinimumHeight(18)
 
@@ -85,6 +157,7 @@ class ParamSlider(QWidget):
         decimals: int = 0,
         suffix: str = "",
         gradient=None,
+        guard: WheelGuard | None = None,
         parent=None,
     ):
         super().__init__(parent)
@@ -100,7 +173,9 @@ class ParamSlider(QWidget):
         self.value_label.setMinimumWidth(56)
         self.value_label.setObjectName("valueLabel")
 
-        self.slider = GradientSlider(gradient) if gradient else QSlider(Qt.Horizontal)
+        self.slider = (
+            GradientSlider(gradient, guard) if gradient else WheelSlider(guard)
+        )
         self.slider.setMinimum(int(round(minimum * self._scale)))
         self.slider.setMaximum(int(round(maximum * self._scale)))
         self.slider.setValue(int(round(default * self._scale)))

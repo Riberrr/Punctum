@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 
 from ..core import EditParams
 from ..core.metadata import PhotoMetadata
-from .sliders import TEMPERATURE_STOPS, TINT_STOPS, ParamSlider
+from .sliders import TEMPERATURE_STOPS, TINT_STOPS, ParamSlider, WheelGuard
 
 
 class HistogramWidget(QFrame):
@@ -124,6 +124,8 @@ class EditPanel(QWidget):
         self.sliders: dict[str, ParamSlider] = {}
         self._as_shot_temp = 5500.0
         self._loading = False
+        # wspolny arbiter kolka myszy dla wszystkich suwakow w panelu
+        self.wheel_guard = WheelGuard()
 
         inner = QWidget()
         layout = QVBoxLayout(inner)
@@ -196,10 +198,18 @@ class EditPanel(QWidget):
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        # Kazde przewiniecie listy zglaszamy arbitrowi. To ono uruchamia
+        # blokade, dzieki ktorej suwaki nie lapia kolka w trakcie przewijania.
+        scroll.verticalScrollBar().valueChanged.connect(self.wheel_guard.note_panel_scroll)
+        self.scroll_area = scroll
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(scroll)
+
+    def set_wheel_protection(self, lockout_ms: int, dwell_ms: int = 220) -> None:
+        self.wheel_guard.lockout_ms = max(0, int(lockout_ms))
+        self.wheel_guard.dwell_ms = max(0, int(dwell_ms))
 
     # --- budowanie ------------------------------------------------------
 
@@ -210,7 +220,9 @@ class EditPanel(QWidget):
 
     def _add(self, layout, key, label, lo, hi, default=0.0, decimals=0, suffix="",
              gradient=None) -> None:
-        slider = ParamSlider(key, label, lo, hi, default, decimals, suffix, gradient)
+        slider = ParamSlider(
+            key, label, lo, hi, default, decimals, suffix, gradient, self.wheel_guard
+        )
         slider.value_changed.connect(self._on_change)
         self.sliders[key] = slider
         layout.addWidget(slider)

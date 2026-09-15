@@ -68,7 +68,27 @@ dopasowanego do okna) i liczba wątków wczytujących miniatury.
 
 **Podgląd** — opóźnienie doliczania ostrego fragmentu i redukcji szumu, jakość
 odszumiania podglądu, próg powiększenia, powyżej którego obraz skalowany jest
-najbliższym sąsiadem, widoczność nawigatora.
+najbliższym sąsiadem, widoczność nawigatora, a także zachowanie kółka myszy nad
+suwakami (patrz niżej).
+
+### Kółko myszy nad suwakami
+
+Qt kieruje zdarzenie kółka do widżetu pod kursorem, więc przy przewijaniu długiej
+listy suwaki podjeżdżają pod nieruchomy kursor i po drodze łapią zdarzenie —
+użytkownik chciał przewinąć panel, a zmienił ekspozycję.
+
+Suwak przyjmuje kółko dopiero, gdy spełnione są dwa niezależne warunki:
+
+- **lista nie była przewijana** przez ostatnie 400 ms (parametr *Blokada po
+  przewinięciu*) — dzięki temu ciągłe przewijanie nigdy nie zahacza o suwak,
+- **kursor stoi nad suwakiem** od co najmniej 220 ms (parametr *Wymagane
+  zatrzymanie*) — to łapie suwak, który dopiero podjechał pod kursor.
+
+Celowe użycie — najedź i kręć — działa bez zmian. Zero w polu *Blokada po
+przewinięciu* wyłącza zabezpieczenie i przywraca zachowanie Qt.
+
+Gdy warunki nie są spełnione, suwak wywołuje `event.ignore()` i Qt przekazuje
+zdarzenie wyżej, do obszaru przewijania — panel przewija się normalnie.
 
 **Eksport** — format, jakość JPEG, dłuższy bok, jakość odszumiania, domyślny
 katalog docelowy.

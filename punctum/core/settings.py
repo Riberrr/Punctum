@@ -66,6 +66,13 @@ class Settings:
     pixel_peek_zoom: float = 2.5  # powyzej tego skalujemy najblizszym sasiadem
     show_navigator: bool = True
 
+    # --- kolko myszy ----------------------------------------------------
+    # Po przewinieciu listy suwaki przez ten czas nie reaguja na kolko,
+    # zeby przewijanie panelu nie zmienialo przypadkiem parametrow zdjecia.
+    wheel_lockout_ms: int = 400
+    # Kursor musi postac nad suwakiem tyle czasu, zanim kolko zacznie dzialac.
+    wheel_dwell_ms: int = 220
+
     # --- eksport --------------------------------------------------------
     export_format: str = ".jpg"
     export_quality: int = 92
@@ -93,6 +100,8 @@ class Settings:
         if clean.export_noise_quality not in NOISE_QUALITY_LABELS:
             clean.export_noise_quality = "high"
         clean.pixel_peek_zoom = float(min(16.0, max(1.0, clean.pixel_peek_zoom)))
+        clean.wheel_lockout_ms = max(0, min(3000, int(clean.wheel_lockout_ms)))
+        clean.wheel_dwell_ms = max(0, min(3000, int(clean.wheel_dwell_ms)))
         clean.export_quality = max(50, min(100, int(clean.export_quality)))
         clean.export_max_side = max(0, min(20000, int(clean.export_max_side)))
         if clean.export_format not in (".jpg", ".png", ".tif"):

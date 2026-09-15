@@ -210,6 +210,33 @@ class SettingsDialog(QDialog):
         quality_form.addRow("", self.navigator_box)
         layout.addWidget(quality)
 
+        wheel = QGroupBox("Kółko myszy nad suwakami")
+        wheel_form = QFormLayout(wheel)
+
+        self.wheel_lockout_box = QSpinBox()
+        self.wheel_lockout_box.setRange(0, 3000)
+        self.wheel_lockout_box.setSingleStep(50)
+        self.wheel_lockout_box.setSuffix(" ms")
+        self.wheel_lockout_box.setSpecialValueText("bez blokady")
+        wheel_form.addRow("Blokada po przewinięciu:", self.wheel_lockout_box)
+        wheel_form.addRow("", _hint(
+            "Po przewinięciu listy suwaki przez ten czas nie reagują na kółko. "
+            "Dzięki temu przewijanie panelu nie zmienia przypadkiem parametrów. "
+            "Zero wyłącza zabezpieczenie."
+        ))
+
+        self.wheel_dwell_box = QSpinBox()
+        self.wheel_dwell_box.setRange(0, 3000)
+        self.wheel_dwell_box.setSingleStep(20)
+        self.wheel_dwell_box.setSuffix(" ms")
+        wheel_form.addRow("Wymagane zatrzymanie:", self.wheel_dwell_box)
+        wheel_form.addRow("", _hint(
+            "Kursor musi postać nad suwakiem tyle czasu, zanim kółko zacznie "
+            "go zmieniać. Chroni przed suwakiem, który dopiero podjechał pod "
+            "nieruchomy kursor."
+        ))
+        layout.addWidget(wheel)
+
         layout.addStretch(1)
         return page
 
@@ -276,7 +303,7 @@ class SettingsDialog(QDialog):
         title = QLabel("Punctum")
         title.setObjectName("cameraLabel")
         layout.addWidget(title)
-        layout.addWidget(_hint(f"Wersja {__version__} — program do obróbki zdjęć RAW"))
+        layout.addWidget(_hint(f"Wersja {__version__} — wywoływarka plików RAW"))
 
         line = QFrame()
         line.setFrameShape(QFrame.HLine)
@@ -336,6 +363,8 @@ class SettingsDialog(QDialog):
         )
         self.pixel_peek_box.setValue(s.pixel_peek_zoom)
         self.navigator_box.setChecked(s.show_navigator)
+        self.wheel_lockout_box.setValue(s.wheel_lockout_ms)
+        self.wheel_dwell_box.setValue(s.wheel_dwell_ms)
         self.format_box.setCurrentIndex(max(0, self.format_box.findData(s.export_format)))
         self.quality_box.setValue(s.export_quality)
         self.max_side_box.setValue(s.export_max_side)
@@ -357,6 +386,8 @@ class SettingsDialog(QDialog):
         s.preview_noise_quality = self.preview_noise_box.currentData()
         s.pixel_peek_zoom = self.pixel_peek_box.value()
         s.show_navigator = self.navigator_box.isChecked()
+        s.wheel_lockout_ms = self.wheel_lockout_box.value()
+        s.wheel_dwell_ms = self.wheel_dwell_box.value()
         s.export_format = self.format_box.currentData()
         s.export_quality = self.quality_box.value()
         s.export_max_side = self.max_side_box.value()
