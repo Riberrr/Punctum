@@ -1,0 +1,353 @@
+"""Tor obrobki: z liniowego RAW do gotowego obrazu.
+
+Kolejnosc operacji nie jest przypadkowa. Ekspozycja, balans bieli,
+swiatla i cienie musza dzialac na danych LINIOWYCH - czyli takich,
+w ktorych podwojna wartosc piksela oznacza dwa razy wiecej swiatla.
+Dopiero na samym koncu nakladamy krzywa sRGB, ktora przygotowuje
+obraz pod monitor. Odwrocenie tej kolejnosci daje plastikowe,
+"cyfrowe" kolory - to najczestszy blad w amatorskich programach do obrobki RAW.
+
+Modul udostepnia dwie drogi liczenia:
+  develop()        - caly obraz, do podgladu dopasowanego do okna i eksportu
+  develop_region() - tylko widoczny fragment, liczony z pelnej rozdzielczosci
+Druga droga jest tym, co daje ostry obraz przy powiekszeniu 100 % i wyzej,
+bez przeliczania calych 20 megapikseli na kazde przesuniecie kadru.
+"""
+
+from __future__ import annotations
+
+import cv2
+import numpy as np
+
+from .geometry import orientation_steps, output_size, output_to_source
+from .params import EditParams
+from .raw_loader import RawImage
+from . import whitebalance as wb
+
+MID_GREY = 0.18  # szarosc 18% - punkt odniesienia dla kontrastu i masek
+_EPS = 1e-6
+
+# wagi luminancji wg Rec. 709 (takie same jak w sRGB)
+LUMA = np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
+
+
+def _smoothstep(edge0: float, edge1: float, x: np.ndarray) -> np.ndarray:
+    t = np.clip((x - edge0) / (edge1 - edge0), 0.0, 1.0)
+    return t * t * (3.0 - 2.0 * t)
+
+
+def _luminance(img: np.ndarray) -> np.ndarray:
+    return img @ LUMA
+
+
+# --------------------------------------------------------------------- kolor
+
+
+def apply_white_balance(img: np.ndarray, raw: RawImage, p: EditParams) -> np.ndarray:
+    """Koryguje balans bieli wzgledem nastawy z aparatu."""
+    if p.temperature is None and abs(p.tint) < 1e-9:
+        return img
+    temp = p.temperature if p.temperature is not None else raw.as_shot_temp
+    tint = raw.as_shot_tint + p.tint
+    target = wb.camera_multipliers(raw.cam_xyz, temp, tint)
+    gain = (target / raw.as_shot_mult).astype(np.float32)
+    return img * gain
+
+
+def camera_to_srgb(img: np.ndarray, raw: RawImage) -> np.ndarray:
+    """Z przestrzeni aparatu do liniowego sRGB (bez krzywej gamma)."""
+    return img @ raw.cam_to_srgb.astype(np.float32).T
+
+
+# --------------------------------------------------------------------- odcien
+
+
+def apply_exposure(img: np.ndarray, ev: float) -> np.ndarray:
+    if abs(ev) < 1e-6:
+        return img
+    return img * np.float32(2.0**ev)
+
+
+def apply_highlights_shadows(img: np.ndarray, highlights: float, shadows: float) -> np.ndarray:
+    """Rozjasnia cienie i sciaga swiatla, nie ruszajac srodkow tonalnych.
+
+    Maski budujemy w dzialkach EV wzgledem szarosci 18%, a nie na surowej
+    wartosci piksela - dzieki temu przejscia sa rownomierne i nie widac
+    obwodek wokol kontrastowych krawedzi.
+    """
+    if abs(highlights) < 1e-6 and abs(shadows) < 1e-6:
+        return img
+
+    lum = np.maximum(_luminance(img), _EPS)
+    ev = np.log2(lum / MID_GREY)
+    gain = np.ones_like(ev)
+
+    if abs(shadows) > 1e-6:
+        mask = 1.0 - _smoothstep(-4.5, -0.5, ev)
+        gain = gain * (1.0 + (shadows / 100.0) * mask * 1.2)
+    if abs(highlights) > 1e-6:
+        mask = _smoothstep(-0.2, 2.5, ev)
+        gain = gain * (1.0 + (highlights / 100.0) * mask * 0.9)
+
+    return img * gain[..., None].astype(np.float32)
+
+
+def apply_whites_blacks(img: np.ndarray, whites: float, blacks: float) -> np.ndarray:
+    """Przesuwa skrajne punkty histogramu: biel i czern."""
+    out = img
+    if abs(blacks) > 1e-6:
+        offset = np.float32(-(blacks / 100.0) * 0.04)
+        out = (out - offset) / np.float32(1.0 - offset)
+    if abs(whites) > 1e-6:
+        scale = np.float32(1.0 - (whites / 100.0) * 0.30)
+        out = out / max(float(scale), 0.05)
+    return out
+
+
+def apply_contrast(img: np.ndarray, contrast: float) -> np.ndarray:
+    """Kontrast jako krzywa potegowa zaczepiona w szarosci 18%."""
+    if abs(contrast) < 1e-6:
+        return img
+    exponent = np.float32(1.0 + 0.6 * (contrast / 100.0))
+    return np.float32(MID_GREY) * np.power(np.maximum(img, 0.0) / np.float32(MID_GREY) + _EPS, exponent)
+
+
+def linear_to_srgb(img: np.ndarray) -> np.ndarray:
+    """Krzywa przenoszenia sRGB - ostatni krok toru liniowego."""
+    x = np.clip(img, 0.0, 1.0)
+    return np.where(x <= 0.0031308, x * 12.92, 1.055 * np.power(x, 1.0 / 2.4) - 0.055)
+
+
+def apply_saturation(img: np.ndarray, saturation: float, vibrance: float) -> np.ndarray:
+    """Nasycenie i jaskrawosc, liczone juz po krzywej - jak w Lightroomie."""
+    if abs(saturation) < 1e-6 and abs(vibrance) < 1e-6:
+        return img
+
+    lum = _luminance(img)[..., None]
+    out = lum + (img - lum) * np.float32(1.0 + saturation / 100.0)
+
+    if abs(vibrance) > 1e-6:
+        mx, mn = out.max(axis=2), out.min(axis=2)
+        current_sat = (mx - mn) / np.maximum(mx, _EPS)
+        weight = (1.0 - np.clip(current_sat, 0.0, 1.0))[..., None]
+        vib = np.float32(1.0 + (vibrance / 100.0) * 0.8) * weight + (1.0 - weight)
+        lum2 = _luminance(out)[..., None]
+        out = lum2 + (out - lum2) * vib
+
+    return out
+
+
+# ------------------------------------------------------------------ geometria
+
+
+def geometry_size(raw: RawImage, p: EditParams) -> tuple[int, int]:
+    """Rozmiar obrazu po zastosowaniu geometrii, jako (szerokosc, wysokosc)."""
+    height, width = raw.camera_linear.shape[:2]
+    return output_size(p, width, height)
+
+
+def _warp(
+    source: np.ndarray,
+    p: EditParams,
+    out_w: int,
+    out_h: int,
+    region: tuple[int, int, int, int] | None = None,
+    scale: float = 1.0,
+) -> np.ndarray:
+    """Jedno przeksztalcenie zamiast trzech osobnych kroków.
+
+    Obrot o 90 stopni, plynny obrot, kadrowanie i powiekszenie skladamy
+    w jedna macierz i kazemy warpAffine policzyc wylacznie zadany prostokat.
+    Koszt zalezy przez to od rozmiaru wyniku, a nie od rozmiaru zdjecia.
+
+    Macierz pochodzi z tego samego miejsca, co macierz uzywana przez shader
+    na karcie graficznej - dzieki temu oba tory nie moga sie rozjechac.
+    """
+    height, width = source.shape[:2]
+    matrix = output_to_source(p, width, height, region=region, scale=scale)
+    return cv2.warpAffine(
+        source,
+        matrix[:2].astype(np.float64),
+        (int(out_w), int(out_h)),
+        flags=cv2.INTER_LINEAR | cv2.WARP_INVERSE_MAP,
+        borderMode=cv2.BORDER_REPLICATE,
+    )
+
+
+def apply_geometry(img: np.ndarray, p: EditParams) -> np.ndarray:
+    """Obrot o 90 stopni, plynny obrot i kadrowanie calego obrazu."""
+    height, width = img.shape[:2]
+    out_w, out_h = output_size(p, width, height)
+    if (
+        orientation_steps(p.orientation) == 0
+        and abs(p.rotation) < 1e-9
+        and p.crop == (0.0, 0.0, 1.0, 1.0)
+    ):
+        return img  # nic do zrobienia, nie ma po co kopiowac 240 MB
+    return _warp(img, p, out_w, out_h)
+
+
+def _region_from_source(
+    raw: RawImage, p: EditParams, rect: tuple[int, int, int, int], scale: float = 1.0
+) -> np.ndarray:
+    """Wycina fragment obrazu wynikowego prosto z pelnej rozdzielczosci."""
+    out_w = max(1, int(round(rect[2] * scale)))
+    out_h = max(1, int(round(rect[3] * scale)))
+    return _warp(raw.camera_linear, p, out_w, out_h, region=rect, scale=scale)
+
+
+# ------------------------------------------------------------- redukcja szumu
+
+
+def _denoise_chroma(channel: np.ndarray, strength: float) -> np.ndarray:
+    """Szum koloru to plamy o niskiej czestotliwosci.
+
+    Najtaniej usuwa sie je zmniejszajac kanal, rozmywajac i skalujac
+    z powrotem - szczegoly obrazu i tak siedza w luminancji, wiec
+    rozmycie chrominancji jest praktycznie niewidoczne.
+    """
+    scale = 1.0 / (1.0 + strength * 3.0)
+    small = cv2.resize(channel, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+    kernel = int(3 + strength * 6) | 1
+    small = cv2.medianBlur(small, min(kernel, 9))
+    small = cv2.GaussianBlur(small, (0, 0), 1.0 + strength * 2.5)
+    return cv2.resize(small, (channel.shape[1], channel.shape[0]), interpolation=cv2.INTER_LINEAR)
+
+
+# Trzy poziomy dokladnosci odszumiania luminancji: (template, search window).
+# Non-local means porownuje otoczenia pikseli, wiec jakosc rosnie z oknem
+# przeszukiwania, a czas rosnie z jego kwadratem.
+NLM_WINDOWS = {"balanced": (5, 11), "high": (7, 21)}
+
+
+def apply_noise_reduction(
+    rgb8: np.ndarray, luminance: float, color: float, quality: str = "fast"
+) -> np.ndarray:
+    """Redukcja szumu rozdzielona na luminancje i kolor.
+
+    WAZNE: te funkcje wolno wywolywac wylacznie na obrazie w rozdzielczosci
+    NATYWNEJ. Po powiekszeniu ziarno jest kilkukrotnie wieksze i zaden filtr
+    o rozsadnym promieniu go nie zobaczy - odszumianie wygladalo wtedy, jakby
+    w ogole nie dzialalo.
+
+    Poziomy: "fast" - filtr bilateralny na podglad dopasowany do okna (szum
+    i tak jest tam zduszony przez pomniejszenie), "balanced" - non-local means
+    na doliczany fragment przy powiekszeniu, "high" - non-local means z pelnym
+    oknem przy eksporcie.
+    """
+    lum_strength = max(0.0, min(100.0, luminance)) / 100.0
+    col_strength = max(0.0, min(100.0, color)) / 100.0
+    if lum_strength < 0.005 and col_strength < 0.005:
+        return rgb8
+
+    ycrcb = cv2.cvtColor(rgb8, cv2.COLOR_RGB2YCrCb)
+    y, cr, cb = cv2.split(ycrcb)
+
+    if col_strength >= 0.005:
+        cr = _denoise_chroma(cr, col_strength)
+        cb = _denoise_chroma(cb, col_strength)
+
+    if lum_strength >= 0.005:
+        # Non-local means dziala progowo: ponizej h okolo 3 nie robi nic,
+        # powyzej 10 jest juz nasycony. Samo odwzorowanie suwaka na h daje
+        # wiec martwe zakresy na obu koncach - przy sile 25 szum znika
+        # calkowicie, a 30..100 nie rozni sie niczym.
+        # Dlatego liczymy jedno mocne odszumianie i MIESZAMY je z oryginalem
+        # proporcjonalnie do suwaka. Szum resztkowy maleje wtedy liniowo,
+        # bo odchylenie standardowe mieszanki skaluje sie wprost z waga.
+        window = NLM_WINDOWS.get(quality)
+        if window:
+            template, search = window
+            strong = cv2.fastNlMeansDenoising(
+                y, None, 4.0 + lum_strength * 9.0, template, search
+            )
+        else:
+            strong = cv2.bilateralFilter(y, 7, 45.0, 9.0)
+        y = (
+            strong
+            if lum_strength > 0.995
+            else cv2.addWeighted(strong, lum_strength, y, 1.0 - lum_strength, 0.0)
+        )
+
+    return cv2.cvtColor(cv2.merge([y, cr, cb]), cv2.COLOR_YCrCb2RGB)
+
+
+# ------------------------------------------------------------------ zlozenie
+
+
+def apply_tone(img: np.ndarray, raw: RawImage, p: EditParams) -> np.ndarray:
+    """Tor tonalny na danych w przestrzeni aparatu. Zwraca float 0..1."""
+    img = apply_white_balance(img, raw, p)
+    img = camera_to_srgb(img, raw)
+    img = apply_exposure(img, p.exposure)
+    img = apply_highlights_shadows(img, p.highlights, p.shadows)
+    img = apply_whites_blacks(img, p.whites, p.blacks)
+    img = apply_contrast(img, p.contrast)
+    img = linear_to_srgb(img)
+    return apply_saturation(img, p.saturation, p.vibrance)
+
+
+def _to_uint8(img: np.ndarray) -> np.ndarray:
+    return (np.clip(img, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8)
+
+
+def develop(
+    raw: RawImage, p: EditParams, denoise: bool = True, quality: str = "fast"
+) -> np.ndarray:
+    """Pelny tor obrobki. Zwraca obraz RGB uint8 gotowy do wyswietlenia."""
+    img = apply_geometry(raw.camera_linear, p)
+    rgb8 = _to_uint8(apply_tone(img, raw, p))
+    if denoise:
+        rgb8 = apply_noise_reduction(rgb8, p.noise_luminance, p.noise_color, quality)
+    return rgb8
+
+
+def develop_region(
+    raw: RawImage,
+    p: EditParams,
+    rect: tuple[int, int, int, int],
+    scale: float = 1.0,
+    denoise: bool = True,
+    quality: str = "balanced",
+) -> np.ndarray:
+    """Liczy tylko wskazany prostokat obrazu wynikowego, z pelnej rozdzielczosci.
+
+    Powyzej skali 1:1 caly tor - lacznie z odszumianiem - liczymy w
+    rozdzielczosci natywnej, a dopiero gotowy obraz powiekszamy. Odwrotna
+    kolejnosc rozciagalaby ziarno szumu ponad zasieg filtrow i przy 400 %
+    odszumianie nie robiloby nic widocznego. Przy duzym powiekszeniu skalujemy
+    najblizszym sasiadem, zeby bylo widac prawdziwe piksele, a nie interpolacje.
+    """
+    render_scale = min(float(scale), 1.0)
+    patch = _region_from_source(raw, p, rect, render_scale)
+    rgb8 = _to_uint8(apply_tone(patch, raw, p))
+    if denoise:
+        rgb8 = apply_noise_reduction(rgb8, p.noise_luminance, p.noise_color, quality)
+
+    if scale > render_scale:
+        out_w = max(1, int(round(rect[2] * scale)))
+        out_h = max(1, int(round(rect[3] * scale)))
+        interpolation = cv2.INTER_NEAREST if scale >= 2.5 else cv2.INTER_LINEAR
+        rgb8 = cv2.resize(rgb8, (out_w, out_h), interpolation=interpolation)
+    return rgb8
+
+
+HISTOGRAM_SAMPLES = 400_000
+
+
+def histogram(rgb8: np.ndarray, bins: int = 256) -> np.ndarray:
+    """Histogram trzech kanalow, ksztalt (3, bins).
+
+    Liczymy go na probce, nie na calym obrazie. Przy dwoch milionach pikseli
+    `np.bincount` zajmuje kilka milisekund na kanal, a to caly budzet jednej
+    klatki - tymczasem histogram z co trzeciego piksela wyglada identycznie.
+    """
+    height, width = rgb8.shape[:2]
+    step = max(1, int(((height * width) / HISTOGRAM_SAMPLES) ** 0.5))
+    sample = np.ascontiguousarray(rgb8[::step, ::step])
+    return np.stack(
+        [
+            cv2.calcHist([sample], [channel], None, [bins], [0, 256]).ravel()
+            for channel in range(3)
+        ]
+    )

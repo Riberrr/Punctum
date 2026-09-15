@@ -1,0 +1,29 @@
+# środowisko
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# wyniki testów i narzędzi diagnostycznych
+out/
+*.log
+
+# katalog roboczy i baza katalogu zdjęć
+*.db
+*.sqlite3
+.punctum/
+
+# pliki wynikowe obróbki leżące luzem w katalogu projektu.
+# Celowo NIE ignorujemy wszystkich obrazów — zasoby programu (ikony, tekstury)
+# mają trafiać do repozytorium, a globalne "*.png" ucinałoby je po cichu.
+/*.jpg
+/*.jpeg
+/*.png
+/*.tif
+/*.tiff
+/*.dng
+
+# lokalne ustawienia edytorów
+.vscode/
+.idea/
