@@ -29,6 +29,9 @@ class RawImage:
     as_shot_mult: np.ndarray = field(default_factory=lambda: np.ones(3), repr=False)
     raw_width: int = 0
     raw_height: int = 0
+    # "raw" albo "jpeg". Tor tonalny tego nie czyta - potrzebuje tego wylacznie
+    # interfejs, zeby uczciwie opisac balans bieli i zapas w swiatlach.
+    source_format: str = "raw"
 
     _oriented_cache: dict = field(default_factory=dict, repr=False, compare=False)
 
@@ -76,6 +79,7 @@ class RawImage:
             as_shot_mult=self.as_shot_mult,
             raw_width=self.raw_width,
             raw_height=self.raw_height,
+            source_format=self.source_format,
         )
 
 

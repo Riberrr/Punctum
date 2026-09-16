@@ -5,11 +5,11 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from punctum.core import load_raw
+from punctum.core import load_photo
 from punctum.core.auto import analyse, auto_tone_from, linear_to_lstar, lstar_to_linear
 
 for path in sys.argv[1:]:
-    raw = load_raw(path)
+    raw = load_photo(path)
     s = analyse(raw)
     v = auto_tone_from(s)
     gain = 2.0 ** v["exposure"]

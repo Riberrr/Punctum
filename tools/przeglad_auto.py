@@ -18,11 +18,11 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from punctum.core import EditParams, load_raw
+from punctum.core import PHOTO_EXTENSIONS, EditParams, load_photo
 from punctum.core.auto import analyse, auto_tone_from
 from punctum.core.pipeline import apply_tone
 
-RAW_SUFFIXES = (".rw2", ".raw", ".arw", ".cr2", ".nef", ".dng")
+RAW_SUFFIXES = PHOTO_EXTENSIONS
 TILE_WIDTH = 420
 
 
@@ -87,7 +87,7 @@ def main() -> None:
     rows: list[np.ndarray] = []
     for path in paths:
         try:
-            raw = load_raw(path)
+            raw = load_photo(path)
             scene = analyse(raw)
             values = auto_tone_from(scene)
         except Exception as error:  # plik uszkodzony nie moze zatrzymac calosci

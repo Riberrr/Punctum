@@ -8,6 +8,7 @@ import numpy as np
 from PySide6.QtCore import QRect, QRectF, Qt, QThreadPool, QTimer
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
+    QComboBox,
     QFileDialog,
     QHBoxLayout,
     QLabel,
@@ -20,7 +21,20 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ..core import EditParams, RawImage, develop, geometry_size, histogram
+from ..core import (
+    FORMAT_ALL,
+    FORMAT_JPEG,
+    FORMAT_LABELS,
+    FORMAT_RAW,
+    EditParams,
+    RawImage,
+    count_formats,
+    develop,
+    folder_photos,
+    geometry_size,
+    histogram,
+    matches_filter,
+)
 from ..core.export import (
     ON_EXISTING_ASK,
     ON_EXISTING_OVERWRITE,
@@ -51,8 +65,6 @@ from .workers import (
     ThumbnailTask,
 )
 
-RAW_EXTENSIONS = (".rw2", ".raw", ".cr2", ".cr3", ".nef", ".arw", ".orf", ".dng", ".raf", ".pef")
-
 # Reszta parametrow mieszka w `core/settings.py` i jest edytowalna przez
 # uzytkownika; te dwa zaleza od wybranego toru liczenia, nie od preferencji.
 DEBOUNCE_CPU_MS = 90  # tor numpy: nie liczymy obrazu na kazdy piksel ruchu suwaka
@@ -71,6 +83,10 @@ class MainWindow(QMainWindow):
         self.pool = QThreadPool.globalInstance()
         self.thumb_pool = QThreadPool()
 
+        # Wszystkie zdjecia w otwartym katalogu i te, ktore przepuszcza filtr
+        # formatow. Filtr przepisuje tylko `paths`, wiec przelaczenie go nie
+        # wymaga ponownego czytania katalogu.
+        self.folder_paths: list[str] = []
         self.paths: list[str] = []
         self.metadata: dict[str, PhotoMetadata] = {}
         # Nastawy edycji per zdjecie. Bez tego powrot do wczesniej poprawionego
@@ -194,6 +210,33 @@ class MainWindow(QMainWindow):
         self.filmstrip.photo_selected.connect(self.open_photo)
         self.filmstrip.setFixedHeight(150)
 
+        # Pasek nad miniaturami. Katalogu, w ktorym lezy kilkanascie tysiecy
+        # JPEG-ow i garsc RAW-ow, nie da sie przejrzec bez takiego filtra.
+        self.format_combo = QComboBox()
+        for key in (FORMAT_ALL, FORMAT_RAW, FORMAT_JPEG):
+            self.format_combo.addItem(FORMAT_LABELS[key], key)
+        index = self.format_combo.findData(self.settings.format_filter)
+        self.format_combo.setCurrentIndex(max(0, index))
+        self.format_combo.currentIndexChanged.connect(self._on_format_changed)
+        self.format_count = QLabel("")
+        self.format_count.setObjectName("metaLabel")
+
+        strip_header = QWidget()
+        header_layout = QHBoxLayout(strip_header)
+        header_layout.setContentsMargins(8, 3, 8, 3)
+        header_layout.setSpacing(8)
+        header_layout.addWidget(QLabel("Pokaż:"))
+        header_layout.addWidget(self.format_combo)
+        header_layout.addWidget(self.format_count)
+        header_layout.addStretch(1)
+
+        strip = QWidget()
+        strip_layout = QVBoxLayout(strip)
+        strip_layout.setContentsMargins(0, 0, 0, 0)
+        strip_layout.setSpacing(0)
+        strip_layout.addWidget(strip_header)
+        strip_layout.addWidget(self.filmstrip, 1)
+
         top = QWidget()
         top_layout = QHBoxLayout(top)
         top_layout.setContentsMargins(0, 0, 0, 0)
@@ -203,7 +246,7 @@ class MainWindow(QMainWindow):
 
         splitter = QSplitter(Qt.Vertical)
         splitter.addWidget(top)
-        splitter.addWidget(self.filmstrip)
+        splitter.addWidget(strip)
         splitter.setStretchFactor(0, 1)
         splitter.setCollapsible(0, False)
 
@@ -334,47 +377,78 @@ class MainWindow(QMainWindow):
 
     def load_folder(self, folder: str) -> None:
         try:
-            names = sorted(os.listdir(folder))
+            self.folder_paths = folder_photos(folder)
         except OSError as exc:
             QMessageBox.warning(self, "Punctum", f"Nie udało się otworzyć folderu:\n{exc}")
             return
 
-        self.paths = [
-            os.path.join(folder, name)
-            for name in names
-            if name.lower().endswith(RAW_EXTENSIONS)
-        ]
         self.metadata.clear()
-        self.filmstrip.set_paths(self.paths)
         self.view.clear_image()
         self.navigator.set_image(None)
         self.histogram_widget.set_histogram(None)
         self.info_panel.set_metadata(None)
         self.full_raw = self.proxy = None
+        self.current_path = None
 
-        if not self.paths:
-            self.status.showMessage(f"{folder} — nie znaleziono plików RAW")
+        raw_count, jpeg_count = count_formats(self.folder_paths)
+        self.format_count.setText(f"{raw_count} RAW  •  {jpeg_count} JPEG")
+
+        if not self.folder_paths:
+            self.paths = []
+            self.filmstrip.set_paths([])
+            self.status.showMessage(f"{folder} — nie znaleziono zdjęć")
             return
 
         self.setWindowTitle(f"Punctum — {os.path.basename(folder)}")
-        self.status.showMessage(f"Wczytywanie miniatur… ({len(self.paths)} zdjęć)")
         if self.settings.last_folder != folder:
             self.settings.last_folder = folder
             self.settings.save()
 
+        self._refresh_filmstrip()
+
+    def _on_format_changed(self) -> None:
+        chosen = self.format_combo.currentData() or FORMAT_ALL
+        if self.settings.format_filter != chosen:
+            self.settings.format_filter = chosen
+            self.settings.save()
+        self._refresh_filmstrip()
+
+    def _refresh_filmstrip(self) -> None:
+        """Przepisuje pasek miniatur wedlug wybranego filtra formatow.
+
+        Biezace zdjecie zostaje otwarte, jesli przetrwalo filtr - przelaczenie
+        widoku nie powinno wyrzucac uzytkownika ze zdjecia, ktore wlasnie
+        poprawia.
+        """
+        chosen = self.format_combo.currentData() or FORMAT_ALL
+        previous = self.current_path
+        self.paths = [p for p in self.folder_paths if matches_filter(p, chosen)]
+        self.filmstrip.set_paths(self.paths)
+
+        if not self.paths:
+            self.status.showMessage(
+                f"{FORMAT_LABELS[chosen]}: w tym folderze nie ma takich plików"
+            )
+            return
+
+        self.status.showMessage(f"Wczytywanie miniatur… ({len(self.paths)} zdjęć)")
         for index, path in enumerate(self.paths):
             task = ThumbnailTask(index, path)
             task.signals.thumbnail_ready.connect(self._on_thumbnail)
             self.thumb_pool.start(task)
 
-        self.filmstrip.setCurrentRow(0)
+        row = self.paths.index(previous) if previous in self.paths else 0
+        self.filmstrip.setCurrentRow(row)
 
-    def _on_thumbnail(self, index: int, image, meta: PhotoMetadata) -> None:
+    def _on_thumbnail(self, index: int, path: str, image, meta: PhotoMetadata) -> None:
+        # Filtr formatow mogl przestawic liste, zanim miniatura dojechala -
+        # bez sprawdzenia sciezki trafilaby wtedy pod cudza pozycje.
+        self.metadata[path] = meta
+        if index >= len(self.paths) or self.paths[index] != path:
+            return
         self.filmstrip.set_thumbnail(index, image)
-        if 0 <= index < len(self.paths):
-            self.metadata[self.paths[index]] = meta
-            if self.paths[index] == self.current_path:
-                self.info_panel.set_metadata(meta)
+        if path == self.current_path:
+            self.info_panel.set_metadata(meta)
         if self.thumb_pool.activeThreadCount() <= 1:
             self.status.showMessage(f"{len(self.paths)} zdjęć")
 
@@ -412,7 +486,8 @@ class MainWindow(QMainWindow):
             return  # uzytkownik zdazyl przejsc na inne zdjecie
         self.full_raw = raw
         self.proxy = raw.proxy(self.settings.preview_size)
-        self.edit_panel.set_as_shot_temp(raw.as_shot_temp, raw.as_shot_tint)
+        is_jpeg = raw.source_format == "jpeg"
+        self.edit_panel.set_as_shot_temp(raw.as_shot_temp, raw.as_shot_tint, relative=is_jpeg)
         self.before_image = develop(self.proxy, EditParams(), denoise=False)
         self.export_button.setEnabled(True)
 
@@ -431,9 +506,14 @@ class MainWindow(QMainWindow):
         # na procesorze.
         self.gpu_source_ready = self.gpu_allowed() and self.gpu.set_source(raw.camera_linear)
 
+        white_balance = (
+            "balans bieli względny (JPEG)" if is_jpeg
+            else f"balans bieli {raw.as_shot_temp:.0f} K"
+        )
         self.status.showMessage(
-            f"{os.path.basename(path)}  •  {raw.raw_width}×{raw.raw_height}  •  "
-            f"balans bieli {raw.as_shot_temp:.0f} K  •  podgląd: {self._engine_name()}"
+            f"{os.path.basename(path)}  •  {'JPEG' if is_jpeg else 'RAW'}  •  "
+            f"{raw.raw_width}×{raw.raw_height}  •  {white_balance}  •  "
+            f"podgląd: {self._engine_name()}"
         )
         self._render_preview()
 

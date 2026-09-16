@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 app = QApplication(sys.argv)
 
 from punctum.app.gpu_renderer import GpuRenderer  # noqa: E402
-from punctum.core import EditParams, develop, geometry_size, load_raw  # noqa: E402
+from punctum.core import EditParams, develop, geometry_size, load_photo  # noqa: E402
 
 path = sys.argv[1]
 out_dir = sys.argv[2] if len(sys.argv) > 2 else "out/gpu"
@@ -32,7 +32,7 @@ if not renderer.available:
     raise SystemExit(1)
 print(f"karta           : {renderer.hardware}")
 
-raw = load_raw(path)
+raw = load_photo(path)
 proxy = raw.proxy(1600)
 print(f"proxy           : {proxy.shape[1]}x{proxy.shape[0]}")
 

@@ -145,6 +145,15 @@ def plan_export(sources: list[str], options: ExportOptions) -> ExportPlan:
 
     for index, source in enumerate(sources):
         target = os.path.join(folder, options.file_name(source, index))
+        # Zrodlo nie moze byc celem. Przy RAW-ach bylo to niemozliwe, bo wynik
+        # ma inne rozszerzenie; przy JPEG-u eksport do tego samego katalogu
+        # trafia dokladnie w plik oryginalu i polityka "zastap" skasowalaby go
+        # bezpowrotnie. Takiej decyzji nie wolno zostawiac uzytkownikowi przez
+        # nieuwage - dajemy nowa nazwe niezaleznie od wybranej polityki.
+        if os.path.normcase(os.path.abspath(target)) == os.path.normcase(
+            os.path.abspath(source)
+        ):
+            target = _unique_path(target, seen)
         if target.lower() in seen:
             target = _unique_path(target, seen)
         seen.add(target.lower())

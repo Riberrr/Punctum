@@ -19,8 +19,8 @@ from ..core import (
     auto_tone,
     develop,
     develop_region,
-    load_raw,
-    load_thumbnail,
+    load_photo,
+    load_preview,
     read_metadata,
 )
 from ..core.metadata import PhotoMetadata
@@ -28,7 +28,10 @@ from ..core.pipeline import apply_noise_reduction
 
 
 class _Signals(QObject):
-    thumbnail_ready = Signal(int, object, object)  # indeks, obraz RGB, metadane
+    # indeks, sciezka, obraz RGB, metadane. Sciezka jest w sygnale dlatego,
+    # ze lista w pasku miniatur moze sie zmienic (filtr formatow), zanim
+    # miniatura dojedzie - sam indeks wskazywalby wtedy inne zdjecie.
+    thumbnail_ready = Signal(int, str, object, object)
     raw_ready = Signal(str, object)  # sciezka, RawImage
     raw_failed = Signal(str, str)  # sciezka, komunikat
     render_ready = Signal(int, object)  # numer zlecenia, obraz RGB
@@ -39,7 +42,7 @@ class _Signals(QObject):
 
 
 class ThumbnailTask(QRunnable):
-    """Wyciaga podglad JPEG wbudowany w RAW - okolo 100 ms na plik."""
+    """Miniatura do paska - z RAW-a podglad wbudowany, z JPEG-a zmniejszony plik."""
 
     def __init__(self, index: int, path: str):
         super().__init__()
@@ -48,11 +51,11 @@ class ThumbnailTask(QRunnable):
 
     def run(self) -> None:
         try:
-            image = load_thumbnail(self.path)
+            image = load_preview(self.path)
             meta = read_metadata(self.path)
         except Exception:  # uszkodzony plik nie moze wywalic calej aplikacji
             image, meta = None, PhotoMetadata()
-        self.signals.thumbnail_ready.emit(self.index, image, meta)
+        self.signals.thumbnail_ready.emit(self.index, self.path, image, meta)
 
 
 class LoadRawTask(QRunnable):
@@ -65,7 +68,7 @@ class LoadRawTask(QRunnable):
 
     def run(self) -> None:
         try:
-            raw = load_raw(self.path)
+            raw = load_photo(self.path)
         except Exception as exc:
             self.signals.raw_failed.emit(self.path, f"{type(exc).__name__}: {exc}")
             return
@@ -177,7 +180,7 @@ class ExportTask(QRunnable):
         return self._cancelled.is_set()
 
     def run(self) -> None:
-        from ..core import load_raw, save_image
+        from ..core import load_photo, save_image
 
         total = len(self.pairs)
         saved = 0
@@ -189,7 +192,7 @@ class ExportTask(QRunnable):
             name = os.path.basename(target)
             self.signals.export_progress.emit(index, total, name)
             try:
-                raw = load_raw(source)
+                raw = load_photo(source)
                 params = self.params_by_path.get(source) or EditParams()
                 rgb8 = develop(
                     raw, params, denoise=True, quality=self.options.noise_quality

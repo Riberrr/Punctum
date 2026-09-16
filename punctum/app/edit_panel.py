@@ -233,12 +233,26 @@ class EditPanel(QWidget):
 
     # --- stan -----------------------------------------------------------
 
-    def set_as_shot_temp(self, temp: float, tint: float) -> None:
-        """Ustawia punkt wyjscia suwaka temperatury na nastawe z aparatu."""
+    def set_as_shot_temp(self, temp: float, tint: float, relative: bool = False) -> None:
+        """Ustawia punkt wyjscia suwaka temperatury.
+
+        Przy RAW jest to nastawa odczytana z aparatu. Przy JPEG-u aparatu w
+        pliku juz nie ma - punktem wyjscia jest sam plik, a kelwiny sa umowne.
+        Suwak dostaje wtedy inna etykiete, zeby nikt nie odczytal "6500 K"
+        jako pomiaru swiatla sceny.
+        """
         self._as_shot_temp = temp
         self._loading = True
-        self.sliders["temperature"].default = temp
-        self.sliders["temperature"].set_value(temp)
+        slider = self.sliders["temperature"]
+        slider.default = temp
+        slider.set_value(temp)
+        slider.name_label.setText("Temperatura (wzgl.)" if relative else "Temperatura")
+        slider.setToolTip(
+            "JPEG nie niesie mnożników aparatu ani macierzy barw, więc temperatury\n"
+            "„jak na ujęciu” nie da się odtworzyć. Suwak przesuwa barwę względem\n"
+            "stanu zapisanego w pliku — kelwiny są tu umowne."
+            if relative else ""
+        )
         self.sliders["tint"].set_value(0.0)
         self._loading = False
 

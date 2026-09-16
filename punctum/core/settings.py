@@ -90,6 +90,10 @@ class Settings:
     # --- ogolne ---------------------------------------------------------
     reopen_last_folder: bool = True
     last_folder: str = ""
+    # Ktore formaty pokazywac w pasku miniatur: all | raw | jpeg.
+    # Wartosci sa te same, co stale FORMAT_* w core/loader.py; trzymamy tu
+    # goly napis, zeby modul ustawien nie zalezal od dekodowania zdjec.
+    format_filter: str = "all"
 
     # ---------------------------------------------------------- walidacja
 
@@ -117,6 +121,8 @@ class Settings:
             clean.export_naming = "original"
         if clean.export_on_existing not in ("ask", "overwrite", "skip", "unique"):
             clean.export_on_existing = "ask"
+        if clean.format_filter not in ("all", "raw", "jpeg"):
+            clean.format_filter = "all"
         clean.export_start_number = max(0, min(999999, int(clean.export_start_number)))
         clean.export_number_digits = max(1, min(8, int(clean.export_number_digits)))
         return clean

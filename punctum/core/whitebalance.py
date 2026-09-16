@@ -104,6 +104,11 @@ def estimate_temp_tint(cam_xyz: np.ndarray, cam_wb: np.ndarray) -> tuple[float, 
 
     def err(temp: float, tint: float) -> float:
         m = camera_multipliers(cam_xyz, temp, tint)
+        # Przy skrajnych temperaturach odpowiedz kanalu potrafi wyjsc ujemna -
+        # zdarza sie to przy waskich prymarnych, np. gdy "aparatem" jest sRGB
+        # (pliki JPEG). Taki punkt odrzucamy, zamiast liczyc logarytm z minusa.
+        if np.any(m <= 0.0):
+            return float("inf")
         return float(np.sum((np.log(m) - np.log(target)) ** 2))
 
     # zgrubnie: logarytmiczny skan calego zakresu

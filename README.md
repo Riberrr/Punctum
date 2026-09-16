@@ -1,10 +1,11 @@
 # Punctum
 
-Program do obróbki zdjęć RAW — nieniszczący edytor z obsługą RW2, CR2/CR3,
-NEF, ARW i DNG, z podglądem liczonym na karcie graficznej.
+Nieniszczący edytor zdjęć — RAW (RW2, CR2/CR3, NEF, ARW, DNG) oraz JPEG,
+z podglądem liczonym na karcie graficznej.
 
-> *A non-destructive RAW photo editor with a GPU-accelerated preview pipeline.
-> The interface and documentation are currently Polish-only.*
+> *A non-destructive photo editor for RAW and JPEG files, with a
+> GPU-accelerated preview pipeline. The interface and documentation are
+> currently Polish-only.*
 
 ## Uruchomienie
 
@@ -27,6 +28,9 @@ python -m venv .venv
 **Przeglądanie** — pasek miniatur wczytywany z podglądów wbudowanych w pliki
 RAW (ok. 100 ms na zdjęcie), panel z aparatem, ogniskową, czasem, przysłoną,
 ISO, datą i lokalizacją. Uszkodzone pliki są oznaczane, nie wywalają programu.
+Nad paskiem miniatur siedzi przełącznik formatów (wszystkie / tylko RAW /
+tylko JPEG) — w katalogu z tysiącami JPEG-ów i garścią RAW-ów bez tego nie
+da się pracować. Wybór jest zapamiętywany.
 
 **Korekta** — balans bieli w kelwinach (suwaki z gradientem barwnym),
 ekspozycja, kontrast, światła, cienie, biele, czernie, jaskrawość, nasycenie.
@@ -61,6 +65,36 @@ Zaznaczenie kilku zdjęć w pasku miniatur (`Ctrl`, `Shift`) eksportuje je razem
 Program pamięta nastawy **osobno dla każdego zdjęcia**, więc powrót do wcześniej
 poprawionego kadru przywraca suwaki. Zdjęcia, których nigdy nie otwarto, wychodzą
 bez zmian — okno eksportu mówi o tym wprost, zanim zaczniesz.
+
+## Pliki JPEG
+
+JPEG przechodzi przez dokładnie ten sam tor, co RAW — wraz z automatem,
+kadrowaniem, odszumianiem i podglądem na karcie graficznej. Różnica jest
+jedna i siedzi we wczytywaniu: z JPEG-a zdejmujemy krzywą sRGB, żeby wejść
+w tor liniowy. Poprawność tego kroku sprawdza `tools/test_jpeg.py` — plik
+przepuszczony przez cały tor bez żadnych korekt wychodzi **piksel w piksel
+taki sam**.
+
+Czego z JPEG-a nie da się odzyskać:
+
+- **nie ma zapasu w światłach** — w RAW nad białą ścianą zostaje jeszcze
+  materiał do ściągnięcia, w JPEG-u wszystko powyżej punktu bieli zostało
+  ścięte przy zapisie,
+- **w cieniach jest 8 bitów zamiast dwunastu** — mocne podnoszenie pokaże
+  schodki tam, gdzie RAW dałby gładkie przejście,
+- **nie ma mnożników aparatu ani macierzy barw**, więc temperatury „jak na
+  ujęciu" nie da się odtworzyć.
+
+Dlatego balans bieli działa przy JPEG-u inaczej i program mówi to wprost:
+suwak nazywa się wtedy *Temperatura (wzgl.)*, a pasek stanu pisze „balans
+bieli względny". Przyjmujemy, że plik jest w sRGB o punkcie bieli D65 (6500 K)
+i że taki jest jego stan wyjściowy; suwak przesuwa barwę **względem tego, co
+zapisał aparat**, a nie względem światła sceny. Kelwiny są tu umowne.
+
+Eksport pilnuje jednej rzeczy więcej niż przy RAW: plik źródłowy nigdy nie
+jest celem. Przy RAW było to niemożliwe (wynik ma inne rozszerzenie), przy
+JPEG-u eksport do tego samego katalogu trafiałby dokładnie w oryginał —
+dostaje więc nową nazwę niezależnie od wybranej polityki nadpisywania.
 
 ## Ustawienia
 
@@ -208,25 +242,59 @@ Zmierzone na zdjęciu ISO 3200 przy powiększeniu 400 % (odchylenie szumu):
 
 ### Automatyczna korekcja
 
-Progi wyrażone w działkach EV, nie w ułamkach jasności — oko reaguje na światło
-logarytmicznie. Ekspozycja celuje 90. percentylem w szarość 18 %, ale nigdy
-kosztem wypalenia świateł. Kompresja świateł i cieni zależy od rozpiętości
-tonalnej sceny: zachód słońca ma ok. 8 EV i wymaga silnej, płaskie niebo 4,6 EV
-i prawie żadnej.
+Automat nie zgaduje, CO jest na zdjęciu — opiera się na zasadach, które
+w fotografii obowiązują niezależnie od tematu. Decyzje zapadają w przestrzeni
+percepcyjnej L\*, gdzie „o pięć jednostek jaśniej" znaczy to samo w cieniach
+i w światłach, więc progi ustawia się raz i działają na każdym kadrze.
 
-Porównanie z Lightroomem na pliku `01158845.rw2`:
+Punkt wyjścia: **nie ma jednego dobrego histogramu**. Poprawnie naświetlona noc
+jest zbita przy lewej krawędzi i to jest prawidłowe. Automat sprowadzający każdy
+histogram do dzwonu pośrodku powtarza błąd światłomierza, który zamienia śnieg
+w szarość.
+
+Ekspozycja ma dwa warunki i decyduje ostrożniejszy:
+
+- **treść** — mediana jasności ma trafić w strefę właściwą dla klucza sceny,
+- **światła** — biel rozproszona nie może wyjść poza zakres; refleks wolno
+  przepalić, biel z fakturą nie, bo tego się już nie odzyska.
+
+Cel dla mediany przesuwa **klucz sceny** (udział kadru leżącego ponad 2,5 działki
+poniżej *własnej* bieli zdjęcia — miara opisuje układ sceny, a nie błąd
+naświetlenia) oraz **rozpiętość** (im dłuższa skala, tym niżej musi leżeć środek,
+żeby światła zmieściły się pod ramieniem krzywej). Scena bez rozpiętości — karta
+szarości, jednolita ściana, mgła — nie ma klucza, więc oba przesunięcia gasną
+proporcjonalnie do pewności oceny.
+
+Biel rozproszoną wyznaczamy z pominięciem refleksów: gdy szczyt histogramu
+odstaje od 99. percentyla o ponad 1,5 działki, punkt bieli bierzemy niżej.
+Inaczej jedna latarnia w kadrze zaciemniałaby całe zdjęcie.
+
+Sprawdzian to `tools/test_auto_zasady.py` — 21 przypadków na obrazach o znanych
+właściwościach: karta szarości i jej wersje prze- i niedoświetlone, klin
+stopniowy 8 EV i 2 EV, syntetyczna noc i śnieg, odporność na refleks.
+Najważniejszy jest ostatni: scena nocna zestawiona ze zwykłym zdjęciem
+niedoświetlonym o 4 EV. Mediany różnią się o niecałą jednostkę L\*, a korekty
+o dwie działki — bo o decyzji nie stanowi jasność mediany, tylko układ sceny.
+
+Porównanie z Lightroomem na pliku referencyjnym:
 
 | parametr | Punctum | Lightroom |
 |---|---:|---:|
-| ekspozycja | +1,20 | +1,00 |
+| ekspozycja | +1,22 | +1,00 |
 | kontrast | +7 | +6 |
-| podświetlenia | −54 | −47 |
-| cienie | +62 | +57 |
-| biele | +15 | +9 |
-| czernie | −9 | −8 |
+| podświetlenia | −48 | −47 |
+| cienie | +57 | +57 |
+| biele | 0 | +9 |
+| czernie | −3 | −8 |
 
 Balansu bieli automat celowo nie rusza — aparat zna warunki oświetlenia lepiej
-niż histogram.
+niż histogram, a „poprawiony" zachód słońca traci sens.
+
+Przy okazji tych prac wyszła wada suwaka **bieli**: był zwykłym mnożnikiem
+całego obrazu, czyli drugą ekspozycją pod inną nazwą, i nie potrafił zrobić
+tego, po co istnieje — postawić punktu bieli bez rozjaśniania całości. Teraz
+działa od ok. 1,4 działki ponad szarością, wyżej niż maska świateł, więc oba
+suwaki nie powielają swojej roli.
 
 ### Tor tonalny na karcie graficznej
 
@@ -291,10 +359,14 @@ punctum/core/
     params.py        komplet nastaw edycji (EditParams)
     whitebalance.py  krzywa Plancka, kelwiny ↔ mnożniki, macierze barw
     raw_loader.py    dekodowanie RAW, proxy, miniatury, orientacja
+    jpeg_loader.py   dekodowanie JPEG, zdjęcie krzywej sRGB
+    loader.py        wspólne wejście dla obu formatów, filtr formatów
     pipeline.py      tor tonalny, geometria, redukcja szumu
     auto.py          automatyczny dobór parametrów
     metadata.py      odczyt EXIF (z obsługą pól własnych Panasonica)
     export.py        zapis JPEG / PNG / TIFF
+    settings.py      ustawienia programu: odczyt, zapis, walidacja
+    hardware.py      wykrywanie procesora i karty graficznej
 punctum/app/
     main_window.py   złożenie całości
     image_view.py    płótno, zoom, warstwa detalu, kadrowanie
@@ -311,5 +383,5 @@ tools/               narzędzia diagnostyczne, testy i CLI
 - Zapisu ustawień między sesjami (SQLite, sidecary XMP).
 - Mapy i geotagowania — główny cel projektu, następny w kolejce.
 - Presetów i kopiowania ustawień między zdjęciami.
-- Eksportu wsadowego (na razie jedno zdjęcie naraz).
+- Szybkiego eksportu wsadowego — działa, ale liczy sekwencyjnie na procesorze.
 - Integracji z Google Photos.
