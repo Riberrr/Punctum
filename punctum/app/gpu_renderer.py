@@ -104,7 +104,8 @@ void main() {
         c = (c - offset) / (1.0 - offset);
     }
     if (u_whites != 0.0) {
-        c /= max(1.0 - (u_whites / 100.0) * 0.30, 0.05);
+        float evw = log2(max(dot(c, LUMA), 1e-6) / MID);
+        c *= 1.0 + (u_whites / 100.0) * ramp(0.5, 3.0, evw) * 0.8;
     }
 
     // --- kontrast wokol szarosci 18% ---------------------------------

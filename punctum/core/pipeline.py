@@ -93,14 +93,28 @@ def apply_highlights_shadows(img: np.ndarray, highlights: float, shadows: float)
 
 
 def apply_whites_blacks(img: np.ndarray, whites: float, blacks: float) -> np.ndarray:
-    """Przesuwa skrajne punkty histogramu: biel i czern."""
+    """Przesuwa skrajne punkty histogramu: biel i czern.
+
+    Czern to odjecie stalej - przesuwa punkt czerni, a srodkow tonalnych
+    praktycznie nie rusza, bo 0.04 w skali liniowej to juz glebokie cienie.
+
+    Biel dziala tylko w gornej czesci skali, od ok. 1.4 dzialki ponad
+    szaroscia. Wczesniej byla zwyklym mnoznikiem calego obrazu, czyli drugim
+    suwakiem ekspozycji pod inna nazwa - przy okazji prac nad automatem
+    okazalo sie, ze taki suwak nie potrafi zrobic tego, po co istnieje:
+    postawic punktu bieli bez rozjasniania calego zdjecia. Maska jest
+    wyzsza niz maska swiatel (od -0.2 dzialki), wiec oba suwaki nie
+    powielaja swojego dzialania: swiatla ratuja jasne partie, biel
+    ustawia sam koniec skali.
+    """
     out = img
     if abs(blacks) > 1e-6:
         offset = np.float32(-(blacks / 100.0) * 0.04)
         out = (out - offset) / np.float32(1.0 - offset)
     if abs(whites) > 1e-6:
-        scale = np.float32(1.0 - (whites / 100.0) * 0.30)
-        out = out / max(float(scale), 0.05)
+        ev = np.log2(np.maximum(_luminance(out), _EPS) / MID_GREY)
+        gain = 1.0 + (whites / 100.0) * _smoothstep(0.5, 3.0, ev) * 0.8
+        out = out * gain[..., None].astype(np.float32)
     return out
 
 
