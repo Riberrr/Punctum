@@ -136,13 +136,22 @@ def stage_engines() -> None:
     check("powrót na automat wraca na kartę", window.gpu_source_ready, window._engine_name())
 
     # --- zmiana rozmiaru podglądu ------------------------------------
+    # Mierzymy proxy, a nie piksele w oknie. Wcześniej ten test patrzył na
+    # szerokość gotowej mapy bitowej, a ta przy torze GPU zależy od rozmiaru
+    # okna, nie od ustawienia — dorzucenie jednego paska nad miniaturami
+    # potrafiło go wywrócić, choć sam podgląd działał bez zarzutu.
     window.settings.preview_size = 2560
+    window.proxy = window.full_raw.proxy(window.settings.preview_size)
     window._apply_settings()
     window._render_preview()
     app.processEvents()
+    # Zdjęcie mniejsze niż żądany podgląd zostaje w swojej rozdzielczości —
+    # powiększanie proxy ponad oryginał nie dałoby ani jednego szczegółu.
+    expected = min(2560, max(window.full_raw.shape))
     check("większy podgląd daje większy obraz",
-          window.view.base_pixmap().width() > 2000,
-          f"{window.view.base_pixmap().width()} px")
+          max(window.proxy.shape) == expected,
+          f"proxy {window.proxy.shape[1]}×{window.proxy.shape[0]} px, "
+          f"oryginał {window.full_raw.shape[1]}×{window.full_raw.shape[0]} px")
 
     # --- ukrycie nawigatora ------------------------------------------
     window.settings.show_navigator = False

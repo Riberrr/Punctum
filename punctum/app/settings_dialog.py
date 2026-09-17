@@ -288,6 +288,14 @@ class SettingsDialog(QDialog):
         general_layout = QVBoxLayout(general)
         self.reopen_box = QCheckBox("Otwieraj ostatnio używany folder przy starcie")
         general_layout.addWidget(self.reopen_box)
+        self.store_edits_box = QCheckBox("Zapamiętuj korekty obok zdjęć (pliki XMP)")
+        self.store_edits_box.setToolTip(
+            "Korekty każdego zdjęcia lądują w osobnym pliku XMP obok oryginału,\n"
+            "a przy kolejnym otwarciu wracają na suwaki. Dzięki temu obróbkę\n"
+            "dużego katalogu można rozłożyć na kilka dni.\n\n"
+            "Plik ze zdjęciem nie jest przy tym zmieniany."
+        )
+        general_layout.addWidget(self.store_edits_box)
         layout.addWidget(general)
 
         layout.addStretch(1)
@@ -373,6 +381,7 @@ class SettingsDialog(QDialog):
         )
         self.folder_edit.setText(s.export_folder)
         self.reopen_box.setChecked(s.reopen_last_folder)
+        self.store_edits_box.setChecked(s.store_edits)
 
     def _collect_from_widgets(self) -> Settings:
         s = self.settings.copy()
@@ -394,6 +403,7 @@ class SettingsDialog(QDialog):
         s.export_noise_quality = self.export_noise_box.currentData()
         s.export_folder = self.folder_edit.text().strip()
         s.reopen_last_folder = self.reopen_box.isChecked()
+        s.store_edits = self.store_edits_box.isChecked()
         return s.normalised()
 
     # ------------------------------------------------------------ akcje

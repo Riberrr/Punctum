@@ -30,10 +30,13 @@ from ..core import (
     RawImage,
     count_formats,
     develop,
+    edited_photos,
     folder_photos,
     geometry_size,
     histogram,
     matches_filter,
+    read_sidecar,
+    write_sidecar,
 )
 from ..core.export import (
     ON_EXISTING_ASK,
@@ -93,6 +96,9 @@ class MainWindow(QMainWindow):
         # zdjecia gubilby prace, a eksport wsadowy nakladalby na wszystkie
         # pliki ustawienia tego jednego, ktore akurat jest otwarte.
         self.edits: dict[str, EditParams] = {}
+        # Zdjecia, ktore mialy zapisana prace juz przy wejsciu do katalogu.
+        self.edited_on_disk: set[str] = set()
+        self._sidecar_warned = False
         self.export_task: ExportTask | None = None
         self._skipped_in_export = 0
         self.current_path: str | None = None
@@ -283,6 +289,9 @@ class MainWindow(QMainWindow):
             action.setShortcut(shortcut)
             action.triggered.connect(slot)
             file_menu.addAction(action)
+
+        self.recent_menu = file_menu.addMenu("Ostatnie katalogi")
+        self._build_recent_menu()
         file_menu.addSeparator()
         settings_action = QAction("&Ustawienia…", self)
         settings_action.setShortcut(QKeySequence("Ctrl+,"))
@@ -312,6 +321,45 @@ class MainWindow(QMainWindow):
             lambda: self.edit_panel.crop_button.setChecked(not self.crop_mode)
         )
         view_menu.addAction(crop_action)
+
+    def _build_recent_menu(self) -> None:
+        """Lista ostatnich katalogow. Nieistniejace pomijamy, ale nie kasujemy.
+
+        Dysk zewnetrzny albo karta pamieci potrafi byc chwilowo odlaczona -
+        wyrzucenie takiego katalogu z historii przy pierwszym uruchomieniu bez
+        niego byloby dla uzytkownika niespodzianka.
+        """
+        self.recent_menu.clear()
+        existing = [f for f in self.settings.recent_folders if os.path.isdir(f)]
+        if not existing:
+            empty = QAction("(pusto)", self)
+            empty.setEnabled(False)
+            self.recent_menu.addAction(empty)
+            return
+        for folder in existing:
+            action = QAction(folder, self)
+            action.triggered.connect(lambda checked=False, f=folder: self.load_folder(f))
+            self.recent_menu.addAction(action)
+        self.recent_menu.addSeparator()
+        clear = QAction("Wyczyść listę", self)
+        clear.triggered.connect(self._clear_recent)
+        self.recent_menu.addAction(clear)
+
+    def _clear_recent(self) -> None:
+        self.settings.recent_folders = []
+        self.settings.save()
+        self._build_recent_menu()
+
+    def closeEvent(self, event) -> None:
+        """Ostatnie zdjecie tez ma trafic na dysk.
+
+        Nastawy pozostalych zdjec sa juz zapisane - kazde dostalo swoj plik
+        przy przejsciu dalej. Tutaj zostaje wylacznie to, ktore wlasnie jest
+        otwarte.
+        """
+        self.remember_current_edits()
+        self.settings.save()
+        super().closeEvent(event)
 
     # ------------------------------------------------------------ ustawienia
 
@@ -400,10 +448,17 @@ class MainWindow(QMainWindow):
             return
 
         self.setWindowTitle(f"Punctum — {os.path.basename(folder)}")
-        if self.settings.last_folder != folder:
-            self.settings.last_folder = folder
-            self.settings.save()
+        self.settings.last_folder = folder
+        self.settings.remember_folder(folder)
+        self.settings.save()
+        self._build_recent_menu()
 
+        # Zdjecia z zapisana praca sprawdzamy raz, przy wejsciu do katalogu -
+        # to sam rzut oka na liste plikow, bez czytania ich zawartosci.
+        self._sidecar_warned = False
+        self.edited_on_disk = (
+            edited_photos(self.folder_paths) if self.settings.store_edits else set()
+        )
         self._refresh_filmstrip()
 
     def _on_format_changed(self) -> None:
@@ -423,7 +478,10 @@ class MainWindow(QMainWindow):
         chosen = self.format_combo.currentData() or FORMAT_ALL
         previous = self.current_path
         self.paths = [p for p in self.folder_paths if matches_filter(p, chosen)]
-        self.filmstrip.set_paths(self.paths)
+        marked = self.edited_on_disk | {
+            path for path, params in self.edits.items() if not params.is_default()
+        }
+        self.filmstrip.set_paths(self.paths, marked)
 
         if not self.paths:
             self.status.showMessage(
@@ -431,7 +489,11 @@ class MainWindow(QMainWindow):
             )
             return
 
-        self.status.showMessage(f"Wczytywanie miniatur… ({len(self.paths)} zdjęć)")
+        done = self.filmstrip.edited_count()
+        progress = f"  •  poprawionych: {done} z {len(self.paths)}" if done else ""
+        self.status.showMessage(
+            f"Wczytywanie miniatur… ({len(self.paths)} zdjęć){progress}"
+        )
         for index, path in enumerate(self.paths):
             task = ThumbnailTask(index, path)
             task.signals.thumbnail_ready.connect(self._on_thumbnail)
@@ -450,7 +512,9 @@ class MainWindow(QMainWindow):
         if path == self.current_path:
             self.info_panel.set_metadata(meta)
         if self.thumb_pool.activeThreadCount() <= 1:
-            self.status.showMessage(f"{len(self.paths)} zdjęć")
+            done = self.filmstrip.edited_count()
+            progress = f"  •  poprawionych: {done} z {len(self.paths)}" if done else ""
+            self.status.showMessage(f"{len(self.paths)} zdjęć{progress}")
 
     # ---------------------------------------------------------------- zdjecie
 
@@ -458,6 +522,50 @@ class MainWindow(QMainWindow):
         """Zapisuje nastawy biezacego zdjecia, zanim przejdziemy na inne."""
         if self.current_path and self.full_raw is not None:
             self.edits[self.current_path] = self.export_params()
+            self._store_edits(self.current_path)
+
+    def _params_for(self, path: str) -> EditParams | None:
+        """Nastawy zdjecia: z tej sesji albo z dysku. None, gdy nie ma zadnych.
+
+        To jest miejsce, w ktorym trwalosc nastaw spotyka sie z eksportem
+        wsadowym - i bez tego caly pomysl rozlozenia pracy na dni nie
+        dzialalby. Zdjecia poprawione wczoraj nie sa dzis otwarte, wiec nie ma
+        ich w pamieci; eksport bralby dla nich czyste suwaki i po cichu
+        wyrzucal wczorajsza robote.
+        """
+        params = self.edits.get(path)
+        if params is not None:
+            return params
+        if not self.settings.store_edits:
+            return None
+        params = read_sidecar(path)
+        if params is not None:
+            self.edits[path] = params
+        return params
+
+    def _store_edits(self, path: str) -> None:
+        """Zapisuje nastawy na dysk, obok zdjecia.
+
+        Zapis idzie przy kazdym przejsciu na inne zdjecie i przy zamknieciu
+        okna, a nie dopiero na koniec sesji: zawieszenie programu po trzech
+        godzinach pracy ma kosztowac jedno zdjecie, nie trzy godziny.
+        """
+        if not self.settings.store_edits:
+            return
+        params = self.edits.get(path)
+        if params is None:
+            return
+        written = write_sidecar(path, params)
+        self.filmstrip.set_edited(path, bool(written) and not params.is_default())
+
+        # Katalog tylko do odczytu albo wyjeta karta: bez slowa uzytkownik
+        # pracowalby przez godzine w przekonaniu, ze praca sie zapisuje.
+        if written is None and not params.is_default() and not self._sidecar_warned:
+            self._sidecar_warned = True
+            self.status.showMessage(
+                "Nie udało się zapisać korekt obok zdjęcia — katalog jest tylko "
+                "do odczytu albo brakuje miejsca. Praca zostaje tylko w pamięci."
+            )
 
     def open_photo(self, path: str) -> None:
         if path == self.current_path:
@@ -495,6 +603,20 @@ class MainWindow(QMainWindow):
         # nastaw z poprzedniego zdjecia bylo mylace: panel twierdzil, ze jest
         # korekta, ktorej podglad nie pokazywal.
         saved = self.edits.get(path)
+        damaged = False
+        if saved is None and self.settings.store_edits:
+            # Praca z poprzedniej sesji lezy obok zdjecia - wczytujemy ja
+            # dopiero teraz, przy otwarciu, zeby wejscie do katalogu z 2000
+            # zdjec nie czytalo 2000 plikow XML.
+            saved = read_sidecar(path)
+            if saved is not None:
+                self.edits[path] = saved
+            else:
+                # Znacznik mowi "tu byla praca", a nastaw nie ma - plik jest
+                # uszkodzony. Milczenie w tym miejscu byloby najgorsze:
+                # uzytkownik zaczalby poprawiac zdjecie od nowa, nie wiedzac,
+                # ze cos przepadlo.
+                damaged = path in self.edited_on_disk
         if saved is not None:
             self.orientation, self.crop = saved.orientation, saved.crop
         self.edit_panel.load_params(saved if saved is not None else EditParams())
@@ -510,11 +632,18 @@ class MainWindow(QMainWindow):
             "balans bieli względny (JPEG)" if is_jpeg
             else f"balans bieli {raw.as_shot_temp:.0f} K"
         )
-        self.status.showMessage(
-            f"{os.path.basename(path)}  •  {'JPEG' if is_jpeg else 'RAW'}  •  "
-            f"{raw.raw_width}×{raw.raw_height}  •  {white_balance}  •  "
-            f"podgląd: {self._engine_name()}"
-        )
+        if damaged:
+            self.status.showMessage(
+                f"{os.path.basename(path)} — obok leżał plik z korektami, ale nie da "
+                "się go odczytać. Suwaki startują czyste."
+            )
+        else:
+            restored = "  •  wczytano zapisane korekty" if saved is not None else ""
+            self.status.showMessage(
+                f"{os.path.basename(path)}  •  {'JPEG' if is_jpeg else 'RAW'}  •  "
+                f"{raw.raw_width}×{raw.raw_height}  •  {white_balance}  •  "
+                f"podgląd: {self._engine_name()}{restored}"
+            )
         self._render_preview()
 
     def _on_raw_failed(self, path: str, message: str) -> None:
@@ -802,7 +931,7 @@ class MainWindow(QMainWindow):
 
         self.remember_current_edits()
         sources = self.filmstrip.selected_paths() or [self.current_path]
-        edited = sum(1 for path in sources if path in self.edits)
+        edited = sum(1 for path in sources if self._params_for(path) is not None)
 
         dialog = ExportDialog(self._export_options(), sources, self)
         dialog.set_edited_count(edited)
@@ -830,7 +959,9 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Punctum", f"Nie udało się utworzyć katalogu:\n{exc}")
             return
 
-        params = {source: self.edits.get(source, EditParams()) for source, _ in pairs}
+        params = {
+            source: self._params_for(source) or EditParams() for source, _ in pairs
+        }
         task = ExportTask(pairs, params, options)
         task.signals.export_progress.connect(self._on_export_progress)
         task.signals.export_finished.connect(self._on_export_finished)

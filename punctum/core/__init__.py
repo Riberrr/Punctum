@@ -20,6 +20,13 @@ from .loader import (
     matches_filter,
 )
 from .metadata import PhotoMetadata, read_metadata
+from .sidecar import (
+    edited_photos,
+    has_edits,
+    read_sidecar,
+    sidecar_path,
+    write_sidecar,
+)
 from .pipeline import develop, develop_region, geometry_size, histogram
 from .auto import auto_tone
 from .export import (
@@ -53,6 +60,11 @@ __all__ = [
     "is_jpeg",
     "PhotoMetadata",
     "read_metadata",
+    "sidecar_path",
+    "write_sidecar",
+    "read_sidecar",
+    "has_edits",
+    "edited_photos",
     "develop",
     "develop_region",
     "geometry_size",

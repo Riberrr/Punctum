@@ -102,6 +102,14 @@ with tempfile.TemporaryDirectory() as tmp:
 
 window = MainWindow()
 window.resize(1500, 950)
+# Test przelacza zdjecia w PRAWDZIWYM katalogu uzytkownika, a od teraz kazde
+# przejscie dalej zapisuje korekty obok zdjecia. Zostawienie tego wlaczonego
+# zasypaloby jego folder plikami XMP z testowymi nastawami.
+window.settings.store_edits = False
+# ...ale samo wylaczenie nie wystarczy: okno zapisuje ustawienia przy kazdym
+# otwarciu katalogu, wiec testowa wartosc wyladowalaby w pliku uzytkownika
+# i wylaczyla mu funkcje na stale. Ten test nie ma prawa niczego mu zmienic.
+window.settings.save = lambda *args, **kwargs: True
 window.show()
 window.load_folder(folder)
 

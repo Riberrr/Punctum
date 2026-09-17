@@ -66,6 +66,42 @@ Program pamięta nastawy **osobno dla każdego zdjęcia**, więc powrót do wcze
 poprawionego kadru przywraca suwaki. Zdjęcia, których nigdy nie otwarto, wychodzą
 bez zmian — okno eksportu mówi o tym wprost, zanim zaczniesz.
 
+## Trwałość pracy
+
+Zamknięcie programu nie gubi korekt. Nastawy każdego zdjęcia lądują w osobnym
+pliku XMP obok oryginału i wracają na suwaki przy kolejnym otwarciu katalogu.
+Dzięki temu obróbkę dwóch tysięcy zdjęć można rozłożyć na kilka dni i dopiero
+na końcu wyeksportować całość.
+
+Zasada nieniszcząca dotyczy też zapisu: **plik ze zdjęciem nie jest ruszany**.
+
+Zapis idzie przy każdym przejściu na inne zdjęcie i przy zamknięciu okna, a nie
+dopiero na koniec sesji — zawieszenie programu po trzech godzinach pracy ma
+kosztować jedno zdjęcie, nie trzy godziny. Kosztuje 2 ms, więc nie da się go
+zauważyć.
+
+W pasku miniatur zdjęcia z zapisaną pracą mają kropkę przed nazwą, a pasek
+stanu podaje, ile ich jest — bez tego dzielenie obróbki na etapy nie miałoby
+sensu, bo po otwarciu katalogu nie wiadomo by było, gdzie się skończyło.
+
+W pliku XMP są dwa komplety wartości. Pola `crs:` to te same nazwy, których
+używa Camera Raw — inny program coś z nich odczyta. Zgodność jest jednak tylko
+częściowa, bo nasze suwaki nie odpowiadają jeden do jednego lightroomowym, więc
+traktujemy je jako grzeczność, a nie źródło prawdy. Pola `punctum:` to nasze
+dokładne wartości i to z nich czytamy.
+
+Dwie decyzje warte uwagi:
+
+- **Cudzych plików nie nadpisujemy.** Jeśli obok zdjęcia leży XMP napisany
+  w innym programie, nasze nastawy idą do `<nazwa>.punctum.xmp`. Dodatkowy plik
+  jest mniejszym złem niż skasowana cudza praca.
+- **Cudzych nastaw nie podstawiamy pod suwaki.** Wczytanie sidecara
+  z Lightrooma wyglądałoby jak przeniesienie edycji, a po cichu zmieniałoby
+  zdjęcie — te same liczby znaczą u nas co innego.
+
+Funkcję można wyłączyć w `Plik ▸ Ustawienia… ▸ Eksport ▸ Ogólne`. Menu `Plik`
+pamięta też ostatnio otwierane katalogi.
+
 ## Pliki JPEG
 
 JPEG przechodzi przez dokładnie ten sam tor, co RAW — wraz z automatem,
@@ -364,6 +400,7 @@ punctum/core/
     pipeline.py      tor tonalny, geometria, redukcja szumu
     auto.py          automatyczny dobór parametrów
     metadata.py      odczyt EXIF (z obsługą pól własnych Panasonica)
+    sidecar.py       zapis i odczyt korekt obok zdjęcia (XMP)
     export.py        zapis JPEG / PNG / TIFF
     settings.py      ustawienia programu: odczyt, zapis, walidacja
     hardware.py      wykrywanie procesora i karty graficznej
@@ -380,7 +417,6 @@ tools/               narzędzia diagnostyczne, testy i CLI
 
 ## Czego jeszcze nie ma
 
-- Zapisu ustawień między sesjami (SQLite, sidecary XMP).
 - Mapy i geotagowania — główny cel projektu, następny w kolejce.
 - Presetów i kopiowania ustawień między zdjęciami.
 - Szybkiego eksportu wsadowego — działa, ale liczy sekwencyjnie na procesorze.

@@ -36,18 +36,47 @@ class Filmstrip(QListWidget):
         self.setHorizontalScrollMode(QListWidget.ScrollPerPixel)
         self.setSpacing(2)
         self.setUniformItemSizes(True)
+        self._edited: set[str] = set()
         self.currentItemChanged.connect(self._on_current_changed)
 
-    def set_paths(self, paths: list[str]) -> None:
+    def set_paths(self, paths: list[str], edited: set[str] | None = None) -> None:
         self.clear()
+        self._edited = set(edited or ())
         placeholder = QPixmap(THUMB_SIZE)
         placeholder.fill(Qt.darkGray)
         icon = QIcon(placeholder)
         for path in paths:
-            item = QListWidgetItem(icon, os.path.basename(path))
+            item = QListWidgetItem(icon, self._caption(path))
             item.setData(Qt.UserRole, path)
             item.setTextAlignment(Qt.AlignHCenter | Qt.AlignBottom)
             self.addItem(item)
+
+    def _caption(self, path: str) -> str:
+        """Kropka przed nazwa znaczy: to zdjecie ma juz zapisane korekty.
+
+        Bez tego dzielenie obrobki na dni nie ma sensu - po otwarciu katalogu
+        z 2000 zdjec trzeba widziec, gdzie sie skonczylo.
+        """
+        name = os.path.basename(path)
+        return f"• {name}" if path in self._edited else name
+
+    def set_edited(self, path: str, edited: bool) -> None:
+        """Zmienia znacznik przy jednym zdjeciu."""
+        if (path in self._edited) == edited:
+            return
+        self._edited.add(path) if edited else self._edited.discard(path)
+        for row in range(self.count()):
+            item = self.item(row)
+            if item.data(Qt.UserRole) == path:
+                base = item.text().lstrip("• ")
+                item.setText(f"• {base}" if edited else base)
+                return
+
+    def edited_count(self) -> int:
+        return sum(
+            1 for row in range(self.count())
+            if self.item(row).data(Qt.UserRole) in self._edited
+        )
 
     def set_thumbnail(self, index: int, image: np.ndarray | None) -> None:
         item = self.item(index)

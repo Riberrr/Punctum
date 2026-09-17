@@ -90,6 +90,11 @@ class Settings:
     # --- ogolne ---------------------------------------------------------
     reopen_last_folder: bool = True
     last_folder: str = ""
+    # Zapis korekt obok zdjec (sidecar XMP). Dzieki temu obrobke 2000 zdjec
+    # mozna rozlozyc na kilka dni - zamkniecie programu nie gubi pracy.
+    store_edits: bool = True
+    recent_folders: list[str] = field(default_factory=list)
+    recent_folders_limit: int = 10
     # Ktore formaty pokazywac w pasku miniatur: all | raw | jpeg.
     # Wartosci sa te same, co stale FORMAT_* w core/loader.py; trzymamy tu
     # goly napis, zeby modul ustawien nie zalezal od dekodowania zdjec.
@@ -123,6 +128,14 @@ class Settings:
             clean.export_on_existing = "ask"
         if clean.format_filter not in ("all", "raw", "jpeg"):
             clean.format_filter = "all"
+        clean.recent_folders_limit = max(0, min(50, int(clean.recent_folders_limit)))
+        seen: set[str] = set()
+        unique: list[str] = []
+        for folder in clean.recent_folders:
+            if isinstance(folder, str) and folder and folder.lower() not in seen:
+                seen.add(folder.lower())
+                unique.append(folder)
+        clean.recent_folders = unique[: clean.recent_folders_limit]
         clean.export_start_number = max(0, min(999999, int(clean.export_start_number)))
         clean.export_number_digits = max(1, min(8, int(clean.export_number_digits)))
         return clean
@@ -157,3 +170,10 @@ class Settings:
 
     def copy(self) -> "Settings":
         return Settings(**asdict(self))
+
+    def remember_folder(self, folder: str) -> None:
+        """Wstawia katalog na poczatek historii, bez powtorzen."""
+        if not folder:
+            return
+        others = [f for f in self.recent_folders if f.lower() != folder.lower()]
+        self.recent_folders = [folder, *others][: max(1, self.recent_folders_limit)]
