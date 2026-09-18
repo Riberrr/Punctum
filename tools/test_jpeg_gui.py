@@ -41,6 +41,10 @@ print(f"katalog testowy: {len(raw_files)} RAW, {len(jpeg_files)} JPEG")
 
 window = MainWindow()
 window.resize(1500, 950)
+# Test przestawia filtr formatow, a okno zapisuje ustawienia przy kazdej takiej
+# zmianie. Bez tej zaslepki zostawialby uzytkownikowi wlasny filtr w prawdziwym
+# pliku ustawien - i po tescie program pokazywalby mu tylko RAW-y.
+window.settings.save = lambda *args, **kwargs: True
 window.show()
 window.format_combo.setCurrentIndex(window.format_combo.findData(FORMAT_ALL))
 window.load_folder(workspace)

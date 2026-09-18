@@ -35,6 +35,24 @@ def check(name: str, ok: bool, detail: str = "") -> None:
     results.append((name, ok, detail))
 
 
+def wait_for(condition, label: str, timeout_ms: int = 25000) -> bool:
+    """Czeka na warunek, zamiast zgadywac czas.
+
+    Test ze sztywnymi opoznieniami wywraca sie, gdy maszyna jest zajeta -
+    i wtedy uczy nieprawdy: raz przechodzi, raz nie, a kod jest ten sam.
+    Zdarzylo sie to przy serii testow puszczonych jeden po drugim.
+    """
+    import time as _time
+    deadline = _time.perf_counter() + timeout_ms / 1000.0
+    while _time.perf_counter() < deadline:
+        app.processEvents()
+        if condition():
+            return True
+        _time.sleep(0.02)
+    print(f"[czekanie] nie doczekano: {label}", flush=True)
+    return False
+
+
 # Test rusza prawdziwy plik ustawien uzytkownika (ostatni katalog, historia),
 # wiec zapamietujemy jego tresc i oddajemy ja na koncu.
 SETTINGS_FILE = settings_path()
@@ -60,6 +78,7 @@ second: list[MainWindow] = []
 
 def stage_edit() -> None:
     """Poprawia pierwsze zdjecie i przechodzi na drugie."""
+    wait_for(lambda: window.full_raw is not None, "wczytanie pierwszego zdjęcia")
     panel = window.edit_panel
     panel.sliders["exposure"].set_value(1.50)
     panel.sliders["shadows"].set_value(35)
@@ -72,6 +91,7 @@ def stage_edit() -> None:
 
 def stage_disk() -> None:
     first = window.edited
+    wait_for(lambda: has_edits(first), "zapis korekt na dysk")
     check("plik z korektami powstal obok zdjecia", has_edits(first),
           os.path.basename(first))
     saved = read_sidecar(first)
@@ -103,6 +123,7 @@ def stage_reopen() -> None:
 
 def stage_verify_list() -> None:
     fresh = second[0]
+    wait_for(lambda: fresh.filmstrip.count() == len(photos), "lista zdjęć w nowym oknie")
     check("po ponownym otwarciu znacznik jest na miejscu",
           fresh.filmstrip.item(0).text().startswith("•"),
           fresh.filmstrip.item(0).text())
@@ -124,6 +145,7 @@ def stage_verify_list() -> None:
 
 def stage_verify_sliders() -> None:
     fresh = second[0]
+    wait_for(lambda: fresh.full_raw is not None, "wczytanie zdjęcia w nowym oknie")
     panel = fresh.edit_panel
     exposure = panel.sliders["exposure"].value()
     shadows = panel.sliders["shadows"].value()

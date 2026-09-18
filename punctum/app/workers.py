@@ -201,6 +201,10 @@ class ExportTask(QRunnable):
                     rgb8, target,
                     quality=self.options.quality,
                     max_side=self.options.max_side or None,
+                    location=(
+                        (params.latitude, params.longitude)
+                        if params.has_location else None
+                    ),
                 )
                 saved += 1
             except Exception as exc:

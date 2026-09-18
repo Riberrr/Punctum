@@ -8,6 +8,7 @@ import numpy as np
 from PySide6.QtCore import QRect, QRectF, Qt, QThreadPool, QTimer
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
+    QApplication,
     QComboBox,
     QFileDialog,
     QHBoxLayout,
@@ -17,6 +18,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QSplitter,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -55,6 +57,7 @@ from .export_dialog import ExportDialog
 from .filmstrip import Filmstrip
 from .gpu_renderer import GpuRenderer
 from .image_view import ImageView
+from .map_view import MapView
 from .navigator import Navigator
 from .settings_dialog import SettingsDialog
 from .style import stylesheet
@@ -256,7 +259,26 @@ class MainWindow(QMainWindow):
         splitter.setStretchFactor(0, 1)
         splitter.setCollapsible(0, False)
 
-        self.setCentralWidget(splitter)
+        # Zakladki na samej gorze. W widoku mapy nie widac paska miniatur,
+        # wiec mapa ma wlasna liste zdjec - przy przejsciu podajemy jej
+        # aktualna zawartosc katalogu i zaznaczenie.
+        #
+        # Mapa powstaje dopiero przy pierwszym wejsciu na zakladke. Silnik
+        # przegladarki wstaje ponad dwie sekundy i robil to przy KAZDYM
+        # uruchomieniu programu, takze wtedy, gdy nikt mapy nie otwieral.
+        # Po zmianie okno startuje tak szybko jak wczesniej, a te dwie
+        # sekundy placi ten, kto faktycznie chce mape.
+        self.map_view: MapView | None = None
+        self.map_tab = QWidget()
+        map_layout = QVBoxLayout(self.map_tab)
+        map_layout.setContentsMargins(0, 0, 0, 0)
+
+        self.tabs = QTabWidget()
+        self.tabs.addTab(splitter, "Edycja")
+        self.tabs.addTab(self.map_tab, "Mapa")
+        self.tabs.currentChanged.connect(self._on_tab_changed)
+
+        self.setCentralWidget(self.tabs)
         self.status = self.statusBar()
         self.status.showMessage("Otwórz folder ze zdjęciami:  Ctrl+O")
 
@@ -524,6 +546,78 @@ class MainWindow(QMainWindow):
             self.edits[self.current_path] = self.export_params()
             self._store_edits(self.current_path)
 
+    # -------------------------------------------------------------- mapa
+
+    def _known_locations(self) -> dict[str, tuple[float, float]]:
+        """Wspolrzedne wszystkich zdjec w katalogu: z naszych nastaw i z EXIF-u.
+
+        Pierwszenstwo ma to, co nadalismy sami - jesli zdjecie mialo juz GPS
+        z aparatu, a uzytkownik przestawil je na mapie, liczy sie jego decyzja.
+        """
+        locations: dict[str, tuple[float, float]] = {}
+        for path in self.folder_paths:
+            meta = self.metadata.get(path)
+            if meta is not None and meta.has_gps:
+                locations[path] = (meta.latitude, meta.longitude)
+        for path in self.folder_paths:
+            params = self._params_for(path)
+            if params is not None and params.has_location:
+                locations[path] = (params.latitude, params.longitude)
+        return locations
+
+    def _ensure_map(self) -> MapView:
+        """Buduje mape przy pierwszym wejsciu na zakladke."""
+        if self.map_view is None:
+            self.status.showMessage("Uruchamianie mapy…")
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            try:
+                self.map_view = MapView()
+                self.map_view.location_assigned.connect(self._on_location_assigned)
+                self.map_view.photo_activated.connect(self._open_from_map)
+                self.map_tab.layout().addWidget(self.map_view)
+            finally:
+                QApplication.restoreOverrideCursor()
+        return self.map_view
+
+    def _on_tab_changed(self, index: int) -> None:
+        if self.tabs.widget(index) is not self.map_tab:
+            return
+        self.remember_current_edits()  # nastawy biezacego zdjecia przed skokiem
+        self._ensure_map()
+        self.map_view.set_photos(self.paths, self._known_locations())
+        chosen = self.filmstrip.selected_paths() or (
+            [self.current_path] if self.current_path else []
+        )
+        self.map_view.set_selection(chosen)
+
+    def _on_location_assigned(self, paths: list, latitude, longitude) -> None:
+        """Mapa nadala albo skasowala wspolrzedne zaznaczonym zdjeciom."""
+        changed: dict[str, tuple[float, float] | None] = {}
+        for path in paths:
+            params = self._params_for(path) or EditParams()
+            params.latitude = latitude
+            params.longitude = longitude
+            self.edits[path] = params
+            self._store_edits(path)
+            changed[path] = None if latitude is None else (latitude, longitude)
+
+        if self.map_view is not None:
+            self.map_view.apply_locations(changed)
+        if latitude is None:
+            self.status.showMessage(f"Usunięto lokalizację z {len(paths)} zdjęć")
+        else:
+            self.status.showMessage(
+                f"Nadano lokalizację {latitude:.5f}, {longitude:.5f} — "
+                f"{len(paths)} zdjęć. Zapis w plikach XMP obok zdjęć; "
+                "do metadanych trafi przy eksporcie."
+            )
+
+    def _open_from_map(self, path: str) -> None:
+        """Dwuklik na liscie w mapie: wroc do edycji tego zdjecia."""
+        self.tabs.setCurrentIndex(0)
+        if path in self.paths:
+            self.filmstrip.setCurrentRow(self.paths.index(path))
+
     def _params_for(self, path: str) -> EditParams | None:
         """Nastawy zdjecia: z tej sesji albo z dysku. None, gdy nie ma zadnych.
 
@@ -666,7 +760,17 @@ class MainWindow(QMainWindow):
         return self.edit_panel.params(self.orientation, crop)
 
     def export_params(self) -> EditParams:
-        return self.edit_panel.params(self.orientation, self.crop)
+        """Komplet nastaw biezacego zdjecia, razem z lokalizacja.
+
+        Panel suwakow buduje EditParams od zera, a wspolrzednych nie ma na
+        zadnym suwaku - bez tego przeniesienia ruch dowolnego suwaka po
+        powrocie z mapy kasowalby swiezo nadana lokalizacje.
+        """
+        params = self.edit_panel.params(self.orientation, self.crop)
+        previous = self.edits.get(self.current_path or "")
+        if previous is not None:
+            params.latitude, params.longitude = previous.latitude, previous.longitude
+        return params
 
     def _on_params_changed(self) -> None:
         self.debounce.start()

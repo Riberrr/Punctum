@@ -138,7 +138,29 @@ def _lines(params: EditParams) -> list[str]:
         ("punctum:NoiseLuminance", f"{params.noise_luminance:.4f}"),
         ("punctum:NoiseColor", f"{params.noise_color:.4f}"),
     ]
+
+    if params.has_location:
+        # Wlasne pola trzymaja liczbe ze znakiem - tak jak w kodzie, bez
+        # zamiany na stopnie i minuty. Pola exif: sa dla innych programow,
+        # w formacie, ktorego oczekuja: "50,3.6000N".
+        fields += [
+            ("punctum:Latitude", f"{params.latitude:.7f}"),
+            ("punctum:Longitude", f"{params.longitude:.7f}"),
+            ("exif:GPSLatitude", _exif_coordinate(params.latitude, "N", "S")),
+            ("exif:GPSLongitude", _exif_coordinate(params.longitude, "E", "W")),
+            ("exif:GPSVersionID", "2.2.0.0"),
+        ]
+
     return [f'    {name}="{value}"' for name, value in fields]
+
+
+def _exif_coordinate(value: float, positive: str, negative: str) -> str:
+    """Stopnie dziesietne -> zapis XMP: stopnie, minuty i litera kierunku."""
+    hemisphere = positive if value >= 0 else negative
+    magnitude = abs(float(value))
+    degrees = int(magnitude)
+    minutes = (magnitude - degrees) * 60.0
+    return f"{degrees},{minutes:.4f}{hemisphere}"
 
 
 def write_sidecar(photo_path: str, params: EditParams) -> str | None:
@@ -163,6 +185,7 @@ def write_sidecar(photo_path: str, params: EditParams) -> str | None:
         '    xmlns:xmp="http://ns.adobe.com/xap/1.0/"\n'
         f'    xmlns:crs="{CRS_NS}"\n'
         '    xmlns:tiff="http://ns.adobe.com/tiff/1.0/"\n'
+        '    xmlns:exif="http://ns.adobe.com/exif/1.0/"\n'
         f'    xmlns:punctum="{PUNCTUM_NS}"\n'
         f'    xmp:ModifyDate="{datetime.now().isoformat(timespec="seconds")}"\n'
         f'{body}/>\n'
@@ -232,6 +255,12 @@ def read_sidecar(photo_path: str) -> EditParams | None:
         except ValueError:
             temperature = None
 
+        def coordinate(field: str) -> float | None:
+            try:
+                return float(found[f"{{{PUNCTUM_NS}}}{field}"])
+            except (KeyError, TypeError, ValueError):
+                return None
+
         return EditParams(
             temperature=temperature,
             tint=number("Tint", 0.0),
@@ -253,6 +282,8 @@ def read_sidecar(photo_path: str) -> EditParams | None:
             ),
             noise_luminance=number("NoiseLuminance", 0.0),
             noise_color=number("NoiseColor", 25.0),
+            latitude=coordinate("Latitude"),
+            longitude=coordinate("Longitude"),
         )
     return None
 

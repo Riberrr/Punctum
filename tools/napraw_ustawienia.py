@@ -20,6 +20,7 @@ for folder in settings.recent_folders:
     print(f"    {'jest ' if os.path.isdir(folder) else 'brak '} {folder}")
 
 settings.store_edits = True
+settings.format_filter = "all"
 settings.recent_folders = [f for f in settings.recent_folders if os.path.isdir(f)]
 if not os.path.isdir(settings.last_folder):
     settings.last_folder = settings.recent_folders[0] if settings.recent_folders else ""

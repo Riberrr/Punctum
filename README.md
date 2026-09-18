@@ -1,7 +1,7 @@
 # Punctum
 
 Nieniszczący edytor zdjęć — RAW (RW2, CR2/CR3, NEF, ARW, DNG) oraz JPEG,
-z podglądem liczonym na karcie graficznej.
+z podglądem liczonym na karcie graficznej i geotagowaniem na mapie.
 
 > *A non-destructive photo editor for RAW and JPEG files, with a
 > GPU-accelerated preview pipeline. The interface and documentation are
@@ -65,6 +65,37 @@ Zaznaczenie kilku zdjęć w pasku miniatur (`Ctrl`, `Shift`) eksportuje je razem
 Program pamięta nastawy **osobno dla każdego zdjęcia**, więc powrót do wcześniej
 poprawionego kadru przywraca suwaki. Zdjęcia, których nigdy nie otwarto, wychodzą
 bez zmian — okno eksportu mówi o tym wprost, zanim zaczniesz.
+
+## Mapa i geotagowanie
+
+Okno ma dwie zakładki: **Edycja** i **Mapa**. W mapie po lewej stoi lista zdjęć
+(kropka przy tych, które mają już lokalizację), po prawej mapa OpenStreetMap
+z wyszukiwarką miejsc i czterema warstwami: mapa, ciemna, satelita, hybryda.
+
+Nadawanie lokalizacji: zaznacz zdjęcia na liście, włącz *Przypisz zaznaczonym*
+i kliknij miejsce na mapie — wszystkie zaznaczone dostają ten punkt. Pinezki
+pokazują zarówno lokalizacje nadane w programie, jak i te, które zdjęcia miały
+już z aparatu albo telefonu. Dwuklik na liście wraca do edycji tego zdjęcia.
+
+**Współrzędne nie trafiają do pliku źródłowego.** Lądują w sidecarze XMP, tak
+jak korekty, a do metadanych wpisujemy je dopiero w pliku wynikowym przy
+eksporcie — do ostatniej chwili można się rozmyślić, a oryginał zostaje
+nietknięty. W samym sidecarze są obie postaci: nasza (liczba ze znakiem)
+i `exif:GPS*` dla innych programów.
+
+Mapa to strona Leaflet w silniku przeglądarki, przeniesiona z osobnej
+aplikacji GeoTagger napisanej wcześniej w PyQt6. Dwa wiązania Qt nie mogą
+współistnieć w jednym procesie — każde ładuje własną kopię bibliotek Qt —
+więc strona została przeniesiona, a nie uruchomiona obok. Sama treść (HTML
+i JavaScript) przeniosła się bez zmian; zmienił się sposób rozmowy z Pythonem:
+**QWebChannel** zamiast kolejki komunikatów odpytywanej zegarem co 100 ms.
+Stara aplikacja importowała QWebChannel, ale go nie używała.
+
+Mapa powstaje dopiero przy pierwszym wejściu na zakładkę (433 ms) — silnik
+przeglądarki nie ma powodu wstawać przy każdym uruchomieniu programu, skoro
+większość sesji nie dotyka mapy. Bez internetu zakładka mówi wprost, czego
+brakuje, zamiast pokazywać szary prostokąt; lista zdjęć i usuwanie lokalizacji
+działają dalej.
 
 ## Trwałość pracy
 
@@ -411,13 +442,16 @@ punctum/app/
     sliders.py       suwaki, w tym te z gradientem barwnym
     navigator.py     miniatura z ramką powiększenia
     filmstrip.py     pasek miniatur
+    map_view.py      zakładka mapy: lista zdjęć, most do strony, przypisywanie
+    map_page.py      strona mapy (Leaflet) jako HTML i JavaScript
     workers.py       zadania w tle
 tools/               narzędzia diagnostyczne, testy i CLI
 ```
 
 ## Czego jeszcze nie ma
 
-- Mapy i geotagowania — główny cel projektu, następny w kolejce.
+- Dopasowania lokalizacji do śladu GPS (pliki GPX) i grupowania po dniach —
+  na razie współrzędne nadaje się zaznaczeniu zdjęć.
 - Presetów i kopiowania ustawień między zdjęciami.
 - Szybkiego eksportu wsadowego — działa, ale liczy sekwencyjnie na procesorze.
 - Integracji z Google Photos.

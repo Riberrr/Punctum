@@ -42,6 +42,17 @@ class EditParams:
     noise_luminance: float = 0.0  # 0 .. 100
     noise_color: float = 25.0  # 0 .. 100
 
+    # --- lokalizacja ----------------------------------------------------
+    # Wspolrzedne nadane na mapie. Nie sa parametrem obrazu, ale dziela z nim
+    # los: leza w tym samym sidecarze i tak samo nie ruszaja pliku zrodlowego.
+    # Do metadanych trafiaja dopiero w pliku wynikowym, przy eksporcie.
+    latitude: float | None = None
+    longitude: float | None = None
+
+    @property
+    def has_location(self) -> bool:
+        return self.latitude is not None and self.longitude is not None
+
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
