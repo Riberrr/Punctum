@@ -82,6 +82,16 @@ def stage_open_map() -> None:
           window.map_view.list.count() == len(window.paths) == len(sys.argv) - 1,
           f"{window.map_view.list.count()} pozycji, w katalogu {len(window.paths)}")
 
+    view = window.map_view
+    wait_for(lambda: all(not view.list.item(i).icon().isNull()
+                         for i in range(view.list.count())),
+             "miniatury w liście mapy", 15000)
+    with_icon = sum(1 for i in range(view.list.count())
+                    if not view.list.item(i).icon().isNull())
+    check("lista mapy pokazuje miniatury",
+          with_icon == view.list.count(),
+          f"{with_icon} z {view.list.count()} pozycji ma miniature")
+
 
 def stage_assign() -> None:
     view = window.map_view

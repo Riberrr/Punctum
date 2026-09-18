@@ -18,6 +18,9 @@ class Filmstrip(QListWidget):
     """Lista zdjec z folderu. Miniatury doplywaja asynchronicznie."""
 
     photo_selected = Signal(str)
+    # Gotowa miniatura: sciezka i ikona. Slucha jej lista w zakladce mapy,
+    # zeby obrazki doplywaly tam tak samo, jak do paska.
+    thumbnail_ready = Signal(str, object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -37,16 +40,20 @@ class Filmstrip(QListWidget):
         self.setSpacing(2)
         self.setUniformItemSizes(True)
         self._edited: set[str] = set()
+        self._thumbnails: dict[str, QIcon] = {}
         self.currentItemChanged.connect(self._on_current_changed)
 
     def set_paths(self, paths: list[str], edited: set[str] | None = None) -> None:
         self.clear()
         self._edited = set(edited or ())
+        # Miniatury przezywaja zmiane filtra formatow - te same pliki nie maja
+        # powodu dekodowac sie drugi raz tylko dlatego, ze lista sie przepisala.
+        self._thumbnails = {p: i for p, i in self._thumbnails.items() if p in set(paths)}
         placeholder = QPixmap(THUMB_SIZE)
         placeholder.fill(Qt.darkGray)
         icon = QIcon(placeholder)
         for path in paths:
-            item = QListWidgetItem(icon, self._caption(path))
+            item = QListWidgetItem(self._thumbnails.get(path, icon), self._caption(path))
             item.setData(Qt.UserRole, path)
             item.setTextAlignment(Qt.AlignHCenter | Qt.AlignBottom)
             self.addItem(item)
@@ -88,7 +95,19 @@ class Filmstrip(QListWidget):
         pixmap = numpy_to_pixmap(image).scaled(
             THUMB_SIZE, Qt.KeepAspectRatio, Qt.SmoothTransformation
         )
-        item.setIcon(QIcon(pixmap))
+        icon = QIcon(pixmap)
+        item.setIcon(icon)
+        self._thumbnails[item.data(Qt.UserRole)] = icon
+        self.thumbnail_ready.emit(item.data(Qt.UserRole), icon)
+
+    def icons(self) -> dict[str, QIcon]:
+        """Gotowe miniatury, po sciezkach - bez zastepczych szarych plam.
+
+        Sluzy liscie w zakladce mapy: te same obrazki sa juz zdekodowane
+        i trzymane tutaj, wiec nie ma powodu czytac plikow drugi raz.
+        QIcon dzieli dane wewnetrznie, wiec slownik nic nie kopiuje.
+        """
+        return dict(self._thumbnails)
 
     def current_path(self) -> str | None:
         item = self.currentItem()

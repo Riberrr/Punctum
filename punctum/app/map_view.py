@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import os
 
-from PySide6.QtCore import QObject, QUrl, Qt, Signal, Slot
+from PySide6.QtCore import QObject, QSize, QUrl, Qt, Signal, Slot
 from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import (
@@ -28,6 +28,10 @@ from PySide6.QtWidgets import (
 )
 
 from .map_page import MAP_HTML
+
+# Miniatura w liscie: na tyle duza, zeby rozpoznac kadr, na tyle mala, zeby
+# przy dwustu zdjeciach dalo sie przewijac liste, a nie album.
+THUMB_SIZE = QSize(96, 66)
 
 
 class MapBridge(QObject):
@@ -65,6 +69,7 @@ class MapView(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.locations: dict[str, tuple[float, float]] = {}
+        self.icons: dict = {}  # miniatury, po sciezkach
         self.has_map = False  # czy biblioteka mapy wczytala sie z sieci
         self.answered = False  # czy strona w ogole sie odezwala (do testow)
         self._ready = False
@@ -72,7 +77,12 @@ class MapView(QWidget):
 
         self.list = QListWidget()
         self.list.setSelectionMode(QListWidget.ExtendedSelection)
-        self.list.setFixedWidth(260)
+        self.list.setFixedWidth(300)
+        # Miniatury biora sie z paska zdjec - te same obrazki sa juz
+        # zdekodowane, wiec lista nic nie dolicza.
+        self.list.setIconSize(THUMB_SIZE)
+        self.list.setSpacing(1)
+        self.list.setUniformItemSizes(True)
         self.list.itemSelectionChanged.connect(self._on_selection)
         self.list.itemDoubleClicked.connect(
             lambda item: self.photo_activated.emit(item.data(Qt.UserRole))
@@ -155,14 +165,23 @@ class MapView(QWidget):
 
     # -------------------------------------------------------------- dane
 
-    def set_photos(self, paths: list[str], locations: dict[str, tuple[float, float]]) -> None:
-        """Podaje aktualna zawartosc katalogu i znane lokalizacje."""
+    def set_photos(
+        self,
+        paths: list[str],
+        locations: dict[str, tuple[float, float]],
+        icons: dict | None = None,
+    ) -> None:
+        """Podaje aktualna zawartosc katalogu, znane lokalizacje i miniatury."""
         self.locations = dict(locations)
+        self.icons = dict(icons or {})
         self.list.blockSignals(True)
         self.list.clear()
         for path in paths:
             item = QListWidgetItem(self._caption(path))
             item.setData(Qt.UserRole, path)
+            icon = self.icons.get(path)
+            if icon is not None:
+                item.setIcon(icon)
             self.list.addItem(item)
         self.list.blockSignals(False)
 
@@ -195,6 +214,15 @@ class MapView(QWidget):
         self.list.blockSignals(False)
         self._highlight()
         self._refresh_status()
+
+    def set_thumbnail(self, path: str, icon) -> None:
+        """Miniatura dosłana po otwarciu mapy - wpada na swoje miejsce."""
+        self.icons[path] = icon
+        for row in range(self.list.count()):
+            item = self.list.item(row)
+            if item.data(Qt.UserRole) == path:
+                item.setIcon(icon)
+                return
 
     def selected_paths(self) -> list[str]:
         return [item.data(Qt.UserRole) for item in self.list.selectedItems()]

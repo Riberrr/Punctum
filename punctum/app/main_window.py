@@ -217,6 +217,7 @@ class MainWindow(QMainWindow):
 
         self.filmstrip = Filmstrip()
         self.filmstrip.photo_selected.connect(self.open_photo)
+        self.filmstrip.thumbnail_ready.connect(self._on_thumbnail_icon)
         self.filmstrip.setFixedHeight(150)
 
         # Pasek nad miniaturami. Katalogu, w ktorym lezy kilkanascie tysiecy
@@ -546,6 +547,11 @@ class MainWindow(QMainWindow):
             self.edits[self.current_path] = self.export_params()
             self._store_edits(self.current_path)
 
+    def _on_thumbnail_icon(self, path: str, icon) -> None:
+        """Gotowa miniatura trafia tez do listy w mapie, jesli ta juz stoi."""
+        if self.map_view is not None:
+            self.map_view.set_thumbnail(path, icon)
+
     # -------------------------------------------------------------- mapa
 
     def _known_locations(self) -> dict[str, tuple[float, float]]:
@@ -584,7 +590,9 @@ class MainWindow(QMainWindow):
             return
         self.remember_current_edits()  # nastawy biezacego zdjecia przed skokiem
         self._ensure_map()
-        self.map_view.set_photos(self.paths, self._known_locations())
+        self.map_view.set_photos(
+            self.paths, self._known_locations(), self.filmstrip.icons()
+        )
         chosen = self.filmstrip.selected_paths() or (
             [self.current_path] if self.current_path else []
         )
