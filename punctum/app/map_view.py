@@ -14,7 +14,8 @@ from __future__ import annotations
 import json
 import os
 
-from PySide6.QtCore import QObject, QSize, QUrl, Qt, Signal, Slot
+from PySide6.QtCore import QObject, QRectF, QSize, QUrl, Qt, Signal, Slot
+from PySide6.QtGui import QColor, QFontMetrics, QIcon, QPainter
 from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import (
@@ -23,17 +24,75 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QPushButton,
+    QStyle,
+    QStyledItemDelegate,
     QVBoxLayout,
     QWidget,
 )
 
 from .exif_panel import ExifPanel
 from .map_page import MAP_HTML
-from .markers import LEGEND, caption
+from .markers import EDIT_ROLE, GEO_ROLE, LEGEND, MARK_COLUMN, paint_marks
 
 # Miniatura w liscie: na tyle duza, zeby rozpoznac kadr, na tyle mala, zeby
 # przy dwustu zdjeciach dalo sie przewijac liste, a nie album.
 THUMB_SIZE = QSize(96, 66)
+
+
+class PhotoRowDelegate(QStyledItemDelegate):
+    """Wiersz listy: znaczniki, nazwa przy lewej krawedzi, miniatura z prawej.
+
+    Zwykla pozycja QListWidget stawia ikone przed tekstem, a miniatury maja
+    rozne proporcje - kazda nazwa zaczynala sie wiec w innym miejscu i lista
+    byla nie do przeczytania. Tutaj nazwa ma stala kolumne, a obrazki rowna
+    prawa krawedz.
+    """
+
+    PADDING = 8
+    GAP = 8
+
+    def sizeHint(self, option, index) -> QSize:
+        return QSize(0, THUMB_SIZE.height() + 8)
+
+    def paint(self, painter: QPainter, option, index) -> None:
+        rect = option.rect
+        painter.save()
+        if option.state & QStyle.State_Selected:
+            painter.setRenderHint(QPainter.Antialiasing, True)
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QColor("#34343c"))
+            painter.drawRoundedRect(QRectF(rect).adjusted(2, 1, -2, -1), 4, 4)
+
+        right = rect.right() - self.PADDING
+        icon = index.data(Qt.DecorationRole)
+        if isinstance(icon, QIcon) and not icon.isNull():
+            pixmap = icon.pixmap(THUMB_SIZE)
+            ratio = pixmap.devicePixelRatio() or 1.0
+            width, height = pixmap.width() / ratio, pixmap.height() / ratio
+            target = QRectF(
+                right - width, rect.center().y() - height / 2.0, width, height
+            )
+            painter.drawPixmap(target, pixmap, QRectF(pixmap.rect()))
+            right -= width + self.GAP
+
+        marks = QRectF(rect.left() + self.PADDING, rect.top(), MARK_COLUMN, rect.height())
+        paint_marks(painter, marks, bool(index.data(EDIT_ROLE)), bool(index.data(GEO_ROLE)))
+
+        text_left = marks.right()
+        painter.setPen(
+            QColor("#ffffff") if option.state & QStyle.State_Selected else QColor("#a2a2aa")
+        )
+        painter.setFont(option.font)
+        metrics = QFontMetrics(option.font)
+        text = metrics.elidedText(
+            index.data(Qt.DisplayRole) or "", Qt.ElideMiddle, int(right - text_left)
+        )
+        painter.drawText(
+            QRectF(text_left, rect.top(), right - text_left, rect.height()),
+            int(Qt.AlignLeft | Qt.AlignVCenter),
+            text,
+        )
+        painter.restore()
 
 
 class MapBridge(QObject):
@@ -86,6 +145,7 @@ class MapView(QWidget):
         self.list.setIconSize(THUMB_SIZE)
         self.list.setSpacing(1)
         self.list.setUniformItemSizes(True)
+        self.list.setItemDelegate(PhotoRowDelegate(self.list))
         self.list.setToolTip(LEGEND)
         self.list.itemSelectionChanged.connect(self._on_selection)
         self.list.itemDoubleClicked.connect(
@@ -141,17 +201,27 @@ class MapView(QWidget):
         side.addWidget(self.status)
 
         # Panel metadanych po prawej. W tej zakladce jest na niego miejsce,
-        # wiec stoi otwarty - inaczej niz w Edycji, gdzie siedzi w zwinietej
-        # sekcji, zeby nie wydluzac panelu suwakow.
+        # wiec stoi otwarty - inaczej niz w Edycji, gdzie rozwija sie
+        # z sekcji z danymi zdjecia.
+        #
+        # Panel siedzi we wlasnej ramce z marginesem: bez niego pola dotykaly
+        # krawedzi okna i kolumna zlewala sie z mapa.
         self.exif_panel = ExifPanel()
-        self.exif_panel.setFixedWidth(330)
+        self.panel_host = QWidget()
+        self.panel_host.setObjectName("sidePanel")
+        self.panel_host.setAttribute(Qt.WA_StyledBackground, True)
+        self.panel_host.setFixedWidth(348)
+        host_layout = QVBoxLayout(self.panel_host)
+        host_layout.setContentsMargins(10, 10, 10, 10)
+        host_layout.setSpacing(0)
+        host_layout.addWidget(self.exif_panel)
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addLayout(side)
         layout.addWidget(self.web, 1)
-        layout.addWidget(self.exif_panel)
+        layout.addWidget(self.panel_host)
 
     # ------------------------------------------------------------- strona
 
@@ -190,8 +260,10 @@ class MapView(QWidget):
         self.list.blockSignals(True)
         self.list.clear()
         for path in paths:
-            item = QListWidgetItem(self._caption(path))
+            item = QListWidgetItem(os.path.basename(path))
             item.setData(Qt.UserRole, path)
+            item.setToolTip(f"{os.path.basename(path)}\n\n{LEGEND}")
+            self._apply_marks(item, path)
             icon = self.icons.get(path)
             if icon is not None:
                 item.setIcon(icon)
@@ -204,14 +276,10 @@ class MapView(QWidget):
             self._pending = True
         self._refresh_status()
 
-    def _caption(self, path: str) -> str:
-        """Te same znaczniki, co w pasku miniatur - tylko wyrownane w kolumne."""
-        return caption(
-            os.path.basename(path),
-            edited=path in self.edited,
-            located=path in self.locations,
-            pad=True,
-        )
+    def _apply_marks(self, item: QListWidgetItem, path: str) -> None:
+        """Stan zdjecia zapisany w pozycji - rysuje go delegat."""
+        item.setData(EDIT_ROLE, path in self.edited)
+        item.setData(GEO_ROLE, path in self.locations)
 
     def _draw_markers(self) -> None:
         self._js("clearMarkers()")
@@ -240,7 +308,7 @@ class MapView(QWidget):
         for row in range(self.list.count()):
             item = self.list.item(row)
             if item.data(Qt.UserRole) == path:
-                item.setText(self._caption(path))
+                self._apply_marks(item, path)
                 return
 
     def set_thumbnail(self, path: str, icon) -> None:
@@ -313,7 +381,7 @@ class MapView(QWidget):
         for row in range(self.list.count()):
             item = self.list.item(row)
             if item.data(Qt.UserRole) in changed:
-                item.setText(self._caption(item.data(Qt.UserRole)))
+                self._apply_marks(item, item.data(Qt.UserRole))
         self._draw_markers()
         self._refresh_status()
 

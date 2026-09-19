@@ -25,6 +25,7 @@ app = QApplication(sys.argv)
 app.setQuitOnLastWindowClosed(False)
 
 from punctum.app import MainWindow  # noqa: E402
+from punctum.app.markers import EDIT_ROLE  # noqa: E402
 from punctum.core.settings import settings_path  # noqa: E402
 from punctum.core.sidecar import has_edits, read_sidecar  # noqa: E402
 
@@ -100,7 +101,7 @@ def stage_disk() -> None:
           and abs(saved.shadows - 35) < 1e-6,
           "brak" if saved is None else f"EV{saved.exposure:+.2f}, cienie {saved.shadows:+.0f}")
     check("pasek miniatur oznacza poprawione zdjecie",
-          window.filmstrip.item(0).text().startswith("•"),
+          bool(window.filmstrip.item(0).data(EDIT_ROLE)),
           window.filmstrip.item(0).text())
     check("licznik w pasku stanu podaje postep",
           "poprawionych" in window.status.currentMessage()
@@ -125,7 +126,7 @@ def stage_verify_list() -> None:
     fresh = second[0]
     wait_for(lambda: fresh.filmstrip.count() == len(photos), "lista zdjęć w nowym oknie")
     check("po ponownym otwarciu znacznik jest na miejscu",
-          fresh.filmstrip.item(0).text().startswith("•"),
+          bool(fresh.filmstrip.item(0).data(EDIT_ROLE)),
           fresh.filmstrip.item(0).text())
     check("program wie, ile zdjec ma juz prace",
           fresh.filmstrip.edited_count() == 1,

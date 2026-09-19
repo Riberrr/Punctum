@@ -113,12 +113,18 @@ kosztować jedno zdjęcie, nie trzy godziny. Kosztuje 2 ms, więc nie da się go
 zauważyć.
 
 Obie listy zdjęć — pasek miniatur w Edycji i kolumna w Mapie — mówią tym samym
-językiem. Przed nazwą pliku stoją dwa niezależne znaczniki:
+językiem. Zdjęcie dostaje dwa niezależne znaczniki:
 
 | Znacznik | Znaczenie |
 |---|---|
-| `•` | zdjęcie ma zapisaną pracę (nastawy w sidecarze) |
-| `◆` | zdjęcie ma współrzędne — nadane w programie albo z aparatu |
+| kropka | zdjęcie ma zapisaną pracę (nastawy w sidecarze) |
+| pinezka | zdjęcie ma współrzędne — nadane w programie albo z aparatu |
+
+Znaczniki są **rysowane**, a nie wpisywane w nazwę pliku: znak w tekście
+przesuwałby nazwy w każdym wierszu inaczej i lista przestawałaby się czytać
+jedna pod drugą. W pasku miniatur siedzą w rogach kafelka, w kolumnie w Mapie
+w stałym miejscu przed nazwą — tam też miniatury stoją przy prawej krawędzi,
+żeby wszystkie nazwy zaczynały się w tym samym miejscu.
 
 Pasek stanu podaje, ilu zdjęć dotyczy pierwszy z nich. Bez tego dzielenie
 obróbki na etapy nie miałoby sensu, bo po otwarciu katalogu nie wiadomo by
@@ -145,9 +151,10 @@ pamięta też ostatnio otwierane katalogi.
 
 ## Metadane (EXIF)
 
-Panel metadanych stoi w obu zakładkach: w Edycji jako zwijana sekcja pod danymi
-zdjęcia (zwinięta zajmuje jeden wiersz, żeby nie wydłużać panelu suwaków),
-w Mapie jako kolumna po prawej stronie. Obie kopie pokazują ten sam stan.
+Panel metadanych stoi w obu zakładkach. W Edycji jest chowanym dnem sekcji
+z danymi zdjęcia — rozwija go strzałka w jej rogu, więc zwinięty nie zajmuje
+ani jednego wiersza, a rozwinięty wygląda jak ta sama sekcja, tylko dłuższa.
+W Mapie jest kolumną po prawej stronie okna. Obie kopie pokazują ten sam stan.
 
 Edytowalnych pól jest dziewiętnaście, w sześciu grupach: autorstwo (autor,
 prawa autorskie), opis (tytuł, komentarz, słowa kluczowe, temat), czas (trzy

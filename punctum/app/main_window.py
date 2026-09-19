@@ -53,7 +53,7 @@ from ..core.hardware import system_info
 from ..core.metadata import PhotoMetadata
 from ..core.settings import ENGINE_CPU, ENGINE_GPU, Settings
 from .edit_panel import EditPanel, HistogramWidget, InfoPanel
-from .exif_panel import CollapsibleSection, ExifPanel
+from .exif_panel import ExifPanel
 from .export_dialog import ExportDialog
 from .filmstrip import Filmstrip
 from .gpu_renderer import GpuRenderer
@@ -166,13 +166,14 @@ class MainWindow(QMainWindow):
         self.edit_panel.orientation_step.connect(self._rotate_orientation)
         self.edit_panel.crop_reset_requested.connect(self._reset_crop)
 
-        # Metadane pod danymi zdjecia, w sekcji zwinietej na starcie: zajmuje
-        # wtedy jeden wiersz, a panel suwakow i tak jest za dlugi.
+        # Metadane sa chowanym dnem sekcji z danymi zdjecia: rozwija je
+        # strzalka w rogu tej sekcji, a nie osobny przycisk na calą szerokosc.
+        # Dzieki temu panel nie "wyskakuje" - sekcja po prostu rosnie w dol.
         self.exif_panel = ExifPanel()
         self.exif_panel.changed.connect(self._on_metadata_changed)
         self.exif_panel.write_requested.connect(self._write_metadata_to_originals)
-        self.exif_section = CollapsibleSection("Metadane (EXIF)", self.exif_panel)
-        self.exif_panel.setMinimumHeight(260)
+        self.exif_panel.setMinimumHeight(240)
+        self.info_panel.set_details(self.exif_panel)
 
         right = QWidget()
         right_layout = QVBoxLayout(right)
@@ -181,7 +182,6 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(self.navigator)
         right_layout.addWidget(self.histogram_widget)
         right_layout.addWidget(self.info_panel)
-        right_layout.addWidget(self.exif_section)
         right_layout.addWidget(self.edit_panel, 1)
         right.setMinimumWidth(300)
         right.setMaximumWidth(350)

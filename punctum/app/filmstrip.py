@@ -5,14 +5,35 @@ from __future__ import annotations
 import os
 
 import numpy as np
-from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QIcon, QPixmap
-from PySide6.QtWidgets import QListWidget, QListWidgetItem
+from PySide6.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate
 
 from .image_view import numpy_to_pixmap
-from .markers import LEGEND, caption
+from .markers import EDIT_ROLE, GEO_ROLE, LEGEND, PIN_SIZE, paint_dot, paint_pin
 
 THUMB_SIZE = QSize(150, 104)
+
+
+class BadgeDelegate(QStyledItemDelegate):
+    """Rysuje znaczniki w rogach kafelka, juz po zwyklym rysowaniu pozycji.
+
+    Znaczniki nie moga siedziec w podpisie: podpis jest wysrodkowany, wiec
+    kazdy dodatkowy znak przesuwalby nazwe pliku i lista przestawalaby sie
+    czytac jedna pod druga.
+    """
+
+    def paint(self, painter, option, index) -> None:
+        super().paint(painter, option, index)
+        rect = option.rect
+        width, height = PIN_SIZE
+        if index.data(EDIT_ROLE):
+            paint_dot(painter, QPointF(rect.left() + 11.0, rect.top() + 12.0))
+        if index.data(GEO_ROLE):
+            paint_pin(
+                painter,
+                QRectF(rect.right() - width - 6.0, rect.top() + 5.0, width, height),
+            )
 
 
 class Filmstrip(QListWidget):
@@ -40,6 +61,7 @@ class Filmstrip(QListWidget):
         self.setHorizontalScrollMode(QListWidget.ScrollPerPixel)
         self.setSpacing(2)
         self.setUniformItemSizes(True)
+        self.setItemDelegate(BadgeDelegate(self))
         self._edited: set[str] = set()
         self._located: set[str] = set()
         self._thumbnails: dict[str, QIcon] = {}
@@ -62,44 +84,40 @@ class Filmstrip(QListWidget):
         placeholder.fill(Qt.darkGray)
         icon = QIcon(placeholder)
         for path in paths:
-            item = QListWidgetItem(self._thumbnails.get(path, icon), self._caption(path))
+            item = QListWidgetItem(
+                self._thumbnails.get(path, icon), os.path.basename(path)
+            )
             item.setData(Qt.UserRole, path)
+            item.setData(EDIT_ROLE, path in self._edited)
+            item.setData(GEO_ROLE, path in self._located)
             item.setTextAlignment(Qt.AlignHCenter | Qt.AlignBottom)
+            item.setToolTip(f"{os.path.basename(path)}\n\n{LEGEND}")
             self.addItem(item)
 
-    def _caption(self, path: str) -> str:
-        """Znaczniki przed nazwa: zapisane poprawki i wspolrzedne.
-
-        Bez tego dzielenie obrobki na dni nie ma sensu - po otwarciu katalogu
-        z 2000 zdjec trzeba widziec, gdzie sie skonczylo. Tak samo przy
-        geotagowaniu: z listy ma byc widac, ktore zdjecia czekaja na pinezke.
-        """
-        return caption(
-            os.path.basename(path),
-            edited=path in self._edited,
-            located=path in self._located,
-        )
-
-    def _refresh_caption(self, path: str) -> None:
+    def _item_for(self, path: str) -> QListWidgetItem | None:
         for row in range(self.count()):
             item = self.item(row)
             if item.data(Qt.UserRole) == path:
-                item.setText(self._caption(path))
-                return
+                return item
+        return None
 
     def set_edited(self, path: str, edited: bool) -> None:
         """Zmienia znacznik poprawek przy jednym zdjeciu."""
         if (path in self._edited) == edited:
             return
         self._edited.add(path) if edited else self._edited.discard(path)
-        self._refresh_caption(path)
+        item = self._item_for(path)
+        if item is not None:
+            item.setData(EDIT_ROLE, edited)
 
     def set_located(self, path: str, located: bool) -> None:
         """Zmienia znacznik wspolrzednych przy jednym zdjeciu."""
         if (path in self._located) == located:
             return
         self._located.add(path) if located else self._located.discard(path)
-        self._refresh_caption(path)
+        item = self._item_for(path)
+        if item is not None:
+            item.setData(GEO_ROLE, located)
 
     def edited_paths(self) -> set[str]:
         """Zdjecia oznaczone jako poprawione - lista w mapie pokazuje to samo."""

@@ -20,15 +20,15 @@ from PySide6.QtWidgets import QApplication
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Raport pokazuje podpisy z listy, a znacznik lokalizacji jest rombem spoza
-# cp1250 - konsola Windows wysypalaby sie na wlasnym wydruku.
+# Raport pokazuje nazwy plikow i polskie napisy - konsola Windows chodzi
+# w cp1250 i potrafi wywrocic sie na wlasnym wydruku.
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 app = QApplication(sys.argv)
 app.setQuitOnLastWindowClosed(False)  # test sam zamyka okno w srodku
 
 from punctum.app import MainWindow  # noqa: E402
-from punctum.app.markers import GEO_MARK  # noqa: E402
+from punctum.app.markers import GEO_ROLE  # noqa: E402
 from punctum.core.settings import settings_path  # noqa: E402
 from punctum.core.sidecar import read_sidecar  # noqa: E402
 
@@ -122,7 +122,7 @@ def stage_assign() -> None:
           all(s is not None and abs(s.latitude - LAT) < 1e-6
               and abs(s.longitude - LON) < 1e-6 for s in stored))
     check("lista mapy oznacza zdjecia z lokalizacja",
-          GEO_MARK in view.list.item(0).text(), view.list.item(0).text())
+          bool(view.list.item(0).data(GEO_ROLE)), view.list.item(0).text())
     window.first_two = paths
 
 
@@ -177,7 +177,7 @@ def stage_verify() -> None:
           f"{view.locations.get(first)}")
     check("lista pokazuje znacznik lokalizacji",
           sum(1 for row in range(view.list.count())
-              if GEO_MARK in view.list.item(row).text()) == 2)
+              if view.list.item(row).data(GEO_ROLE)) == 2)
 
     # usuniecie lokalizacji
     view.set_selection([first])

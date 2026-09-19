@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -71,7 +72,15 @@ class HistogramWidget(QFrame):
 
 
 class InfoPanel(QFrame):
-    """Najwazniejsze parametry zdjecia - to, co fotograf sprawdza odruchowo."""
+    """Najwazniejsze parametry zdjecia - to, co fotograf sprawdza odruchowo.
+
+    Sekcja ma tez chowane dno: pelne metadane (`set_details`). Strzalka
+    w prawym gornym rogu rozwija je w dol, w obrebie tej samej ramki -
+    osobny przycisk na calą szerokosc wygladal jak kolejna akcja i przy
+    klikniecu panel "nagle sie rozszerzal".
+    """
+
+    details_toggled = Signal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -89,9 +98,53 @@ class InfoPanel(QFrame):
         for widget in (self.date_label, self.gps_label):
             widget.setObjectName("metaLabel")
 
-        for widget in (self.camera_label, self.settings_label, self.date_label, self.gps_label):
+        self.details_button = QToolButton()
+        self.details_button.setObjectName("sectionChevron")
+        self.details_button.setCheckable(True)
+        self.details_button.setCursor(Qt.PointingHandCursor)
+        # Strzalka jako znak, nie jako `setArrowType` - ostylowany QToolButton
+        # przestaje rysowac wlasny wskaznik i zostaje pusty kwadracik
+        # (to samo, co przy strzalkach pol liczbowych, patrz app/style.py).
+        self.details_button.setText("▾")
+        self.details_button.setAutoRaise(True)
+        self.details_button.setFixedSize(20, 18)
+        self.details_button.setToolTip("Pokaż wszystkie metadane (EXIF)")
+        self.details_button.toggled.connect(self._on_details_toggled)
+        self.details_button.hide()  # pojawia sie dopiero z podpieta trescia
+
+        header = QHBoxLayout()
+        header.setContentsMargins(0, 0, 0, 0)
+        header.setSpacing(4)
+        self.camera_label.setWordWrap(True)
+        header.addWidget(self.camera_label, 1)
+        header.addWidget(self.details_button, 0, Qt.AlignTop)
+        layout.addLayout(header)
+
+        for widget in (self.settings_label, self.date_label, self.gps_label):
             widget.setWordWrap(True)
             layout.addWidget(widget)
+
+        self._layout = layout
+        self.details: QWidget | None = None
+
+    def set_details(self, widget: QWidget) -> None:
+        """Podpina chowana tresc pod dane zdjecia, w tej samej ramce."""
+        self.details = widget
+        widget.setVisible(self.details_button.isChecked())
+        self._layout.addWidget(widget)
+        self.details_button.show()
+
+    def _on_details_toggled(self, on: bool) -> None:
+        self.details_button.setText("▴" if on else "▾")
+        self.details_button.setToolTip(
+            "Ukryj metadane (EXIF)" if on else "Pokaż wszystkie metadane (EXIF)"
+        )
+        if self.details is not None:
+            self.details.setVisible(on)
+        self.details_toggled.emit(on)
+
+    def set_details_visible(self, on: bool) -> None:
+        self.details_button.setChecked(on)
 
     def set_metadata(
         self,

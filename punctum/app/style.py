@@ -40,6 +40,16 @@ QMainWindow::separator { background: #131315; width: 1px; height: 1px; }
 #cameraLabel { color: #e8e8ea; font-weight: 600; }
 #settingsLabel { color: #b8b8be; }
 #metaLabel { color: #86868c; }
+#sidePanel { background: #1b1b1d; border-left: 1px solid #2e2e32; }
+
+/* Chowany fragment sekcji z danymi zdjecia: strzalka zamiast przycisku,
+   zeby nie wygladala jak kolejna akcja do klikniecia. */
+#sectionChevron {
+    background: transparent; border: none;
+    color: #7a7a82; padding: 0 4px; font-size: 11px;
+}
+#sectionChevron:hover { color: #e0e0e4; }
+#sectionChevron:checked { color: #c8c8cc; }
 
 QSlider::groove:horizontal {
     height: 3px; background: #3a3a40; border-radius: 1px;

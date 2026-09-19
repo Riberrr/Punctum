@@ -91,11 +91,17 @@ class ExifPanel(QWidget):
         self.clear_button.setToolTip("Cofa niezapisane zmiany w tym panelu")
         self.clear_button.clicked.connect(self._on_clear)
 
-        buttons = QHBoxLayout()
+        # Dwa rzedy, nie jeden: w kolumnie szerokosci 330 px trzeci przycisk
+        # obcinal sobie napis ("apisz do oryginał").
+        buttons = QVBoxLayout()
         buttons.setContentsMargins(0, 0, 0, 0)
         buttons.setSpacing(4)
-        buttons.addWidget(self.all_button)
-        buttons.addWidget(self.clear_button)
+        top_row = QHBoxLayout()
+        top_row.setContentsMargins(0, 0, 0, 0)
+        top_row.setSpacing(4)
+        top_row.addWidget(self.all_button)
+        top_row.addWidget(self.clear_button)
+        buttons.addLayout(top_row)
         buttons.addWidget(self.write_button)
 
         self.table = QWidget()
@@ -115,6 +121,7 @@ class ExifPanel(QWidget):
         layout.addWidget(self.scroll, 1)
         layout.addWidget(self.table_scroll, 1)
         layout.addLayout(buttons)
+        self.buttons = buttons
 
     def _editor(self, field) -> QWidget:
         """Pole formularza dobrane do rodzaju danych."""
@@ -250,33 +257,5 @@ class ExifPanel(QWidget):
         self.table_layout.setColumnStretch(1, 1)
 
 
-class CollapsibleSection(QWidget):
-    """Naglowek z trojkatem i chowana zawartosc.
-
-    Zwinieta sekcja ma zajmowac jeden wiersz - inaczej prawy panel, na ktory
-    i tak narzekamy, uroslby o kolejny ekran do przewijania.
-    """
-
-    def __init__(self, title: str, content: QWidget, parent=None):
-        super().__init__(parent)
-        self.content = content
-        self.button = QPushButton(f"▸  {title}")
-        self.button.setCheckable(True)
-        self.button.setObjectName("sectionToggle")
-        self.button.setCursor(Qt.PointingHandCursor)
-        self.title = title
-        self.button.toggled.connect(self._on_toggled)
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(2)
-        layout.addWidget(self.button)
-        layout.addWidget(content)
-        content.hide()
-
-    def _on_toggled(self, on: bool) -> None:
-        self.button.setText(f"{'▾' if on else '▸'}  {self.title}")
-        self.content.setVisible(on)
-
-    def set_expanded(self, on: bool) -> None:
-        self.button.setChecked(on)
+# Sekcja zwijana zyje teraz w InfoPanel (app/edit_panel.py): metadane sa
+# chowanym dnem sekcji z danymi zdjecia, a nie osobnym blokiem z naglowkiem.

@@ -20,15 +20,18 @@ from PySide6.QtWidgets import QApplication
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Konsola Windows chodzi w cp1250, a znacznik lokalizacji jest rombem spoza
-# tej strony kodowej - bez tego raport wysypuje sie na wlasnym wydruku.
+# Konsola Windows chodzi w cp1250 i potrafi wywrocic sie na wlasnym wydruku
+# (strzalki, ogonki) - raport idzie wiec w UTF-8.
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 app = QApplication(sys.argv)
 app.setQuitOnLastWindowClosed(False)
 
+from PySide6.QtCore import QRectF, Qt  # noqa: E402
+from PySide6.QtGui import QPainter, QPixmap  # noqa: E402
+
 from punctum.app import MainWindow  # noqa: E402
-from punctum.app.markers import EDIT_MARK, GEO_MARK, caption, strip  # noqa: E402
+from punctum.app.markers import EDIT_ROLE, GEO_ROLE, paint_pin  # noqa: E402
 from punctum.core.exif_edit import current_values, is_writable_format  # noqa: E402
 from punctum.core.settings import settings_path  # noqa: E402
 from punctum.core.sidecar import read_sidecar  # noqa: E402
@@ -55,12 +58,25 @@ def wait_for(condition, label: str, timeout_ms: int = 25000) -> bool:
     return False
 
 
-def caption_of(strip_widget, path: str) -> str:
-    for row in range(strip_widget.count()):
-        item = strip_widget.item(row)
+def item_of(list_widget, path: str):
+    for row in range(list_widget.count()):
+        item = list_widget.item(row)
         if item.data(0x0100) == path:
-            return item.text()
-    return ""
+            return item
+    return None
+
+
+def marks_of(list_widget, path: str) -> tuple[bool, bool]:
+    """(zapisana praca, wspolrzedne) - tak, jak widzi to rysujacy delegat."""
+    item = item_of(list_widget, path)
+    if item is None:
+        return (False, False)
+    return (bool(item.data(EDIT_ROLE)), bool(item.data(GEO_ROLE)))
+
+
+def caption_of(list_widget, path: str) -> str:
+    item = item_of(list_widget, path)
+    return "" if item is None else item.text()
 
 
 # Ustawienia uzytkownika sa prawdziwym plikiem - test ich nie rusza.
@@ -87,18 +103,22 @@ state: dict = {}
 
 
 def stage_czyste() -> None:
-    """Sam modul znacznikow i stan wyjsciowy list."""
-    check("znaczniki sa rozne", EDIT_MARK != GEO_MARK, f"{EDIT_MARK} / {GEO_MARK}")
-    check("podpis bez znacznikow to sama nazwa",
-          caption("DSC.jpg") == "DSC.jpg", caption("DSC.jpg"))
-    check("podpis z obydwoma znacznikami",
-          caption("DSC.jpg", True, True) == f"{EDIT_MARK}{GEO_MARK} DSC.jpg",
-          caption("DSC.jpg", True, True))
-    check("wyrownanie trzyma szerokosc prefiksu",
-          len(caption("a.jpg", False, False, pad=True))
-          == len(caption("a.jpg", True, True, pad=True)))
-    check("ze znacznikow da sie wrocic do nazwy",
-          strip(caption("DSC.jpg", True, True, pad=True)) == "DSC.jpg")
+    """Rysowanie znacznikow i stan wyjsciowy list."""
+    check("znaczniki maja osobne role", EDIT_ROLE != GEO_ROLE)
+
+    # Pinezka jest rysowana, a nie pisana - wiec sprawdzamy, czy naprawde
+    # cokolwiek zostawia na obrazku.
+    canvas = QPixmap(16, 20)
+    canvas.fill(Qt.black)
+    painter = QPainter(canvas)
+    paint_pin(painter, QRectF(2, 2, 11, 15))
+    painter.end()
+    image = canvas.toImage()
+    painted = sum(
+        1 for y in range(20) for x in range(16)
+        if image.pixelColor(x, y).red() > 60
+    )
+    check("pinezka naprawde sie rysuje", painted > 25, f"{painted} pikseli")
 
     wait_for(lambda: window.filmstrip.count() == len(sys.argv) - 1, "lista zdjęć")
     wait_for(lambda: window.full_raw is not None, "wczytanie pierwszego zdjęcia")
@@ -109,13 +129,18 @@ def stage_czyste() -> None:
     # Zdjecia moga miec GPS prosto z aparatu - punktem odniesienia jest to,
     # co bylo na starcie, a nie zalozenie, ze lista jest pusta.
     state["geo0"] = {
-        p for p in window.paths if GEO_MARK in caption_of(window.filmstrip, p)
+        p for p in window.paths if marks_of(window.filmstrip, p)[1]
     }
     check("na starcie nic nie jest oznaczone jako poprawione",
           window.filmstrip.edited_count() == 0,
           f"{window.filmstrip.edited_count()} oznaczonych")
-    check("sekcja metadanych jest zwinieta",
-          not window.exif_section.content.isVisible())
+    check("podpis w pasku to sama nazwa pliku",
+          caption_of(window.filmstrip, state["photos"][0])
+          == os.path.basename(state["photos"][0]),
+          caption_of(window.filmstrip, state["photos"][0]))
+    check("metadane sa schowane, a strzalka widoczna",
+          not window.exif_panel.isVisible()
+          and not window.info_panel.details_button.isHidden())
 
 
 def stage_lokalizacja() -> None:
@@ -125,16 +150,18 @@ def stage_lokalizacja() -> None:
     window._on_location_assigned([target], LAT, LON)
     app.processEvents()
 
-    text = caption_of(window.filmstrip, target)
-    check("pasek miniatur oznacza zdjecie z lokalizacja", GEO_MARK in text, text)
-    check("zapisana praca ma swoj wlasny znacznik", EDIT_MARK in text, text)
+    edited, located = marks_of(window.filmstrip, target)
+    check("pasek miniatur oznacza zdjecie z lokalizacja", located)
+    check("zapisana praca ma swoj wlasny znacznik", edited)
+    check("nazwa pliku zostaje nietknieta",
+          caption_of(window.filmstrip, target) == os.path.basename(target),
+          caption_of(window.filmstrip, target))
     check("pasek liczy zdjecia z lokalizacja",
           window.filmstrip.located_count() == len(state["geo0"] | {target}),
           f"{window.filmstrip.located_count()}")
     if other is not None:
         check("zdjecie bez wspolrzednych zostaje bez znacznika",
-              GEO_MARK not in caption_of(window.filmstrip, other),
-              caption_of(window.filmstrip, other))
+              not marks_of(window.filmstrip, other)[1])
 
     saved = read_sidecar(target)
     check("lokalizacja poszla do sidecara",
@@ -155,6 +182,14 @@ def stage_metadane() -> None:
     window.filmstrip.setCurrentRow(window.paths.index(jpeg))
     wait_for(lambda: window.current_path == jpeg and window.full_raw is not None,
              "wczytanie JPEG-a")
+
+    # Strzalka w sekcji z danymi zdjecia rozwija metadane w dol.
+    window.info_panel.details_button.click()
+    app.processEvents()
+    check("strzalka rozwija metadane", window.exif_panel.isVisible())
+    check("i zmienia sie na zwijajaca",
+          window.info_panel.details_button.text() == "▴",
+          window.info_panel.details_button.text())
 
     panel = window.exif_panel
     check("panel pokazuje biezace zdjecie", panel.path == jpeg,
@@ -177,8 +212,7 @@ def stage_metadane() -> None:
           saved is not None and saved.metadata.get("Artist") == AUTOR,
           repr(saved.metadata if saved else None)[:60])
     check("wpisanie metadanych oznacza zdjecie jako poprawione",
-          EDIT_MARK in caption_of(window.filmstrip, jpeg),
-          caption_of(window.filmstrip, jpeg))
+          marks_of(window.filmstrip, jpeg)[0])
     written = current_values(jpeg).get("Artist", "")
     check("plik zrodlowy jeszcze nietkniety", written != AUTOR,
           "czeka na przycisk" if written != AUTOR else "juz zapisany!")
@@ -201,20 +235,19 @@ def stage_mapa() -> None:
           panel.editors["Artist"].text())
 
     located = state.get("located")
-    text = ""
-    for row in range(view.list.count()):
-        if view.list.item(row).data(0x0100) == located:
-            text = view.list.item(row).text()
-    check("lista w mapie oznacza zdjecie z lokalizacja", GEO_MARK in text, text)
-    check("lista w mapie oznacza tez zapisana prace", EDIT_MARK in text, text)
+    edited_mark, geo_mark = marks_of(view.list, located)
+    check("lista w mapie oznacza zdjecie z lokalizacja", geo_mark)
+    check("lista w mapie oznacza tez zapisana prace", edited_mark)
+    check("nazwy w mapie to same nazwy plikow",
+          caption_of(view.list, located) == os.path.basename(located),
+          caption_of(view.list, located))
 
     jpeg = state["jpeg"]
-    jpeg_text = ""
-    for row in range(view.list.count()):
-        if view.list.item(row).data(0x0100) == jpeg:
-            jpeg_text = view.list.item(row).text()
     check("zdjecie z metadanymi ma znacznik pracy w mapie",
-          EDIT_MARK in jpeg_text, jpeg_text)
+          marks_of(view.list, jpeg)[0])
+    check("panel metadanych ma margines od krawedzi okna",
+          view.panel_host.layout().contentsMargins().right() >= 8,
+          f"{view.panel_host.layout().contentsMargins().right()} px")
 
     # Zmiana w panelu mapy ma dojsc do nastaw tak samo, jak w Edycji.
     panel.editors["Copyright"].setText("© 2026 Punctum")
