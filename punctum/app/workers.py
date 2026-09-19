@@ -205,6 +205,7 @@ class ExportTask(QRunnable):
                         (params.latitude, params.longitude)
                         if params.has_location else None
                     ),
+                    metadata=params.metadata or None,
                 )
                 saved += 1
             except Exception as exc:

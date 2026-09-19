@@ -53,6 +53,7 @@ from ..core.hardware import system_info
 from ..core.metadata import PhotoMetadata
 from ..core.settings import ENGINE_CPU, ENGINE_GPU, Settings
 from .edit_panel import EditPanel, HistogramWidget, InfoPanel
+from .exif_panel import CollapsibleSection, ExifPanel
 from .export_dialog import ExportDialog
 from .filmstrip import Filmstrip
 from .gpu_renderer import GpuRenderer
@@ -165,6 +166,14 @@ class MainWindow(QMainWindow):
         self.edit_panel.orientation_step.connect(self._rotate_orientation)
         self.edit_panel.crop_reset_requested.connect(self._reset_crop)
 
+        # Metadane pod danymi zdjecia, w sekcji zwinietej na starcie: zajmuje
+        # wtedy jeden wiersz, a panel suwakow i tak jest za dlugi.
+        self.exif_panel = ExifPanel()
+        self.exif_panel.changed.connect(self._on_metadata_changed)
+        self.exif_panel.write_requested.connect(self._write_metadata_to_originals)
+        self.exif_section = CollapsibleSection("Metadane (EXIF)", self.exif_panel)
+        self.exif_panel.setMinimumHeight(260)
+
         right = QWidget()
         right_layout = QVBoxLayout(right)
         right_layout.setContentsMargins(8, 8, 8, 0)
@@ -172,6 +181,7 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(self.navigator)
         right_layout.addWidget(self.histogram_widget)
         right_layout.addWidget(self.info_panel)
+        right_layout.addWidget(self.exif_section)
         right_layout.addWidget(self.edit_panel, 1)
         right.setMinimumWidth(300)
         right.setMaximumWidth(350)
@@ -504,7 +514,7 @@ class MainWindow(QMainWindow):
         marked = self.edited_on_disk | {
             path for path, params in self.edits.items() if not params.is_default()
         }
-        self.filmstrip.set_paths(self.paths, marked)
+        self.filmstrip.set_paths(self.paths, marked, self._located_paths())
 
         if not self.paths:
             self.status.showMessage(
@@ -532,8 +542,12 @@ class MainWindow(QMainWindow):
         if index >= len(self.paths) or self.paths[index] != path:
             return
         self.filmstrip.set_thumbnail(index, image)
+        # GPS z aparatu poznajemy dopiero po przeczytaniu EXIF-u, czyli razem
+        # z miniatura - znacznik na liscie musi wiec doplynac tak samo pozno.
+        if meta is not None and meta.has_gps:
+            self.filmstrip.set_located(path, True)
         if path == self.current_path:
-            self.info_panel.set_metadata(meta)
+            self.info_panel.set_metadata(meta, self._own_location(path))
         if self.thumb_pool.activeThreadCount() <= 1:
             done = self.filmstrip.edited_count()
             progress = f"  •  poprawionych: {done} z {len(self.paths)}" if done else ""
@@ -547,12 +561,117 @@ class MainWindow(QMainWindow):
             self.edits[self.current_path] = self.export_params()
             self._store_edits(self.current_path)
 
+    # ---------------------------------------------------------- metadane
+
+    def _on_metadata_changed(self, changes: dict) -> None:
+        """Panel EXIF zglosil zmiane pol dla biezacego zdjecia."""
+        if not self.current_path:
+            return
+        params = self._params_for(self.current_path) or EditParams()
+        params.metadata = dict(changes)
+        self.edits[self.current_path] = params
+        self._store_edits(self.current_path)
+        # Drugi panel (w zakladce mapy) pokazuje to samo zdjecie, wiec musi
+        # dostac ten sam stan - inaczej dwie kopie rozjechalyby sie cicho.
+        for panel in self._exif_panels():
+            if panel.path == self.current_path and not panel.hasFocus():
+                panel.set_photo(self.current_path, params.metadata)
+
+    def _exif_panels(self) -> list:
+        panels = [self.exif_panel]
+        if self.map_view is not None:
+            panels.append(self.map_view.exif_panel)
+        return panels
+
+    def _show_metadata(self, path: str | None) -> None:
+        params = self._params_for(path) if path else None
+        overrides = params.metadata if params is not None else {}
+        for panel in self._exif_panels():
+            panel.set_photo(path, overrides)
+
+    def _write_metadata_to_originals(self) -> None:
+        """Wpisuje metadane i lokalizacje wprost w pliki zrodlowe.
+
+        Domyslnie wszystko siedzi w sidecarach, ale czasem trzeba miec to
+        w samych plikach - zeby zobaczyl je inny program. RAW-ow nie ruszamy
+        i mowimy o tym wprost, zamiast po cichu ich pomijac.
+        """
+        from ..core.exif_edit import write_into_file
+
+        chosen = self.filmstrip.selected_paths() or (
+            [self.current_path] if self.current_path else []
+        )
+        if not chosen:
+            return
+
+        self.remember_current_edits()
+        written, skipped, errors = 0, [], []
+        for path in chosen:
+            params = self._params_for(path)
+            if params is None or (not params.has_metadata and not params.has_location):
+                continue
+            location = (
+                (params.latitude, params.longitude) if params.has_location else None
+            )
+            problem = write_into_file(path, params.metadata, location)
+            if problem is None:
+                written += 1
+            elif "nie da się zapisać" in problem:
+                skipped.append(os.path.basename(path))
+            else:
+                errors.append(problem)
+
+        parts = [f"Zapisano do {written} plików"]
+        if skipped:
+            parts.append(
+                f"pominięto {len(skipped)} (format bez zapisu EXIF: "
+                f"{', '.join(skipped[:3])}{'…' if len(skipped) > 3 else ''})"
+            )
+        if errors:
+            parts.append(f"błędy: {len(errors)}")
+        self.status.showMessage("  •  ".join(parts))
+        if errors:
+            QMessageBox.warning(self, "Punctum", "\n".join(errors[:10]))
+
     def _on_thumbnail_icon(self, path: str, icon) -> None:
         """Gotowa miniatura trafia tez do listy w mapie, jesli ta juz stoi."""
         if self.map_view is not None:
             self.map_view.set_thumbnail(path, icon)
 
     # -------------------------------------------------------------- mapa
+
+    def _own_location(self, path: str) -> tuple[float, float] | None:
+        """Wspolrzedne nadane przez nas - te, ktore biora gore nad EXIF-em."""
+        params = self.edits.get(path)
+        if params is not None and params.has_location:
+            return (params.latitude, params.longitude)
+        return None
+
+    def _has_location(self, path: str) -> bool:
+        """Czy zdjecie ma wspolrzedne - nasze albo z aparatu."""
+        if self._own_location(path) is not None:
+            return True
+        meta = self.metadata.get(path)
+        return bool(meta is not None and meta.has_gps)
+
+    def _located_paths(self) -> set[str]:
+        """Zdjecia z wspolrzednymi - do znacznikow na liscie.
+
+        Sidecary czytamy tylko dla plikow, ktore je w ogole maja (wiemy to
+        z jednego przegladu katalogu), a nie dla wszystkich zdjec - przy 2000
+        plikow reszta bylaby czystym czekaniem na dysk. Wynik zostaje potem
+        w pamieci, wiec zmiana filtra formatow juz nic nie kosztuje.
+        """
+        found = {
+            path for path, meta in self.metadata.items()
+            if meta is not None and meta.has_gps
+        }
+        candidates = set(self.edits) | (self.edited_on_disk & set(self.paths))
+        for path in candidates:
+            params = self._params_for(path)
+            if params is not None and params.has_location:
+                found.add(path)
+        return found
 
     def _known_locations(self) -> dict[str, tuple[float, float]]:
         """Wspolrzedne wszystkich zdjec w katalogu: z naszych nastaw i z EXIF-u.
@@ -580,7 +699,15 @@ class MainWindow(QMainWindow):
                 self.map_view = MapView()
                 self.map_view.location_assigned.connect(self._on_location_assigned)
                 self.map_view.photo_activated.connect(self._open_from_map)
+                # Drugi panel metadanych - ten sam stan, te same sygnaly, co
+                # panel w Edycji. Zdjecie biezace dostaje od razu, bo mapa
+                # powstaje dopiero teraz i nie widziala wczesniejszych zmian.
+                self.map_view.exif_panel.changed.connect(self._on_metadata_changed)
+                self.map_view.exif_panel.write_requested.connect(
+                    self._write_metadata_to_originals
+                )
                 self.map_tab.layout().addWidget(self.map_view)
+                self._show_metadata(self.current_path)
             finally:
                 QApplication.restoreOverrideCursor()
         return self.map_view
@@ -591,7 +718,10 @@ class MainWindow(QMainWindow):
         self.remember_current_edits()  # nastawy biezacego zdjecia przed skokiem
         self._ensure_map()
         self.map_view.set_photos(
-            self.paths, self._known_locations(), self.filmstrip.icons()
+            self.paths,
+            self._known_locations(),
+            self.filmstrip.icons(),
+            self.filmstrip.edited_paths(),
         )
         chosen = self.filmstrip.selected_paths() or (
             [self.current_path] if self.current_path else []
@@ -608,9 +738,15 @@ class MainWindow(QMainWindow):
             self.edits[path] = params
             self._store_edits(path)
             changed[path] = None if latitude is None else (latitude, longitude)
+            self.filmstrip.set_located(path, self._has_location(path))
 
         if self.map_view is not None:
             self.map_view.apply_locations(changed)
+        if self.current_path in changed:
+            self.info_panel.set_metadata(
+                self.metadata.get(self.current_path),
+                self._own_location(self.current_path),
+            )
         if latitude is None:
             self.status.showMessage(f"Usunięto lokalizację z {len(paths)} zdjęć")
         else:
@@ -658,7 +794,11 @@ class MainWindow(QMainWindow):
         if params is None:
             return
         written = write_sidecar(path, params)
-        self.filmstrip.set_edited(path, bool(written) and not params.is_default())
+        marked = bool(written) and not params.is_default()
+        self.filmstrip.set_edited(path, marked)
+        self.filmstrip.set_located(path, self._has_location(path))
+        if self.map_view is not None:
+            self.map_view.set_edited(path, marked)
 
         # Katalog tylko do odczytu albo wyjeta karta: bez slowa uzytkownik
         # pracowalby przez godzine w przekonaniu, ze praca sie zapisuje.
@@ -682,7 +822,11 @@ class MainWindow(QMainWindow):
         if self.gpu_source_ready:
             self.gpu.release_source()  # 244 MB tekstury na zdjęcie, warto oddać
             self.gpu_source_ready = False
-        self.info_panel.set_metadata(self.metadata.get(path))
+        self.info_panel.set_metadata(self.metadata.get(path), self._own_location(path))
+        # Metadane pokazujemy od razu, nie po zdekodowaniu RAW-a: naglowek
+        # czyta sie w kilka milisekund, a panel czekajacy sekunde na tresc
+        # wygladalby na zepsuty.
+        self._show_metadata(path)
         self.status.showMessage(f"Wczytywanie {os.path.basename(path)}…")
         self.export_button.setEnabled(False)
 
@@ -778,6 +922,7 @@ class MainWindow(QMainWindow):
         previous = self.edits.get(self.current_path or "")
         if previous is not None:
             params.latitude, params.longitude = previous.latitude, previous.longitude
+            params.metadata = dict(previous.metadata)
         return params
 
     def _on_params_changed(self) -> None:

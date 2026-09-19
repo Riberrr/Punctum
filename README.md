@@ -69,8 +69,9 @@ bez zmian — okno eksportu mówi o tym wprost, zanim zaczniesz.
 ## Mapa i geotagowanie
 
 Okno ma dwie zakładki: **Edycja** i **Mapa**. W mapie po lewej stoi lista zdjęć
-(kropka przy tych, które mają już lokalizację), po prawej mapa OpenStreetMap
-z wyszukiwarką miejsc i czterema warstwami: mapa, ciemna, satelita, hybryda.
+z miniaturami i znacznikami stanu, pośrodku mapa OpenStreetMap z wyszukiwarką
+miejsc i czterema warstwami (mapa, ciemna, satelita, hybryda), a po prawej
+panel metadanych.
 
 Nadawanie lokalizacji: zaznacz zdjęcia na liście, włącz *Przypisz zaznaczonym*
 i kliknij miejsce na mapie — wszystkie zaznaczone dostają ten punkt. Pinezki
@@ -111,9 +112,18 @@ dopiero na koniec sesji — zawieszenie programu po trzech godzinach pracy ma
 kosztować jedno zdjęcie, nie trzy godziny. Kosztuje 2 ms, więc nie da się go
 zauważyć.
 
-W pasku miniatur zdjęcia z zapisaną pracą mają kropkę przed nazwą, a pasek
-stanu podaje, ile ich jest — bez tego dzielenie obróbki na etapy nie miałoby
-sensu, bo po otwarciu katalogu nie wiadomo by było, gdzie się skończyło.
+Obie listy zdjęć — pasek miniatur w Edycji i kolumna w Mapie — mówią tym samym
+językiem. Przed nazwą pliku stoją dwa niezależne znaczniki:
+
+| Znacznik | Znaczenie |
+|---|---|
+| `•` | zdjęcie ma zapisaną pracę (nastawy w sidecarze) |
+| `◆` | zdjęcie ma współrzędne — nadane w programie albo z aparatu |
+
+Pasek stanu podaje, ilu zdjęć dotyczy pierwszy z nich. Bez tego dzielenie
+obróbki na etapy nie miałoby sensu, bo po otwarciu katalogu nie wiadomo by
+było, gdzie się skończyło — a przy geotagowaniu nie widać by było, które kadry
+wciąż czekają na pinezkę.
 
 W pliku XMP są dwa komplety wartości. Pola `crs:` to te same nazwy, których
 używa Camera Raw — inny program coś z nich odczyta. Zgodność jest jednak tylko
@@ -132,6 +142,35 @@ Dwie decyzje warte uwagi:
 
 Funkcję można wyłączyć w `Plik ▸ Ustawienia… ▸ Eksport ▸ Ogólne`. Menu `Plik`
 pamięta też ostatnio otwierane katalogi.
+
+## Metadane (EXIF)
+
+Panel metadanych stoi w obu zakładkach: w Edycji jako zwijana sekcja pod danymi
+zdjęcia (zwinięta zajmuje jeden wiersz, żeby nie wydłużać panelu suwaków),
+w Mapie jako kolumna po prawej stronie. Obie kopie pokazują ten sam stan.
+
+Edytowalnych pól jest dziewiętnaście, w sześciu grupach: autorstwo (autor,
+prawa autorskie), opis (tytuł, komentarz, słowa kluczowe, temat), czas (trzy
+daty), sprzęt (producent, model, obiektyw, numer seryjny, oprogramowanie),
+naświetlenie (ISO, przysłona, czas, ogniskowa) i orientacja. Przycisk
+*Wszystkie tagi* pokazuje dodatkowo pełną zawartość pliku, tylko do odczytu —
+czytaną dopiero po kliknięciu, bo przy dwóch tysiącach zdjęć nie ma powodu
+czytać wszystkiego z każdego pliku.
+
+Zmiany idą tą samą drogą, co korekty i współrzędne: **do sidecara**, a do
+metadanych pliku dopiero przy eksporcie. Przycisk *Zapisz do oryginału* robi
+wyjątek na żądanie — wpisuje je wprost w plik ze zdjęciem:
+
+- **tylko JPEG.** RW2 to zamknięty format Panasonica i majstrowanie w jego
+  nagłówku skończyłoby się uszkodzonym plikiem. Program mówi to wprost, zamiast
+  po cichu pomijać takie zdjęcia.
+- **bezstratnie** — przepisywany jest sam nagłówek EXIF, piksele zostają
+  nietknięte, a data pliku wraca na swoje miejsce po zapisie.
+- **dotychczasowe metadane zostają.** Wpisujemy tylko pola zmienione w panelu;
+  reszta nagłówka, razem z blokiem GPS, przechodzi bez zmian.
+
+Puste pole znaczy „nie zmieniam", a nie „skasuj tag" — kasowanie metadanych
+jest nieodwracalne, więc nie może się zdarzyć przez nieuwagę.
 
 ## Pliki JPEG
 
@@ -431,6 +470,7 @@ punctum/core/
     pipeline.py      tor tonalny, geometria, redukcja szumu
     auto.py          automatyczny dobór parametrów
     metadata.py      odczyt EXIF (z obsługą pól własnych Panasonica)
+    exif_edit.py     podgląd wszystkich tagów i zapis edytowalnych pól
     sidecar.py       zapis i odczyt korekt obok zdjęcia (XMP)
     export.py        zapis JPEG / PNG / TIFF
     settings.py      ustawienia programu: odczyt, zapis, walidacja
@@ -442,11 +482,29 @@ punctum/app/
     sliders.py       suwaki, w tym te z gradientem barwnym
     navigator.py     miniatura z ramką powiększenia
     filmstrip.py     pasek miniatur
+    markers.py       znaczniki przy nazwach zdjęć, wspólne dla obu list
+    exif_panel.py    panel metadanych: formularz, podgląd tagów, zapis
     map_view.py      zakładka mapy: lista zdjęć, most do strony, przypisywanie
     map_page.py      strona mapy (Leaflet) jako HTML i JavaScript
     workers.py       zadania w tle
 tools/               narzędzia diagnostyczne, testy i CLI
 ```
+
+## Testy
+
+```powershell
+tools\testy.bat "C:\Zdjęcia\Wycieczka"
+```
+
+Testy bez interfejsu (tor tonalny, automat, JPEG, sidecary, metadane) idą zawsze
+i nie potrzebują niczego poza repozytorium. Testy z interfejsem otwierają
+prawdziwe okno, więc potrzebują katalogu ze zdjęciami — wystarczy jeden plik RAW
+i dwa JPEG-i, a które to będą, program dobiera sam. Katalog można podać raz na
+stałe zmienną `PUNCTUM_TESTY`; bez niego seria po prostu pomija tę część.
+
+Testy z interfejsem czekają na **warunek**, nie na ustalony czas — obciążona
+maszyna potrafiła kiedyś nie zdążyć wczytać zdjęcia w wyznaczonych sekundach
+i seria wywracała się przy poprawnym kodzie.
 
 ## Czego jeszcze nie ma
 

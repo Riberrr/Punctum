@@ -27,7 +27,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .exif_panel import ExifPanel
 from .map_page import MAP_HTML
+from .markers import LEGEND, caption
 
 # Miniatura w liscie: na tyle duza, zeby rozpoznac kadr, na tyle mala, zeby
 # przy dwustu zdjeciach dalo sie przewijac liste, a nie album.
@@ -69,6 +71,7 @@ class MapView(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.locations: dict[str, tuple[float, float]] = {}
+        self.edited: set[str] = set()  # zdjecia z zapisanymi poprawkami
         self.icons: dict = {}  # miniatury, po sciezkach
         self.has_map = False  # czy biblioteka mapy wczytala sie z sieci
         self.answered = False  # czy strona w ogole sie odezwala (do testow)
@@ -83,6 +86,7 @@ class MapView(QWidget):
         self.list.setIconSize(THUMB_SIZE)
         self.list.setSpacing(1)
         self.list.setUniformItemSizes(True)
+        self.list.setToolTip(LEGEND)
         self.list.itemSelectionChanged.connect(self._on_selection)
         self.list.itemDoubleClicked.connect(
             lambda item: self.photo_activated.emit(item.data(Qt.UserRole))
@@ -136,11 +140,18 @@ class MapView(QWidget):
         side.addWidget(self.fit_button)
         side.addWidget(self.status)
 
+        # Panel metadanych po prawej. W tej zakladce jest na niego miejsce,
+        # wiec stoi otwarty - inaczej niz w Edycji, gdzie siedzi w zwinietej
+        # sekcji, zeby nie wydluzac panelu suwakow.
+        self.exif_panel = ExifPanel()
+        self.exif_panel.setFixedWidth(330)
+
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addLayout(side)
         layout.addWidget(self.web, 1)
+        layout.addWidget(self.exif_panel)
 
     # ------------------------------------------------------------- strona
 
@@ -170,9 +181,11 @@ class MapView(QWidget):
         paths: list[str],
         locations: dict[str, tuple[float, float]],
         icons: dict | None = None,
+        edited: set[str] | None = None,
     ) -> None:
         """Podaje aktualna zawartosc katalogu, znane lokalizacje i miniatury."""
         self.locations = dict(locations)
+        self.edited = set(edited or ())
         self.icons = dict(icons or {})
         self.list.blockSignals(True)
         self.list.clear()
@@ -192,9 +205,13 @@ class MapView(QWidget):
         self._refresh_status()
 
     def _caption(self, path: str) -> str:
-        """Kropka znaczy: to zdjecie ma juz wspolrzedne."""
-        name = os.path.basename(path)
-        return f"• {name}" if path in self.locations else f"   {name}"
+        """Te same znaczniki, co w pasku miniatur - tylko wyrownane w kolumne."""
+        return caption(
+            os.path.basename(path),
+            edited=path in self.edited,
+            located=path in self.locations,
+            pad=True,
+        )
 
     def _draw_markers(self) -> None:
         self._js("clearMarkers()")
@@ -214,6 +231,17 @@ class MapView(QWidget):
         self.list.blockSignals(False)
         self._highlight()
         self._refresh_status()
+
+    def set_edited(self, path: str, edited: bool) -> None:
+        """Znacznik poprawek dosłany z Edycji - lista ma pokazywac to samo."""
+        if (path in self.edited) == edited:
+            return
+        self.edited.add(path) if edited else self.edited.discard(path)
+        for row in range(self.list.count()):
+            item = self.list.item(row)
+            if item.data(Qt.UserRole) == path:
+                item.setText(self._caption(path))
+                return
 
     def set_thumbnail(self, path: str, icon) -> None:
         """Miniatura dosłana po otwarciu mapy - wpada na swoje miejsce."""

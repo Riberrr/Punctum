@@ -49,9 +49,20 @@ class EditParams:
     latitude: float | None = None
     longitude: float | None = None
 
+    # --- metadane ------------------------------------------------------
+    # Zmienione pola EXIF, po naszych nazwach (patrz core/exif_edit.py).
+    # Trzymamy je TUTAJ, a nie osobno, zeby jechaly ta sama droga co reszta:
+    # pamiec per zdjecie, sidecar, eksport. Kazdy osobny schowek predzej czy
+    # pozniej rozjechalby sie z nastawami.
+    metadata: dict[str, str] = field(default_factory=dict)
+
     @property
     def has_location(self) -> bool:
         return self.latitude is not None and self.longitude is not None
+
+    @property
+    def has_metadata(self) -> bool:
+        return any(str(value).strip() for value in self.metadata.values())
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)

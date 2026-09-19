@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from PIL import Image
 
+from .exif_edit import exif_bytes
 from .metadata import PhotoMetadata
 
 # co zrobic, gdy plik o danej nazwie juz istnieje
@@ -29,44 +30,6 @@ NAMING_CUSTOM = "custom"
 FORMAT_LABELS = {".jpg": "JPEG", ".png": "PNG", ".tif": "TIFF"}
 
 
-def _exif_bytes(location: tuple[float, float] | None) -> bytes | None:
-    """Blok EXIF z lokalizacja - albo nic, gdy zdjecie jej nie ma.
-
-    Wspolrzedne trafiaja do pliku dopiero TUTAJ, w wyniku eksportu. Orygina
-    zostaje nietkniety, zgodnie z zasada nieniszczaca: na mapie lokalizacja
-    ladowala w sidecarze i do ostatniej chwili mozna sie rozmyslic.
-    """
-    if location is None:
-        return None
-    try:
-        import piexif
-    except ImportError:
-        return None  # brak biblioteki nie moze zatrzymac calego eksportu
-
-    latitude, longitude = location
-
-    def rational(value: float) -> tuple:
-        """Stopnie dziesietne -> stopnie, minuty i sekundy jako ulamki."""
-        magnitude = abs(float(value))
-        degrees = int(magnitude)
-        minutes_float = (magnitude - degrees) * 60.0
-        minutes = int(minutes_float)
-        seconds = (minutes_float - minutes) * 60.0
-        return ((degrees, 1), (minutes, 1), (int(round(seconds * 10000)), 10000))
-
-    gps = {
-        piexif.GPSIFD.GPSVersionID: (2, 3, 0, 0),
-        piexif.GPSIFD.GPSLatitudeRef: "N" if latitude >= 0 else "S",
-        piexif.GPSIFD.GPSLatitude: rational(latitude),
-        piexif.GPSIFD.GPSLongitudeRef: "E" if longitude >= 0 else "W",
-        piexif.GPSIFD.GPSLongitude: rational(longitude),
-    }
-    try:
-        return piexif.dump({"0th": {}, "Exif": {}, "GPS": gps, "1st": {}, "thumbnail": None})
-    except Exception:  # noqa: BLE001 - uszkodzone wspolrzedne nie psuja zapisu
-        return None
-
-
 def save_image(
     rgb8: np.ndarray,
     out_path: str,
@@ -74,6 +37,7 @@ def save_image(
     max_side: int | None = None,
     meta: PhotoMetadata | None = None,
     location: tuple[float, float] | None = None,
+    metadata: dict[str, str] | None = None,
 ) -> str:
     """Zapisuje obraz RGB uint8 jako JPEG, PNG lub TIFF (wg rozszerzenia)."""
     img = Image.fromarray(rgb8, mode="RGB")
@@ -94,9 +58,9 @@ def save_image(
         # zauwazyc, ze nic nie dostal. Blok metadanych podajemy wiec tylko
         # wtedy, gdy naprawde jest co zapisac.
         extra = {}
-        exif_bytes = _exif_bytes(location)
-        if exif_bytes:
-            extra["exif"] = exif_bytes
+        block = exif_bytes(metadata, location)
+        if block:
+            extra["exif"] = block
         img.save(out_path, "JPEG", quality=quality, subsampling=0, optimize=True, **extra)
     elif ext == ".png":
         img.save(out_path, "PNG", compress_level=6)

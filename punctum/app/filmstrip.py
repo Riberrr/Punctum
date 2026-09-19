@@ -10,6 +10,7 @@ from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import QListWidget, QListWidgetItem
 
 from .image_view import numpy_to_pixmap
+from .markers import LEGEND, caption
 
 THUMB_SIZE = QSize(150, 104)
 
@@ -40,12 +41,20 @@ class Filmstrip(QListWidget):
         self.setSpacing(2)
         self.setUniformItemSizes(True)
         self._edited: set[str] = set()
+        self._located: set[str] = set()
         self._thumbnails: dict[str, QIcon] = {}
+        self.setToolTip(LEGEND)
         self.currentItemChanged.connect(self._on_current_changed)
 
-    def set_paths(self, paths: list[str], edited: set[str] | None = None) -> None:
+    def set_paths(
+        self,
+        paths: list[str],
+        edited: set[str] | None = None,
+        located: set[str] | None = None,
+    ) -> None:
         self.clear()
         self._edited = set(edited or ())
+        self._located = set(located or ())
         # Miniatury przezywaja zmiane filtra formatow - te same pliki nie maja
         # powodu dekodowac sie drugi raz tylko dlatego, ze lista sie przepisala.
         self._thumbnails = {p: i for p, i in self._thumbnails.items() if p in set(paths)}
@@ -59,25 +68,48 @@ class Filmstrip(QListWidget):
             self.addItem(item)
 
     def _caption(self, path: str) -> str:
-        """Kropka przed nazwa znaczy: to zdjecie ma juz zapisane korekty.
+        """Znaczniki przed nazwa: zapisane poprawki i wspolrzedne.
 
         Bez tego dzielenie obrobki na dni nie ma sensu - po otwarciu katalogu
-        z 2000 zdjec trzeba widziec, gdzie sie skonczylo.
+        z 2000 zdjec trzeba widziec, gdzie sie skonczylo. Tak samo przy
+        geotagowaniu: z listy ma byc widac, ktore zdjecia czekaja na pinezke.
         """
-        name = os.path.basename(path)
-        return f"• {name}" if path in self._edited else name
+        return caption(
+            os.path.basename(path),
+            edited=path in self._edited,
+            located=path in self._located,
+        )
 
-    def set_edited(self, path: str, edited: bool) -> None:
-        """Zmienia znacznik przy jednym zdjeciu."""
-        if (path in self._edited) == edited:
-            return
-        self._edited.add(path) if edited else self._edited.discard(path)
+    def _refresh_caption(self, path: str) -> None:
         for row in range(self.count()):
             item = self.item(row)
             if item.data(Qt.UserRole) == path:
-                base = item.text().lstrip("• ")
-                item.setText(f"• {base}" if edited else base)
+                item.setText(self._caption(path))
                 return
+
+    def set_edited(self, path: str, edited: bool) -> None:
+        """Zmienia znacznik poprawek przy jednym zdjeciu."""
+        if (path in self._edited) == edited:
+            return
+        self._edited.add(path) if edited else self._edited.discard(path)
+        self._refresh_caption(path)
+
+    def set_located(self, path: str, located: bool) -> None:
+        """Zmienia znacznik wspolrzednych przy jednym zdjeciu."""
+        if (path in self._located) == located:
+            return
+        self._located.add(path) if located else self._located.discard(path)
+        self._refresh_caption(path)
+
+    def edited_paths(self) -> set[str]:
+        """Zdjecia oznaczone jako poprawione - lista w mapie pokazuje to samo."""
+        return set(self._edited)
+
+    def located_count(self) -> int:
+        return sum(
+            1 for row in range(self.count())
+            if self.item(row).data(Qt.UserRole) in self._located
+        )
 
     def edited_count(self) -> int:
         return sum(

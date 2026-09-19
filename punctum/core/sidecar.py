@@ -28,6 +28,7 @@ from __future__ import annotations
 import os
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from xml.sax.saxutils import escape
 
 from .loader import is_raw
 from .params import EditParams
@@ -151,6 +152,14 @@ def _lines(params: EditParams) -> list[str]:
             ("exif:GPSVersionID", "2.2.0.0"),
         ]
 
+    # Zmienione pola EXIF. To jedyne wartosci w calym sidecarze pochodzace
+    # wprost od uzytkownika, wiec jedyne, ktore moga zawierac cudzyslow,
+    # ampersand albo ostry nawias - i jedyne, ktore trzeba ucieczkowac.
+    for key, value in sorted((params.metadata or {}).items()):
+        text = str(value).strip()
+        if text:
+            fields.append((f"punctum:meta_{key}", escape(text, {'"': "&quot;"})))
+
     return [f'    {name}="{value}"' for name, value in fields]
 
 
@@ -255,6 +264,8 @@ def read_sidecar(photo_path: str) -> EditParams | None:
         except ValueError:
             temperature = None
 
+        meta_prefix = f"{{{PUNCTUM_NS}}}meta_"
+
         def coordinate(field: str) -> float | None:
             try:
                 return float(found[f"{{{PUNCTUM_NS}}}{field}"])
@@ -284,6 +295,11 @@ def read_sidecar(photo_path: str) -> EditParams | None:
             noise_color=number("NoiseColor", 25.0),
             latitude=coordinate("Latitude"),
             longitude=coordinate("Longitude"),
+            metadata={
+                name[len(meta_prefix):]: text
+                for name, text in found.items()
+                if name.startswith(meta_prefix)
+            },
         )
     return None
 

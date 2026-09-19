@@ -93,20 +93,36 @@ class InfoPanel(QFrame):
             widget.setWordWrap(True)
             layout.addWidget(widget)
 
-    def set_metadata(self, meta: PhotoMetadata | None) -> None:
+    def set_metadata(
+        self,
+        meta: PhotoMetadata | None,
+        location: tuple[float, float] | None = None,
+    ) -> None:
+        """Dane z pliku plus - jesli jest - lokalizacja nadana przez nas.
+
+        Bez tego drugiego panel mowilby "brak lokalizacji" o zdjeciu, ktore
+        na liscie ma juz znacznik wspolrzednych, a na mapie pinezke.
+        """
         widgets = (self.camera_label, self.settings_label, self.date_label, self.gps_label)
         if meta is None:
             for widget in widgets:
                 widget.setText("—")
+            if location is not None:
+                self.gps_label.setText(
+                    f"{location[0]:.5f}, {location[1]:.5f}  (nadana)"
+                )
             return
         self.camera_label.setText(meta.camera or "nieznany aparat")
         self.settings_label.setText(meta.summary())
         self.date_label.setText(
             meta.shot_at.strftime("%d.%m.%Y  %H:%M:%S") if meta.shot_at else "brak daty"
         )
-        self.gps_label.setText(
-            f"{meta.latitude:.5f}, {meta.longitude:.5f}" if meta.has_gps else "brak lokalizacji"
-        )
+        if location is not None:
+            self.gps_label.setText(f"{location[0]:.5f}, {location[1]:.5f}  (nadana)")
+        elif meta.has_gps:
+            self.gps_label.setText(f"{meta.latitude:.5f}, {meta.longitude:.5f}")
+        else:
+            self.gps_label.setText("brak lokalizacji")
 
 
 class EditPanel(QWidget):
