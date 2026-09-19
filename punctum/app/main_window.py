@@ -143,6 +143,22 @@ class MainWindow(QMainWindow):
 
         self._apply_settings()
 
+        # Mapa powstaje TERAZ, zanim okno zostanie pokazane - i jest to
+        # decyzja o migotaniu, nie o wydajnosci.
+        #
+        # QWebEngineView potrzebuje okna natywnego zdolnego do kompozycji
+        # OpenGL. Gdy pojawia sie w oknie, ktore juz stoi na ekranie, Qt
+        # przebudowuje cale okno najwyzszego poziomu - z zewnatrz wyglada to
+        # tak, jakby program na ulamek sekundy znikal i wracal. Zmierzone
+        # w tools/diag_zakladki.py: przy leniwej budowie uchwyt okna zmienia
+        # sie przy pierwszym wejsciu na zakladke (3477674 -> 3543210), przy
+        # budowie przed pokazaniem okna zostaje ten sam.
+        #
+        # Kosztuje to okolo 260 ms startu (2080 -> 2340 ms), ale dzieje sie
+        # zanim uzytkownik cokolwiek zobaczy. Maly widzet OpenGL zamiast mapy
+        # nie wystarcza - sprawdzone, okno i tak sie przebudowuje.
+        self._ensure_map()
+
     # ------------------------------------------------------------------ UI
 
     def _build_ui(self) -> None:
@@ -693,9 +709,14 @@ class MainWindow(QMainWindow):
         return locations
 
     def _ensure_map(self) -> MapView:
-        """Buduje mape przy pierwszym wejsciu na zakladke."""
+        """Buduje mape - normalnie przy starcie, przed pokazaniem okna.
+
+        Zostaje tu na wypadek, gdyby budowa przy starcie sie nie powiodla;
+        wtedy zakladka probuje jeszcze raz, a uzytkownik widzi komunikat.
+        """
         if self.map_view is None:
-            self.status.showMessage("Uruchamianie mapy…")
+            if self.isVisible():
+                self.status.showMessage("Uruchamianie mapy…")
             QApplication.setOverrideCursor(Qt.WaitCursor)
             try:
                 self.map_view = MapView()

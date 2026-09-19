@@ -79,10 +79,21 @@ def stage_open_map() -> None:
     wait_for(lambda: window.full_raw is not None, "wczytanie pierwszego zdjęcia")
     check("okno ma dwie zakladki", window.tabs.count() == 2,
           " / ".join(window.tabs.tabText(i) for i in range(window.tabs.count())))
-    check("mapa nie powstaje przed wejsciem na zakladke", window.map_view is None)
+    # Mapa stoi gotowa od startu. Nie jest to optymalizacja, tylko lekarstwo
+    # na migotanie: QWebEngineView dokladany do widocznego okna kaze Qt
+    # przebudowac cale okno (uchwyt sie zmienia, program na moment znika
+    # z ekranu). Dlatego pilnujemy obu rzeczy naraz.
+    check("mapa jest gotowa przed wejsciem na zakladke", window.map_view is not None)
+    before = int(window.winId())
     window.tabs.setCurrentIndex(1)
     app.processEvents()
-    check("zakladka zbudowala mape", window.map_view is not None)
+    check("zakladka pokazala mape", window.map_view is not None)
+    check("przejscie na mape nie przebudowuje okna",
+          int(window.winId()) == before,
+          f"{before} → {int(window.winId())}")
+    check("strona mapy ma ciemne tlo, nie biale",
+          window.map_view.web.page().backgroundColor().name() != "#ffffff",
+          window.map_view.web.page().backgroundColor().name())
     check("mapa dostala wszystkie zdjecia z katalogu",
           window.map_view.list.count() == len(window.paths) == len(sys.argv) - 1,
           f"{window.map_view.list.count()} pozycji, w katalogu {len(window.paths)}")

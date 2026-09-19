@@ -92,11 +92,19 @@ i JavaScript) przeniosła się bez zmian; zmienił się sposób rozmowy z Python
 **QWebChannel** zamiast kolejki komunikatów odpytywanej zegarem co 100 ms.
 Stara aplikacja importowała QWebChannel, ale go nie używała.
 
-Mapa powstaje dopiero przy pierwszym wejściu na zakładkę (433 ms) — silnik
-przeglądarki nie ma powodu wstawać przy każdym uruchomieniu programu, skoro
-większość sesji nie dotyka mapy. Bez internetu zakładka mówi wprost, czego
-brakuje, zamiast pokazywać szary prostokąt; lista zdjęć i usuwanie lokalizacji
-działają dalej.
+Mapa powstaje przy starcie programu, zanim okno pojawi się na ekranie — i jest
+to decyzja o **migotaniu**, nie o wydajności. Silnik przeglądarki potrzebuje
+okna natywnego zdolnego do kompozycji OpenGL; dołożony do okna, które już stoi
+na ekranie, każe Qt przebudować całe okno najwyższego poziomu. Wygląda to tak,
+jakby program na ułamek sekundy znikał i wracał. Widać to wprost po uchwycie
+okna: przy budowie leniwej zmieniał się przy pierwszym wejściu na zakładkę,
+przy budowie przed pokazaniem okna zostaje ten sam (`tools/diag_zakladki.py`).
+Kosztuje to ok. 260 ms startu (2080 → 2340 ms), ale dzieje się, zanim
+użytkownik cokolwiek zobaczy. Sam widżet OpenGL zamiast mapy nie wystarcza —
+sprawdzone, okno i tak się przebudowuje.
+
+Bez internetu zakładka mówi wprost, czego brakuje, zamiast pokazywać szary
+prostokąt; lista zdjęć i usuwanie lokalizacji działają dalej.
 
 ## Trwałość pracy
 

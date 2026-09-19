@@ -173,6 +173,9 @@ class MapView(QWidget):
         self.status.setWordWrap(True)
 
         self.web = QWebEngineView()
+        # Strona zaczyna zycie biala, a okno jest ciemne - bez tego wejscie
+        # na zakladke blyska bielą, zanim doleci pierwszy kafelek.
+        self.web.page().setBackgroundColor(QColor("#1e1e20"))
         self.bridge = MapBridge()
         channel = QWebChannel(self.web.page())
         channel.registerObject("bridge", self.bridge)
