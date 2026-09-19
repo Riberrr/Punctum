@@ -183,8 +183,10 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(self.histogram_widget)
         right_layout.addWidget(self.info_panel)
         right_layout.addWidget(self.edit_panel, 1)
-        right.setMinimumWidth(300)
-        right.setMaximumWidth(350)
+        # Stala szerokosc, nie zakres: przy zakresie rozwiniecie metadanych
+        # poszerzalo cala kolumne (i przesuwalo podglad zdjecia), bo panel
+        # prosil o wiecej miejsca niz suwaki.
+        right.setFixedWidth(340)
 
         self.before_button = QPushButton("Przed / po")
         self.before_button.setToolTip("Przytrzymaj, aby zobaczyć zdjęcie bez korekt")

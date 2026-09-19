@@ -47,7 +47,9 @@ class ExifPanel(QWidget):
 
         form_host = QWidget()
         form = QVBoxLayout(form_host)
-        form.setContentsMargins(0, 0, 0, 0)
+        # Margines od prawej: pola konczyly sie tuz przy pasku przewijania
+        # i kolumna wygladala na obcieta przy samej krawedzi okna.
+        form.setContentsMargins(0, 2, 10, 2)
         form.setSpacing(8)
 
         for group in GROUPS:
@@ -59,6 +61,8 @@ class ExifPanel(QWidget):
             grid.setSpacing(4)
             grid.setLabelAlignment(Qt.AlignLeft)
             grid.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
+            # Waskiej kolumnie wolno zlamac wiersz, zamiast rozpychac panel.
+            grid.setRowWrapPolicy(QFormLayout.WrapLongRows)
             for field in (f for f in FIELDS if f.group == group):
                 grid.addRow(field.label, self._editor(field))
             form.addLayout(grid)
@@ -73,6 +77,11 @@ class ExifPanel(QWidget):
         self.scroll.setWidget(form_host)
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QScrollArea.NoFrame)
+        # Panel nie ma prawa poszerzac kolumny, w ktorej stoi: w Edycji
+        # rozwiniecie metadanych rozpychalo caly prawy panel, a razem z nim
+        # przesuwalo podglad zdjecia.
+        self.scroll.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Expanding)
+        self.scroll.setMinimumWidth(0)
 
         self.all_button = QPushButton("Wszystkie tagi")
         self.all_button.setCheckable(True)
@@ -106,13 +115,15 @@ class ExifPanel(QWidget):
 
         self.table = QWidget()
         self.table_layout = QGridLayout(self.table)
-        self.table_layout.setContentsMargins(0, 0, 0, 0)
+        self.table_layout.setContentsMargins(0, 2, 10, 2)
         self.table_layout.setHorizontalSpacing(10)
         self.table_layout.setVerticalSpacing(2)
         self.table_scroll = QScrollArea()
         self.table_scroll.setWidget(self.table)
         self.table_scroll.setWidgetResizable(True)
         self.table_scroll.setFrameShape(QScrollArea.NoFrame)
+        self.table_scroll.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Expanding)
+        self.table_scroll.setMinimumWidth(0)
         self.table_scroll.hide()
 
         layout = QVBoxLayout(self)

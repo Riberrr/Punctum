@@ -184,9 +184,18 @@ def stage_metadane() -> None:
              "wczytanie JPEG-a")
 
     # Strzalka w sekcji z danymi zdjecia rozwija metadane w dol.
+    column = window.info_panel.parentWidget()
+    before_width = column.width()
+    before_view = window.view.width()
     window.info_panel.details_button.click()
     app.processEvents()
     check("strzalka rozwija metadane", window.exif_panel.isVisible())
+    check("rozwiniecie nie poszerza prawej kolumny",
+          column.width() == before_width,
+          f"{before_width} → {column.width()} px")
+    check("podglad zdjecia nie przeskakuje",
+          window.view.width() == before_view,
+          f"{before_view} → {window.view.width()} px")
     check("i zmienia sie na zwijajaca",
           window.info_panel.details_button.text() == "▴",
           window.info_panel.details_button.text())
