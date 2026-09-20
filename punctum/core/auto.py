@@ -17,8 +17,8 @@ dokladnie ten sam blad, co swiatlomierz zamieniajacy snieg w szarosc.
 daja sie ustawic raz i dzialaja na kazdym zdjeciu. Sam obraz liczymy oczywiscie
 dalej liniowo - L\\* sluzy wylacznie do podejmowania decyzji.
 
-Kalibracja: progi dobrano tak, zeby wynik pokrywal sie z przyciskiem
-"Automatycznie" w Lightroomie na zdjeciach referencyjnych, a jednoczesnie
+Kalibracja: progi dobrano tak, zeby wynik zgadzal sie z komercyjnym punktem
+odniesienia na zdjeciach referencyjnych, a jednoczesnie
 przechodzil testy na obrazach o znanych wlasciwosciach (karta szarosci, klin
 stopniowy, sceny skrajnych kluczy) - patrz tools/test_auto_zasady.py.
 """

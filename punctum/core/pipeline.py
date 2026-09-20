@@ -133,7 +133,10 @@ def linear_to_srgb(img: np.ndarray) -> np.ndarray:
 
 
 def apply_saturation(img: np.ndarray, saturation: float, vibrance: float) -> np.ndarray:
-    """Nasycenie i jaskrawosc, liczone juz po krzywej - jak w Lightroomie."""
+    """Nasycenie i jaskrawosc, liczone juz po krzywej przenoszenia.
+
+    Na danych liniowych ta sama operacja podbijalaby szum w cieniach.
+    """
     if abs(saturation) < 1e-6 and abs(vibrance) < 1e-6:
         return img
 

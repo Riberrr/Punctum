@@ -23,7 +23,8 @@ from .sliders import TEMPERATURE_STOPS, TINT_STOPS, ParamSlider, WheelGuard
 
 
 class HistogramWidget(QFrame):
-    """Histogram trzech kanalow, rysowany jak w Lightroomie - warstwami."""
+    """Histogram trzech kanalow rysowany warstwami: kanaly nakladaja sie na
+    siebie, wiec widac i kazdy z osobna, i ich sume."""
 
     CHANNEL_COLORS = (QColor(230, 70, 70), QColor(70, 210, 90), QColor(80, 130, 245))
 

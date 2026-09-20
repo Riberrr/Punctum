@@ -4,6 +4,59 @@ Nieniszczący edytor zdjęć RAW i JPEG. Python 3.14 + PySide6, venv w `.venv`.
 Pełny opis programu jest w `README.md`; poniżej tylko to, czego trzeba się
 trzymać przy zmianach w kodzie.
 
+## Tryb pracy: najpierw ustalenia, potem kod
+
+**Nie zaczynaj pisać kodu, dopóki użytkownik nie powie wyraźnie: „piszemy kod".**
+Do tego momentu trwa ustalanie zakresu — i to nie jest formalność, tylko
+najtańszy moment na decyzje. Poprawka wyglądu wprowadzona po fakcie kosztuje
+pełny cykl (edycje, testy, commit); ta sama decyzja podjęta wcześniej kosztuje
+jedno zdanie.
+
+Przed sygnałem **wolno**: czytać pliki i notatki, szukać w kodzie, uruchamiać
+pomiary i diagnostykę tylko do odczytu, pokazywać zrzuty i warianty.
+Przed sygnałem **nie wolno**: zmieniać plików w repozytorium, commitować,
+pisać „na szybko, żeby pokazać".
+
+Ustalenia spisujemy jako kartę punktu:
+
+```
+PUNKT n — nazwa
+Problem:        co dziś boli, w jednym zdaniu
+Oczekiwanie:    jak ma być po zmianie
+Gotowe, gdy:    2-4 sprawdzalne warunki
+Nie ruszamy:    co zostaje jak jest
+Decyzje:        rozstrzygniete z gory, zeby nie pytac w trakcie
+Otwarte:        co zdecydujemy, patrzac na wynik
+```
+
+Pytania zadawać **hurtem, do czterech naraz i tylko te, których zła odpowiedź
+kosztuje przeróbkę** — nie pojedynczo, bo każda runda pytań kosztuje tyle, co
+przeczytanie całej rozmowy. O rzeczy obojętne nie pytać: wybrać samemu
+i napisać, co się wybrało. Karta trafia do notatek projektu dopiero wtedy, gdy
+jest kompletna.
+
+**Kolejność: najpierw pytanie, potem czytanie kodu** — o ile odpowiedź zmienia
+to, CO trzeba przeczytać. Przeczytany plik zostaje w kontekście do końca sesji
+i dolicza się do każdej następnej rundy; niepotrzebnie otwarty moduł kosztuje
+wielokrotnie więcej niż jedno zdanie pytania. Jeśli opis zadania ma dziurę,
+powiedzieć o niej od razu, zamiast zgadywać i czytać „na wszelki wypadek".
+
+Odwrotnie, gdy pytanie dotyczy samego kodu („jak to jest dziś zrobione") albo
+gdy rozstrzyga je jeden pomiar — wtedy sprawdzić, a nie pytać. Pytanie
+o fakty z repozytorium to przerzucanie własnej roboty na użytkownika.
+
+Lista dziur do sprawdzenia w każdym zadaniu: cel, czego NIE ruszamy, kryterium
+gotowości, wygląd i umiejscowienie (gdy dotyczy interfejsu), zachowanie
+w sytuacjach brzegowych, wpływ na sidecar, eksport i testy.
+
+Przy usterkach interfejsu **prosić o zrzut z ponumerowanymi zaznaczeniami**,
+najlepiej wycinek samego fragmentu okna, plus jedna linia tekstu na numer.
+Obrazek mówi GDZIE, tekst mówi CO ma być inaczej — samo jedno albo drugie
+kończy się zgadywaniem i przeróbką. Usterek dynamicznych (miganie, kolejność
+zdarzeń, co się dzieje po kliknięciu) zrzut nie pokaże: tam liczy się opis
+objawu, a rozstrzyga pomiar. Zrzuty „po zmianie" robimy sami
+(`window.grab().save(...)` w tescie), nie prosimy o nie uzytkownika.
+
 ## Prywatność — repozytorium jest publiczne
 
 Nigdy nie wstawiać do plików repozytorium ścieżek z dysku użytkownika, nazw

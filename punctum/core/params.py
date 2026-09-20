@@ -2,8 +2,9 @@
 
 Cala edycja jest nieniszczaca: ten obiekt to komplet nastaw, ktore
 opisuja, jak z surowego pliku RAW powstaje obraz wyjsciowy.
-Zakresy suwakow celowo naslaguja Lightrooma, zeby przenoszenie
-ustawien miedzy programami bylo intuicyjne.
+Zakresy suwakow sa takie, jakie w programach do obrobki RAW sa przyjete
+(-100..+100, ekspozycja w dzialkach EV) - fotograf nie musi uczyc sie ich
+od nowa.
 """
 
 from __future__ import annotations

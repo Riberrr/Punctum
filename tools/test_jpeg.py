@@ -101,14 +101,14 @@ with tempfile.TemporaryDirectory() as tmp:
           int(np.abs(same.astype(np.int16) - output.astype(np.int16)).max()) <= 1,
           f"{int(np.abs(same.astype(np.int16) - output.astype(np.int16)).max())} poziomu")
 
-    # Kierunek jak w Lightroomie: suwak mowi, JAKIE bylo swiatlo. Wpisanie
+    # Kierunek suwaka: mowi, JAKIE bylo swiatlo. Wpisanie
     # niskiej wartosci znaczy "to swiatlo bylo cieple", wiec program odejmuje
     # ciepla i zdjecie robi sie chlodniejsze. Suwak w lewo = blekit.
     low = develop(photo, EditParams(temperature=3200.0), denoise=False)
     high = develop(photo, EditParams(temperature=12000.0), denoise=False)
     low_ratio = float(low[..., 0].mean()) / max(float(low[..., 2].mean()), 1e-6)
     high_ratio = float(high[..., 0].mean()) / max(float(high[..., 2].mean()), 1e-6)
-    check("kierunek suwaka zgodny z Lightroomem (w lewo = błękit)",
+    check("kierunek suwaka: nizsze kelwiny chlodza obraz (w lewo = błękit)",
           low_ratio < high_ratio,
           f"czerwien/blekit: {low_ratio:.2f} przy 3200 K, {high_ratio:.2f} przy 12000 K")
 

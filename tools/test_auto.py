@@ -1,4 +1,4 @@
-"""Porownanie automatycznej korekcji z tym, co proponuje Lightroom."""
+"""Porownanie automatycznej korekcji z punktem odniesienia przy kalibracji."""
 
 import os
 import sys
@@ -8,8 +8,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from punctum.core import auto_tone, develop, load_raw
 
-# wartosci odczytane ze zrzutu ekranu Lightrooma dla tego samego pliku
-LIGHTROOM = {
+# wartosci odniesienia odczytane z komercyjnego programu, dla tego pliku
+ODNIESIENIE = {
     "01158845": dict(exposure=1.00, contrast=6, highlights=-47,
                      shadows=57, whites=9, blacks=-8, vibrance=15),
 }
@@ -23,9 +23,9 @@ for path in sys.argv[1:]:
     elapsed = (time.perf_counter() - t) * 1000
 
     print(f"\n{stem}   (balans bieli {raw.as_shot_temp:.0f} K, analiza {elapsed:.0f} ms)")
-    reference = LIGHTROOM.get(stem)
+    reference = ODNIESIENIE.get(stem)
     if reference:
-        print(f"  {'parametr':<14}{'nasze':>8}{'Lightroom':>12}{'roznica':>10}")
+        print(f"  {'parametr':<14}{'nasze':>8}{'odniesienie':>12}{'roznica':>10}")
         for key, value in result.items():
             ref = reference.get(key)
             if ref is None:

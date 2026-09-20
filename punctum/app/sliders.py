@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-# Kierunek gradientow jest taki jak w Lightroomie: suwak pokazuje, w ktora
+# Kierunek gradientow wynika z tego, co suwak opisuje: pokazuje, w ktora
 # strone pojdzie ZDJECIE, a nie jaki jest kolor swiatla. Dlatego przesuniecie
 # w prawo (wyzsza temperatura barwowa swiatla) ociepla obraz.
 TEMPERATURE_STOPS = [

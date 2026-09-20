@@ -54,8 +54,8 @@ def temp_tint_to_xy(temp_k: float, tint: float) -> tuple[float, float]:
     """Kelwiny + odcien -> CIE xy.
 
     Odcien przesuwa punkt bieli prostopadle do krzywej Plancka
-    (dodatni = w strone magenty, ujemny = w strone zieleni), tak jak
-    robia to Lightroom i darktable.
+    (dodatni = w strone magenty, ujemny = w strone zieleni) - taka jest
+    konwencja w programach do obrobki RAW.
     """
     x, y = kelvin_to_xy(temp_k)
     if abs(tint) < 1e-9:
@@ -94,7 +94,7 @@ def estimate_temp_tint(cam_xyz: np.ndarray, cam_wb: np.ndarray) -> tuple[float, 
     """Odtwarza temperature i odcien z mnoznikow zapisanych przez aparat.
 
     Aparat zapisuje tylko mnozniki, nie kelwiny - zeby pokazac uzytkownikowi
-    "6100 K" tak jak Lightroom, trzeba przeszukac krzywa Plancka i znalezc
+    "6100 K", trzeba przeszukac krzywa Plancka i znalezc
     temperature, ktora daje najbardziej zblizone mnozniki.
     """
     target = np.asarray(cam_wb, dtype=np.float64)[:3]

@@ -56,7 +56,7 @@ class PhotoMetadata:
         return self.latitude is not None and self.longitude is not None
 
     def summary(self) -> str:
-        """Jednolinijkowy opis do paska informacji, jak w Lightroomie."""
+        """Jednolinijkowy opis do paska informacji: ogniskowa, czas, przyslona, ISO."""
         return "  ".join(
             (self.focal_text, self.shutter_text, self.aperture_text, self.iso_text)
         )

@@ -38,7 +38,7 @@ Dwuklik na suwaku przywraca wartość domyślną.
 
 **Automatyczna korekcja** — przycisk *Automatycznie* dobiera parametry tonalne
 z analizy histogramu. Wyniki pokrywają się z przyciskiem *Automatycznie*
-w Lightroomie z dokładnością do kilku punktów (patrz niżej).
+w komercyjnym programie, który służył za punkt odniesienia, z dokładnością do kilku punktów (patrz niżej).
 
 **Kadrowanie** — przycisk *Kadruj* (skrót `R`). Ciągnięcie za krawędzie i rogi
 zmienia kadr, `Shift` zachowuje proporcje, ciągnięcie poza kadrem obraca
@@ -141,7 +141,7 @@ wciąż czekają na pinezkę.
 
 W pliku XMP są dwa komplety wartości. Pola `crs:` to te same nazwy, których
 używa Camera Raw — inny program coś z nich odczyta. Zgodność jest jednak tylko
-częściowa, bo nasze suwaki nie odpowiadają jeden do jednego lightroomowym, więc
+częściowa, bo nasze suwaki nie odpowiadają jeden do jednego tamtym, więc
 traktujemy je jako grzeczność, a nie źródło prawdy. Pola `punctum:` to nasze
 dokładne wartości i to z nich czytamy.
 
@@ -151,7 +151,7 @@ Dwie decyzje warte uwagi:
   w innym programie, nasze nastawy idą do `<nazwa>.punctum.xmp`. Dodatkowy plik
   jest mniejszym złem niż skasowana cudza praca.
 - **Cudzych nastaw nie podstawiamy pod suwaki.** Wczytanie sidecara
-  z Lightrooma wyglądałoby jak przeniesienie edycji, a po cichu zmieniałoby
+  z innego programu wyglądałoby jak przeniesienie edycji, a po cichu zmieniałoby
   zdjęcie — te same liczby znaczą u nas co innego.
 
 Funkcję można wyłączyć w `Plik ▸ Ustawienia… ▸ Eksport ▸ Ogólne`. Menu `Plik`
@@ -298,7 +298,7 @@ ekspozycja                     │ wszystko na danych LINIOWYCH
 biele / czernie                │
 kontrast                       ┘
 krzywa przenoszenia sRGB       ← dopiero tutaj gamma
-nasycenie / jaskrawość         ← po krzywej, jak w Lightroomie
+nasycenie / jaskrawość         ← po krzywej, nie na danych liniowych
 redukcja szumu
 ```
 
@@ -323,7 +323,7 @@ ani wielkości pliku. Zmierzony zysk ostrości względem rozciągniętego proxy:
 
 Aparat zapisuje wyłącznie mnożniki kanałów, nie temperaturę barwową. Żeby
 pokazać „7110 K", `estimate_temp_tint()` przeszukuje krzywą Plancka i znajduje
-temperaturę dającą najbardziej zbliżone mnożniki. Lightroom dla tego samego
+temperaturę dającą najbardziej zbliżone mnożniki. Program odniesienia dla tego samego
 pliku pokazuje 7100 K.
 
 Poprawność macierzy potwierdza `tools/verify_color.py` — mnożniki policzone
@@ -397,9 +397,10 @@ Najważniejszy jest ostatni: scena nocna zestawiona ze zwykłym zdjęciem
 niedoświetlonym o 4 EV. Mediany różnią się o niecałą jednostkę L\*, a korekty
 o dwie działki — bo o decyzji nie stanowi jasność mediany, tylko układ sceny.
 
-Porównanie z Lightroomem na pliku referencyjnym:
+Porównanie z komercyjnym punktem odniesienia na pliku referencyjnym
+(kalibracja metody, nie cel do naśladowania):
 
-| parametr | Punctum | Lightroom |
+| parametr | Punctum | odniesienie |
 |---|---:|---:|
 | ekspozycja | +1,22 | +1,00 |
 | kontrast | +7 | +6 |
