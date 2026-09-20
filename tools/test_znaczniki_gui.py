@@ -30,6 +30,8 @@ app.setQuitOnLastWindowClosed(False)
 from PySide6.QtCore import QRectF, Qt  # noqa: E402
 from PySide6.QtGui import QPainter, QPixmap  # noqa: E402
 
+from wspolne import lancuch, wypisz  # noqa: E402
+
 from punctum.app import MainWindow  # noqa: E402
 from punctum.app.markers import EDIT_ROLE, GEO_ROLE, paint_pin  # noqa: E402
 from punctum.core.exif_edit import current_values, is_writable_format  # noqa: E402
@@ -305,20 +307,16 @@ def stage_zapis() -> None:
               window.exif_panel.problem.text()[:70])
 
     window.grab().save(os.path.join("out", "znaczniki_okno.png"))
-    report()
+
+
+KOD = 0
 
 
 def report() -> None:
+    global KOD
     # Sprzatanie w finally - wywrocony wydruk nie ma prawa zawiesic testu.
     try:
-        print(f"\n{'test':<54}{'wynik':>8}   szczegoly", flush=True)
-        print("-" * 110, flush=True)
-        failures = 0
-        for name, ok, detail in results:
-            failures += 0 if ok else 1
-            print(f"{name:<54}{'OK' if ok else 'BLAD':>8}   {detail}", flush=True)
-        print(f"\n{len(results) - failures} / {len(results)} testow przeszlo",
-              flush=True)
+        KOD = wypisz(results, szerokosc=54)
     finally:
         window.close()
         window.pool.waitForDone(5000)  # inaczej watek wraca do skasowanego okna
@@ -329,24 +327,9 @@ def report() -> None:
         app.quit()
 
 
-def guarded(function):
-    def wrapper() -> None:
-        import traceback
-        try:
-            function()
-        except Exception:
-            print(f"\nWYJATEK w {function.__name__}:", flush=True)
-            traceback.print_exc()
-            sys.stdout.flush()
-            report()
-    return wrapper
-
-
 os.makedirs("out", exist_ok=True)
-QTimer.singleShot(5000, guarded(stage_czyste))
-QTimer.singleShot(9000, guarded(stage_lokalizacja))
-QTimer.singleShot(11000, guarded(stage_metadane))
-QTimer.singleShot(17000, guarded(stage_mapa))
-QTimer.singleShot(21000, guarded(stage_zapis))
+lancuch(app, [stage_czyste, stage_lokalizacja, stage_metadane,
+              stage_mapa, stage_zapis], report)
 
-sys.exit(app.exec())
+app.exec()
+sys.exit(KOD)

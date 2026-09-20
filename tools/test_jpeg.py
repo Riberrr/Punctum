@@ -175,9 +175,6 @@ if folder and os.path.isdir(folder):
     if real:
         check("prawdziwe JPEG-i wczytuja sie i licza", ok_all)
 
-print(f"\n{'test':<52}{'wynik':>8}   szczegoly")
-print("-" * 100)
-failures = sum(0 if ok else 1 for _, ok, _ in results)
-for name, ok, detail in results:
-    print(f"{name:<52}{'OK' if ok else 'BLAD':>8}   {detail}")
-print(f"\n{len(results) - failures} / {len(results)} testow przeszlo")
+from wspolne import wypisz  # noqa: E402  (test jest skryptem, nie modulem)
+
+sys.exit(wypisz(results))

@@ -508,8 +508,14 @@ tools/               narzędzia diagnostyczne, testy i CLI
 ## Testy
 
 ```powershell
-tools\testy.bat "C:\Zdjęcia\Wycieczka"
+tools\testy.bat --szybkie                 # same testy bez interfejsu, ~5 s
+tools\testy.bat "C:\Zdjęcia\Wycieczka"    # cała seria, 182 sprawdzenia, ~37 s
+tools\testy.bat "C:\Zdjęcia\Wycieczka" --pelny   # z pełnymi tabelami wyników
 ```
+
+Domyślnie każdy test wypisuje tylko to, co nie przeszło, i jedną linię
+podsumowania — kod wyjścia równa się liczbie błędów, więc seria przerywa po
+pierwszym nieudanym teście zamiast mielić resztę.
 
 Testy bez interfejsu (tor tonalny, automat, JPEG, sidecary, metadane) idą zawsze
 i nie potrzebują niczego poza repozytorium. Testy z interfejsem otwierają
@@ -519,7 +525,9 @@ stałe zmienną `PUNCTUM_TESTY`; bez niego seria po prostu pomija tę część.
 
 Testy z interfejsem czekają na **warunek**, nie na ustalony czas — obciążona
 maszyna potrafiła kiedyś nie zdążyć wczytać zdjęcia w wyznaczonych sekundach
-i seria wywracała się przy poprawnym kodzie.
+i seria wywracała się przy poprawnym kodzie. Z tego samego powodu etapy testu
+idą łańcuchem: kolejny rusza, gdy poprzedni wróci, a nie o wyznaczonej
+sekundzie. Sama ta zmiana skróciła serię ze 105 do 37 sekund.
 
 ## Czego jeszcze nie ma
 

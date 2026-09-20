@@ -29,17 +29,31 @@ git ls-files | ForEach-Object { Select-String -Path $_ -Pattern 'D:\\|C:\\Users\
 ## Uruchamianie i testy
 
 ```powershell
-python -m punctum "C:\Zdjęcia\Wycieczka"      # albo Punctum.bat
-tools\testy.bat "C:\Zdjęcia\Wycieczka"        # cała seria, 182 sprawdzenia
+python -m punctum "C:\Zdjęcia\Wycieczka"              # albo Punctum.bat
+tools\testy.bat --szybkie                             # bez interfejsu, ~5 s
+tools\testy.bat "C:\Zdjęcia\Wycieczka"                # cała seria, ~37 s
+tools\testy.bat "C:\Zdjęcia\Wycieczka" --pelny        # z pełnymi tabelami
+.venv\Scripts\python.exe tools\test_exif.py           # pojedynczy obszar
 ```
+
+Domyślnie każdy test wypisuje tylko to, co nie przeszło, i jedną linię
+podsumowania; kod wyjścia to liczba błędów, więc seria przerywa po pierwszej
+przegranej. W trakcie pracy puszczać `--szybkie` plus test obszaru, który się
+rusza; całą serię raz, przed commitem. Przy zmianach w dokumentacji testy nie
+są potrzebne.
 
 Testy bez interfejsu nie potrzebują zdjęć. Testy z interfejsem otwierają
 prawdziwe okno i potrzebują katalogu z co najmniej jednym RAW-em i dwoma
 JPEG-ami; pliki dobiera `tools/wybierz_zdjecia.py`.
 
+Wspólne części testów (raport, czekanie na warunek, łańcuch etapów) siedzą
+w `tools/wspolne.py` — nowy test korzysta z nich, zamiast kopiować swoje.
+
 Pisząc test z interfejsem:
 
-- czekać na **warunek** (`wait_for(...)`), nigdy na ustaloną liczbę sekund —
+- etapy spinać `lancuch(app, [etap1, etap2, ...], report)`, nigdy budzikiem
+  `QTimer.singleShot(5000, ...)` — test ma trwać tyle, ile trwa praca,
+- czekać na **warunek** (`czekaj(app, ...)`), nigdy na ustaloną liczbę sekund —
   obciążona maszyna wywracała testy przy poprawnym kodzie,
 - zaślepić zapis ustawień (`window.settings.save = lambda *a, **k: True`) —
   inaczej test zapisuje swoje wartości do prawdziwych ustawień użytkownika,

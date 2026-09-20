@@ -19,6 +19,15 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import wspolne  # noqa: E402  - przestawia wydruk na UTF-8 (konsola w cp1250)
+
+# Ten test wypisuje po drodze duze tabele diagnostyczne (sceny, pomiary).
+# Sa cenne, gdy sie w nim grzebie, i zbedne przy zwyklym przebiegu serii,
+# wiec domyslnie milkna - `--pelny` je przywraca razem z tabela wynikow.
+if not wspolne.PELNY:
+    def print(*args, **kwargs):  # noqa: A001 - swiadome przeslonienie
+        pass
+
 from punctum.core.auto import (  # noqa: E402
     analyse_image,
     auto_tone_from,
@@ -202,11 +211,6 @@ check("L* 50 odpowiada szarości 18 %", abs(lstar_to_linear(50.0) - 0.184) < 0.0
 check("konwersja L* jest odwracalna",
       abs(float(linear_to_lstar(lstar_to_linear(72.0))) - 72.0) < 0.01)
 
-print()
-print(f"{'test':<50}{'wynik':>8}   szczegóły")
-print("-" * 96)
-failures = 0
-for name, ok, detail in results:
-    failures += 0 if ok else 1
-    print(f"{name:<50}{'OK' if ok else 'BŁĄD':>8}   {detail}")
-print(f"\n{len(results) - failures} / {len(results)} testów przeszło")
+from wspolne import wypisz  # noqa: E402  (test jest skryptem, nie modulem)
+
+sys.exit(wypisz(results, szerokosc=50))

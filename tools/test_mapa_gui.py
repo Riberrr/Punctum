@@ -27,6 +27,8 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 app = QApplication(sys.argv)
 app.setQuitOnLastWindowClosed(False)  # test sam zamyka okno w srodku
 
+from wspolne import lancuch, wypisz  # noqa: E402
+
 from punctum.app import MainWindow  # noqa: E402
 from punctum.app.markers import GEO_ROLE  # noqa: E402
 from punctum.core.settings import settings_path  # noqa: E402
@@ -206,42 +208,46 @@ def stage_verify() -> None:
 
     # Zrzut ekranu widoku sieciowego wychodzi bialy, wiec o stan mapy pytamy
     # sama strone: ile kafelkow naprawde sie wczytalo i ile jest pinezek.
+    # Odpowiedz przychodzi wywolaniem zwrotnym, wiec etap na nia czeka -
+    # inaczej lancuch etapow zdazylby zamknac program przed odpowiedzia.
     if view.has_map:
         view.web.page().runJavaScript("window.mapState()", _on_state)
-    else:
-        report()
+        wait_for(lambda: odpowiedziala, "odpowiedź strony o stanie mapy", 8000)
+
+
+odpowiedziala = False
 
 
 def _on_state(raw) -> None:
+    global odpowiedziala
+    odpowiedziala = True
     import json as _json
     try:
         state = _json.loads(raw)
     except Exception:  # noqa: BLE001
         check("mapa odpowiedziala o swoim stanie", False, repr(raw)[:80])
-        report()
         return
-    print(f"\nstan mapy: {state}")
+    print(f"stan mapy: {state}")
     check("kafelki mapy naprawde sie wczytaly", state.get("tiles", 0) > 0,
           f"{state.get('tiles')} kafelkow")
     check("pinezka zostala po usunieciu jednej z dwoch",
           state.get("markers") == 1, f"{state.get('markers')} pinezek")
-    report()
+
+
+KOD = 0
 
 
 def report() -> None:
+    global KOD
     # Sprzatanie idzie w finally: gdy sam wydruk sie wywroci (a potrafi, patrz
     # strona kodowa konsoli), test ma sie skonczyc, a nie wisiec do rana.
     try:
-        print(f"\n{'test':<52}{'wynik':>8}   szczegoly", flush=True)
-        print("-" * 110, flush=True)
-        failures = 0
-        for name, ok, detail in results:
-            failures += 0 if ok else 1
-            print(f"{name:<52}{'OK' if ok else 'BLAD':>8}   {detail}", flush=True)
-        print(f"\n{len(results) - failures} / {len(results)} testow przeszlo",
-              flush=True)
+        KOD = wypisz(results)
     finally:
-        for opened in second:
+        # Watki wczytujace zdjecia musza skonczyc, zanim zniknie okno -
+        # inaczej sygnal wraca do skasowanego obiektu i Qt krzyczy na stderr.
+        for opened in [window, *second]:
+            opened.pool.waitForDone(4000)
             opened.close()
         shutil.rmtree(workspace, ignore_errors=True)
         if BACKUP is not None:
@@ -250,25 +256,9 @@ def report() -> None:
         app.quit()
 
 
-def guarded(function):
-    def wrapper() -> None:
-        import traceback
-        try:
-            function()
-        except Exception:
-            print(f"\nWYJATEK w {function.__name__}:", flush=True)
-            traceback.print_exc()
-            sys.stdout.flush()
-            report()
-    return wrapper
-
-
 os.makedirs("out", exist_ok=True)
-QTimer.singleShot(5000, guarded(stage_open_map))
-QTimer.singleShot(9000, guarded(stage_assign))
-QTimer.singleShot(11000, guarded(stage_slider))
-QTimer.singleShot(15000, guarded(stage_slider_check))
-QTimer.singleShot(17000, guarded(stage_reopen))
-QTimer.singleShot(25000, guarded(stage_verify))
+lancuch(app, [stage_open_map, stage_assign, stage_slider,
+              stage_slider_check, stage_reopen, stage_verify], report)
 
-sys.exit(app.exec())
+app.exec()
+sys.exit(KOD)

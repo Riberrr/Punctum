@@ -24,6 +24,8 @@ app = QApplication(sys.argv)
 # zamkniecie ostatniego okna za koniec programu i test konczy sie w polowie.
 app.setQuitOnLastWindowClosed(False)
 
+from wspolne import lancuch, wypisz  # noqa: E402
+
 from punctum.app import MainWindow  # noqa: E402
 from punctum.app.markers import EDIT_ROLE  # noqa: E402
 from punctum.core.settings import settings_path  # noqa: E402
@@ -162,17 +164,14 @@ def stage_verify_sliders() -> None:
           workspace in fresh.settings.recent_folders,
           str(fresh.settings.recent_folders[:2]))
     fresh.grab().save(os.path.join("out", "trwalosc_okno.png"))
-    report()
+
+
+KOD = 0
 
 
 def report() -> None:
-    print(f"\n{'test':<52}{'wynik':>8}   szczegoly", flush=True)
-    print("-" * 110, flush=True)
-    failures = 0
-    for name, ok, detail in results:
-        failures += 0 if ok else 1
-        print(f"{name:<52}{'OK' if ok else 'BLAD':>8}   {detail}", flush=True)
-    print(f"\n{len(results) - failures} / {len(results)} testow przeszlo", flush=True)
+    global KOD
+    KOD = wypisz(results)
 
     for opened in second:
         opened.close()
@@ -185,24 +184,9 @@ def report() -> None:
     app.quit()
 
 
-def guarded(function):
-    def wrapper() -> None:
-        import traceback
-        try:
-            function()
-        except Exception:
-            print(f"\nWYJATEK w {function.__name__}:", flush=True)
-            traceback.print_exc()
-            sys.stdout.flush()
-            report()
-    return wrapper
-
-
 os.makedirs("out", exist_ok=True)
-QTimer.singleShot(5000, guarded(stage_edit))
-QTimer.singleShot(9000, guarded(stage_disk))
-QTimer.singleShot(11000, guarded(stage_reopen))
-QTimer.singleShot(17000, guarded(stage_verify_list))
-QTimer.singleShot(21000, guarded(stage_verify_sliders))
+lancuch(app, [stage_edit, stage_disk, stage_reopen,
+              stage_verify_list, stage_verify_sliders], report)
 
-sys.exit(app.exec())
+app.exec()
+sys.exit(KOD)

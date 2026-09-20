@@ -14,10 +14,11 @@ import shutil
 import sys
 import tempfile
 
-from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from wspolne import czekaj, lancuch, wypisz  # noqa: E402
 
 app = QApplication(sys.argv)
 
@@ -56,6 +57,8 @@ def select_format(key: str) -> None:
 
 
 def stage_list() -> None:
+    czekaj(app, lambda: window.filmstrip.count() == len(raw_files) + len(jpeg_files),
+           "lista zdjęć w pasku miniatur")
     check("katalog pokazuje oba formaty naraz",
           window.filmstrip.count() == len(raw_files) + len(jpeg_files),
           f"{window.filmstrip.count()} pozycji")
@@ -84,7 +87,8 @@ def stage_jpeg() -> None:
     """Otwiera JPEG-a i sprawdza, co panel o nim mowi."""
     target = next(p for p in window.paths if is_jpeg(p))
     window.filmstrip.setCurrentRow(window.paths.index(target))
-    app.processEvents()
+    czekaj(app, lambda: window.current_path == target and window.full_raw is not None,
+           "wczytanie JPEG-a")
 
 
 def stage_jpeg_check() -> None:
@@ -99,6 +103,10 @@ def stage_jpeg_check() -> None:
 
 
 def stage_auto_check() -> None:
+    czekaj(app,
+           lambda: abs(window.edit_panel.sliders["exposure"].value()) > 1e-6
+           or abs(window.edit_panel.sliders["contrast"].value()) > 1e-6,
+           "wynik automatu na suwakach", 15000)
     exposure = window.edit_panel.sliders["exposure"].value()
     contrast = window.edit_panel.sliders["contrast"].value()
     check("automat dziala na JPEG-u", abs(exposure) > 1e-6 or abs(contrast) > 1e-6,
@@ -108,7 +116,10 @@ def stage_auto_check() -> None:
     target = next((p for p in window.paths if not is_jpeg(p)), None)
     if target is not None:
         window.filmstrip.setCurrentRow(window.paths.index(target))
-        app.processEvents()
+        czekaj(app,
+               lambda: window.full_raw is not None
+               and window.full_raw.source_format != "jpeg",
+               "wczytanie RAW-a")
 
 
 def stage_raw_check() -> None:
@@ -116,41 +127,24 @@ def stage_raw_check() -> None:
     check("przy RAW wraca zwykla etykieta temperatury", label == "Temperatura", label)
     check("przy RAW pasek stanu podaje kelwiny",
           " K" in window.status.currentMessage(), window.status.currentMessage())
-    report()
+
+
+KOD = 0
 
 
 def report() -> None:
-    print(f"\n{'test':<52}{'wynik':>8}   szczegoly", flush=True)
-    print("-" * 100, flush=True)
-    failures = 0
-    for name, ok, detail in results:
-        failures += 0 if ok else 1
-        print(f"{name:<52}{'OK' if ok else 'BLAD':>8}   {detail}", flush=True)
-    print(f"\n{len(results) - failures} / {len(results)} testow przeszlo", flush=True)
-    shutil.rmtree(workspace, ignore_errors=True)
-    window.close()
-    app.quit()
-
-
-def guarded(function):
-    """Wyjatek w wywolaniu zwrotnym zegara Qt gubi sie bez sladu."""
-    def wrapper() -> None:
-        import traceback
-        try:
-            function()
-        except Exception:
-            print(f"\nWYJATEK w {function.__name__}:", flush=True)
-            traceback.print_exc()
-            sys.stdout.flush()
-            report()
-    return wrapper
+    global KOD
+    try:
+        KOD = wypisz(results)
+    finally:
+        shutil.rmtree(workspace, ignore_errors=True)
+        window.close()
+        app.quit()
 
 
 os.makedirs("out", exist_ok=True)
-QTimer.singleShot(5000, guarded(stage_list))
-QTimer.singleShot(7000, guarded(stage_jpeg))
-QTimer.singleShot(10000, guarded(stage_jpeg_check))
-QTimer.singleShot(13000, guarded(stage_auto_check))
-QTimer.singleShot(16000, guarded(stage_raw_check))
+lancuch(app, [stage_list, stage_jpeg, stage_jpeg_check,
+              stage_auto_check, stage_raw_check], report)
 
-sys.exit(app.exec())
+app.exec()
+sys.exit(KOD)
