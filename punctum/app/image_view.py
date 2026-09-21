@@ -202,6 +202,31 @@ class ImageView(QGraphicsView):
     def zoom_actual(self) -> None:
         self.zoom_to(1.0)
 
+    def fit_zoom(self) -> float:
+        """Powiekszenie, przy ktorym cale zdjecie miesci sie w oknie."""
+        rect = self._scene.sceneRect()
+        viewport = self.viewport().rect()
+        if rect.isEmpty() or viewport.isEmpty():
+            return 1.0
+        return min(viewport.width() / rect.width(), viewport.height() / rect.height())
+
+    def zoom_centred(self, factor: float) -> None:
+        """Powiekszenie wokol srodka widoku - dla suwaka.
+
+        `zoom_to` zaczyna od czystej transformacji, wiec przy kazdym ruchu
+        suwaka widok wracalby w poblize lewego gornego rogu. Tutaj skalujemy
+        wzgledem biezacego stanu, a kotwica "pod mysza" przy kursorze poza
+        widokiem sama spada na srodek.
+        """
+        if self._base.pixmap().isNull():
+            return
+        factor = max(self.MIN_ZOOM, min(self.MAX_ZOOM, factor))
+        self.scale(factor / self._zoom, factor / self._zoom)
+        self._zoom = factor
+        self._fitted = False
+        self.zoom_changed.emit(factor)
+        self._after_view_change()
+
     @property
     def zoom(self) -> float:
         return self._zoom

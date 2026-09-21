@@ -1,10 +1,12 @@
-"""Prawa kolumna: histogram, dane zdjecia i suwaki korekt."""
+"""Panele boczne: histogram, dane zdjecia i suwaki korekt."""
 
 from __future__ import annotations
 
+import os
+
 import numpy as np
-from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor, QPainter, QPainterPath
+from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -20,6 +22,7 @@ from PySide6.QtWidgets import (
 from ..core import EditParams
 from ..core.metadata import PhotoMetadata
 from .sliders import TEMPERATURE_STOPS, TINT_STOPS, ParamSlider, WheelGuard
+from .style import ASSETS_DIRECTORY
 
 
 class HistogramWidget(QFrame):
@@ -197,15 +200,64 @@ class EditPanel(QWidget):
         # wspolny arbiter kolka myszy dla wszystkich suwakow w panelu
         self.wheel_guard = WheelGuard()
 
-        inner = QWidget()
-        layout = QVBoxLayout(inner)
-        layout.setContentsMargins(8, 4, 8, 8)
-        layout.setSpacing(4)
+        # Gorna czesc panelu stoi w miejscu, przewija sie tylko lista
+        # suwakow. Kadrowanie i automat to czynnosci, po ktore siega sie
+        # odruchowo - przy 1080p lezaly pod krawedzia ekranu i trzeba bylo
+        # ich szukac przewijaniem.
+        fixed = QVBoxLayout()
+        fixed.setContentsMargins(0, 0, 0, 0)
+        fixed.setSpacing(4)
+
+        fixed.addWidget(self._section("Kadrowanie i obrót"))
+        self.crop_button = QPushButton()
+        self.crop_button.setIcon(QIcon(os.path.join(ASSETS_DIRECTORY, "crop.svg")))
+        self.crop_button.setIconSize(QSize(18, 18))
+        self.crop_button.setCheckable(True)
+        self.crop_button.setToolTip(
+            "Kadrowanie (R)\n"
+            "Ciągnij za krawędzie, aby zmienić kadr (Shift zachowuje proporcje).\n"
+            "Ciągnij poza kadrem, aby obrócić zdjęcie."
+        )
+        self.crop_button.toggled.connect(self.crop_mode_toggled.emit)
+
+        rotate_row = QHBoxLayout()
+        rotate_row.setSpacing(4)
+        rotate_row.addWidget(self.crop_button)
+        rotate_row.addSpacing(6)
+        for label, step, tip in (
+            ("↺ 90°", -90, "Obróć w lewo"),
+            ("180°", 180, "Obróć o 180°"),
+            ("90° ↻", 90, "Obróć w prawo"),
+        ):
+            button = QPushButton(label)
+            button.setToolTip(tip)
+            button.clicked.connect(lambda _=False, s=step: self.orientation_step.emit(s))
+            rotate_row.addWidget(button, 1)
+        fixed.addLayout(rotate_row)
+
+        self._add(fixed, "rotation", "Kąt", -45, 45, 0, 1, "°")
+
+        self.crop_reset_button = QPushButton("Wyzeruj kadr")
+        self.crop_reset_button.clicked.connect(self.crop_reset_requested.emit)
+        fixed.addWidget(self.crop_reset_button)
 
         self.auto_button = QPushButton("Automatycznie")
-        self.auto_button.setToolTip("Dobierz parametry tonalne na podstawie histogramu")
+        self.auto_button.setToolTip("Dobierz parametry tonalne na podstawie histogramu (Ctrl+U)")
         self.auto_button.clicked.connect(self.auto_requested.emit)
-        layout.addWidget(self.auto_button)
+        self.reset_button = QPushButton("Wyzeruj")
+        self.reset_button.setToolTip("Wyzeruj wszystkie korekty zdjęcia")
+        self.reset_button.clicked.connect(self.reset_requested.emit)
+        action_row = QHBoxLayout()
+        action_row.setSpacing(4)
+        action_row.addWidget(self.auto_button, 1)
+        action_row.addWidget(self.reset_button, 1)
+        fixed.addSpacing(6)
+        fixed.addLayout(action_row)
+
+        inner = QWidget()
+        layout = QVBoxLayout(inner)
+        layout.setContentsMargins(0, 0, 8, 8)
+        layout.setSpacing(4)
 
         layout.addWidget(self._section("Balans bieli"))
         self._add(layout, "temperature", "Temperatura", 2000, 15000, 5500, 0, " K",
@@ -224,43 +276,9 @@ class EditPanel(QWidget):
         self._add(layout, "vibrance", "Jaskrawość", -100, 100, 0)
         self._add(layout, "saturation", "Nasycenie", -100, 100, 0)
 
-        layout.addWidget(self._section("Kadrowanie i obrót"))
-        self.crop_button = QPushButton("Kadruj")
-        self.crop_button.setCheckable(True)
-        self.crop_button.setToolTip(
-            "Ciągnij za krawędzie, aby zmienić kadr (Shift zachowuje proporcje).\n"
-            "Ciągnij poza kadrem, aby obrócić zdjęcie."
-        )
-        self.crop_button.toggled.connect(self.crop_mode_toggled.emit)
-        layout.addWidget(self.crop_button)
-
-        rotate_row = QHBoxLayout()
-        rotate_row.setSpacing(4)
-        for label, step, tip in (
-            ("↺ 90°", -90, "Obróć w lewo"),
-            ("180°", 180, "Obróć o 180°"),
-            ("↻ 90°", 90, "Obróć w prawo"),
-        ):
-            button = QPushButton(label)
-            button.setToolTip(tip)
-            button.clicked.connect(lambda _=False, s=step: self.orientation_step.emit(s))
-            rotate_row.addWidget(button)
-        layout.addLayout(rotate_row)
-
-        self._add(layout, "rotation", "Kąt", -45, 45, 0, 1, "°")
-
-        self.crop_reset_button = QPushButton("Wyzeruj kadr")
-        self.crop_reset_button.clicked.connect(self.crop_reset_requested.emit)
-        layout.addWidget(self.crop_reset_button)
-
         layout.addWidget(self._section("Redukcja szumu"))
         self._add(layout, "noise_luminance", "Luminancja", 0, 100, 0)
         self._add(layout, "noise_color", "Kolor", 0, 100, 25)
-
-        self.reset_button = QPushButton("Wyzeruj wszystko")
-        self.reset_button.clicked.connect(self.reset_requested.emit)
-        layout.addSpacing(8)
-        layout.addWidget(self.reset_button)
         layout.addStretch(1)
 
         scroll = QScrollArea()
@@ -275,7 +293,9 @@ class EditPanel(QWidget):
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
-        outer.addWidget(scroll)
+        outer.setSpacing(6)
+        outer.addLayout(fixed)
+        outer.addWidget(scroll, 1)
 
     def set_wheel_protection(self, lockout_ms: int, dwell_ms: int = 220) -> None:
         self.wheel_guard.lockout_ms = max(0, int(lockout_ms))

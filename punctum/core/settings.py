@@ -30,6 +30,14 @@ ENGINE_LABELS = {
 }
 
 PREVIEW_SIZES = (1200, 1600, 2048, 2560, 3200)
+
+# Granice rozmiarow przeciaganych mysza, w pikselach.
+LAYOUT_LIMITS = {
+    "left_panel_width": (220, 420),
+    "right_panel_width": (290, 480),
+    "filmstrip_height": (90, 260),
+}
+
 NOISE_QUALITY_LABELS = {
     "fast": "Szybka (filtr bilateralny)",
     "balanced": "Zrównoważona (non-local means 5/11)",
@@ -100,6 +108,14 @@ class Settings:
     # goly napis, zeby modul ustawien nie zalezal od dekodowania zdjec.
     format_filter: str = "all"
 
+    # --- uklad okna -----------------------------------------------------
+    # Rozmiary ustawiane przeciaganiem krawedzi. Zakresy (LAYOUT_LIMITS)
+    # pilnuja, zeby zle zapisana wartosc nie zostawila panelu, w ktorym
+    # nie miesci sie zaden przycisk.
+    left_panel_width: int = 260
+    right_panel_width: int = 340
+    filmstrip_height: int = 150
+
     # ---------------------------------------------------------- walidacja
 
     def normalised(self) -> "Settings":
@@ -138,6 +154,8 @@ class Settings:
         clean.recent_folders = unique[: clean.recent_folders_limit]
         clean.export_start_number = max(0, min(999999, int(clean.export_start_number)))
         clean.export_number_digits = max(1, min(8, int(clean.export_number_digits)))
+        for name, (low, high) in LAYOUT_LIMITS.items():
+            setattr(clean, name, max(low, min(high, int(getattr(clean, name)))))
         return clean
 
     # -------------------------------------------------------- zapis/odczyt

@@ -68,6 +68,14 @@ QPushButton {
 QPushButton:hover { background: #3a3a41; }
 QPushButton:pressed { background: #26262b; }
 QPushButton:disabled { color: #5a5a60; background: #252528; }
+QPushButton:checked { background: #4a4a55; border-color: #6a6a76; }
+
+/* Krawedzie paneli i paska miniatur - przeciagane mysza. Uchwyt musi byc
+   widoczny przy najechaniu, inaczej nikt nie zgadnie, ze da sie go ruszyc. */
+QSplitter::handle { background: #131315; }
+QSplitter::handle:horizontal { width: 4px; }
+QSplitter::handle:vertical { height: 4px; }
+QSplitter::handle:hover { background: #45454f; }
 
 QListWidget {
     background: #171719; border: none; outline: none;

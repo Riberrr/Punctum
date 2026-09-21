@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
+    QSizePolicy,
     QSplitter,
     QTabWidget,
     QVBoxLayout,
@@ -51,7 +52,7 @@ from ..core.export import (
 )
 from ..core.hardware import system_info
 from ..core.metadata import PhotoMetadata
-from ..core.settings import ENGINE_CPU, ENGINE_GPU, Settings
+from ..core.settings import ENGINE_CPU, ENGINE_GPU, LAYOUT_LIMITS, Settings
 from .edit_panel import EditPanel, HistogramWidget, InfoPanel
 from .exif_panel import ExifPanel
 from .export_dialog import ExportDialog
@@ -71,12 +72,15 @@ from .workers import (
     RenderTask,
     ThumbnailTask,
 )
+from .zoom_panel import ZoomPanel
 
 # Reszta parametrow mieszka w `core/settings.py` i jest edytowalna przez
 # uzytkownika; te dwa zaleza od wybranego toru liczenia, nie od preferencji.
 DEBOUNCE_CPU_MS = 90  # tor numpy: nie liczymy obrazu na kazdy piksel ruchu suwaka
 DEBOUNCE_GPU_MS = 0  # tor GPU: tylko scalenie zdarzen z jednego obiegu petli
 FULL_CROP = (0.0, 0.0, 1.0, 1.0)
+# "O programie" nie ma osobnego okna - to zakladka w ustawieniach.
+ABOUT_TAB = "O programie"
 
 
 class MainWindow(QMainWindow):
@@ -163,7 +167,9 @@ class MainWindow(QMainWindow):
 
     def _build_ui(self) -> None:
         self.view = ImageView()
-        self.view.zoom_changed.connect(lambda z: self.zoom_label.setText(f"{z * 100:.0f} %"))
+        self.view.zoom_changed.connect(
+            lambda z: self.zoom_panel.set_zoom(z, self.view.fit_zoom())
+        )
         self.view.view_rect_changed.connect(self._on_view_rect)
         self.view.detail_needed.connect(self._render_detail)
         self.view.crop_changed.connect(self._on_crop_changed)
@@ -191,62 +197,76 @@ class MainWindow(QMainWindow):
         self.exif_panel.setMinimumHeight(240)
         self.info_panel.set_details(self.exif_panel)
 
-        right = QWidget()
-        right_layout = QVBoxLayout(right)
-        right_layout.setContentsMargins(8, 8, 8, 0)
-        right_layout.setSpacing(6)
-        right_layout.addWidget(self.navigator)
-        right_layout.addWidget(self.histogram_widget)
-        right_layout.addWidget(self.info_panel)
-        right_layout.addWidget(self.edit_panel, 1)
-        # Stala szerokosc, nie zakres: przy zakresie rozwiniecie metadanych
-        # poszerzalo cala kolumne (i przesuwalo podglad zdjecia), bo panel
-        # prosil o wiecej miejsca niz suwaki.
-        right.setFixedWidth(340)
+        self.zoom_panel = ZoomPanel(ImageView.MAX_ZOOM)
+        self.zoom_panel.zoom_requested.connect(self.view.zoom_centred)
+        self.zoom_panel.fit_requested.connect(self.view.fit_to_window)
+        self.zoom_panel.actual_requested.connect(self.view.zoom_actual)
+        self.detail_label = self.zoom_panel.detail_label
 
         self.before_button = QPushButton("Przed / po")
         self.before_button.setToolTip("Przytrzymaj, aby zobaczyć zdjęcie bez korekt")
         self.before_button.pressed.connect(self._show_before)
         self.before_button.released.connect(self._show_after)
+        # Wiersz, nie sam przycisk: obok stanie przelacznik podzielonego
+        # podgladu przed/po (punkt 19 planu).
+        compare_row = QHBoxLayout()
+        compare_row.setContentsMargins(0, 0, 0, 0)
+        compare_row.addWidget(self.before_button, 1)
+        compare_row.addStretch(1)
 
-        self.fit_button = QPushButton("Dopasuj")
-        self.fit_button.clicked.connect(self.view.fit_to_window)
-        self.actual_button = QPushButton("100 %")
-        self.actual_button.clicked.connect(self.view.zoom_actual)
-        self.zoom_label = QLabel("—")
-        self.zoom_label.setMinimumWidth(52)
-        self.zoom_label.setAlignment(Qt.AlignCenter)
-        self.detail_label = QLabel("")
-        self.detail_label.setObjectName("metaLabel")
-        self.detail_label.setMinimumWidth(70)
+        # Lewy panel: gdzie jestem w zdjeciu i co to za zdjecie. Przewija sie
+        # w nim tylko rozwiniety EXIF (ma wlasne przewijanie), dlatego sekcja
+        # danych dostaje rozciaganie dopiero po rozwinieciu - zwinieta nie
+        # moze rozdmuchac ramki na pol okna.
+        left = QWidget()
+        left.setObjectName("leftPanel")
+        left_layout = QVBoxLayout(left)
+        left_layout.setContentsMargins(10, 10, 10, 10)
+        left_layout.setSpacing(8)
+        left_layout.addWidget(self.navigator)
+        left_layout.addWidget(self.zoom_panel)
+        left_layout.addLayout(compare_row)
+        left_layout.addWidget(self.info_panel)
+        left_layout.addStretch(1)
+        info_index = left_layout.indexOf(self.info_panel)
 
+        def give_space_to_details(on: bool) -> None:
+            left_layout.setStretch(info_index, 1 if on else 0)
+            left_layout.setStretch(info_index + 1, 0 if on else 1)
+
+        self.info_panel.details_toggled.connect(give_space_to_details)
+        self.left_panel = left
+
+        right = QWidget()
+        right.setObjectName("rightPanel")
+        right_layout = QVBoxLayout(right)
+        right_layout.setContentsMargins(10, 10, 10, 0)
+        right_layout.setSpacing(8)
+        right_layout.addWidget(self.histogram_widget)
+        right_layout.addWidget(self.edit_panel, 1)
+        self.right_panel = right
+
+        # Szerokosci ustawia uzytkownik, ale tylko w granicach. Jawne minimum
+        # ma pierwszenstwo przed tym, o co prosi zawartosc - bez tego
+        # rozwiniecie metadanych poszerzalo kolumne i przesuwalo podglad.
+        for panel, key in ((left, "left_panel_width"), (right, "right_panel_width")):
+            low, high = LAYOUT_LIMITS[key]
+            panel.setMinimumWidth(low)
+            panel.setMaximumWidth(high)
+
+        # Przycisk eksportu stoi w rogu belki zakladek: gorny pasek narzedzi
+        # zajmowal caly wiersz na kilka przyciskow, ktore teraz maja swoje
+        # miejsca w panelach.
         self.export_button = QPushButton("Eksportuj…")
+        self.export_button.setToolTip("Eksportuj zaznaczone zdjęcia (Ctrl+E)")
         self.export_button.clicked.connect(self.export_current)
-
-        toolbar = QWidget()
-        toolbar_layout = QHBoxLayout(toolbar)
-        toolbar_layout.setContentsMargins(8, 6, 8, 6)
-        toolbar_layout.setSpacing(6)
-        toolbar_layout.addWidget(self.before_button)
-        toolbar_layout.addStretch(1)
-        toolbar_layout.addWidget(self.fit_button)
-        toolbar_layout.addWidget(self.actual_button)
-        toolbar_layout.addWidget(self.zoom_label)
-        toolbar_layout.addWidget(self.detail_label)
-        toolbar_layout.addStretch(1)
-        toolbar_layout.addWidget(self.export_button)
-
-        centre = QWidget()
-        centre_layout = QVBoxLayout(centre)
-        centre_layout.setContentsMargins(0, 0, 0, 0)
-        centre_layout.setSpacing(0)
-        centre_layout.addWidget(toolbar)
-        centre_layout.addWidget(self.view, 1)
 
         self.filmstrip = Filmstrip()
         self.filmstrip.photo_selected.connect(self.open_photo)
         self.filmstrip.thumbnail_ready.connect(self._on_thumbnail_icon)
-        self.filmstrip.setFixedHeight(150)
+        low, high = LAYOUT_LIMITS["filmstrip_height"]
+        self.filmstrip.setMinimumHeight(low)
+        self.filmstrip.setMaximumHeight(high)
 
         # Pasek nad miniaturami. Katalogu, w ktorym lezy kilkanascie tysiecy
         # JPEG-ow i garsc RAW-ow, nie da sie przejrzec bez takiego filtra.
@@ -267,6 +287,9 @@ class MainWindow(QMainWindow):
         header_layout.addWidget(self.format_combo)
         header_layout.addWidget(self.format_count)
         header_layout.addStretch(1)
+        # Stala wysokosc naglowka: bez niej granica wysokosci paska dotyczylaby
+        # tylko miniatur, a wolne miejsce z przeciagania przejmowalby naglowek.
+        strip_header.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
 
         strip = QWidget()
         strip_layout = QVBoxLayout(strip)
@@ -275,18 +298,31 @@ class MainWindow(QMainWindow):
         strip_layout.addWidget(strip_header)
         strip_layout.addWidget(self.filmstrip, 1)
 
-        top = QWidget()
-        top_layout = QHBoxLayout(top)
-        top_layout.setContentsMargins(0, 0, 0, 0)
-        top_layout.setSpacing(0)
-        top_layout.addWidget(centre, 1)
-        top_layout.addWidget(right)
+        # Wolne miejsce przy zmianie rozmiaru okna idzie do podgladu (stretch),
+        # panele trzymaja szerokosc ustawiona przez uzytkownika.
+        # Zapamietane rozmiary nakladamy dopiero po pokazaniu okna
+        # (`_restore_layout`) - wczesniej splitter nie zna swojej prawdziwej
+        # szerokosci i przy pierwszym ulozeniu rozdzielilby roznice po swojemu.
+        self.panel_splitter = QSplitter(Qt.Horizontal)
+        self.panel_splitter.addWidget(left)
+        self.panel_splitter.addWidget(self.view)
+        self.panel_splitter.addWidget(right)
+        for index, stretch in enumerate((0, 1, 0)):
+            self.panel_splitter.setStretchFactor(index, stretch)
+            self.panel_splitter.setCollapsible(index, False)
+        self.panel_splitter.splitterMoved.connect(self._remember_layout)
 
         splitter = QSplitter(Qt.Vertical)
-        splitter.addWidget(top)
+        splitter.addWidget(self.panel_splitter)
         splitter.addWidget(strip)
         splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 0)
         splitter.setCollapsible(0, False)
+        splitter.setCollapsible(1, False)
+        splitter.splitterMoved.connect(self._remember_layout)
+        self.strip_splitter = splitter
+        self._strip_header = strip_header
+        self._layout_restored = False
 
         # Zakladki na samej gorze. W widoku mapy nie widac paska miniatur,
         # wiec mapa ma wlasna liste zdjec - przy przejsciu podajemy jej
@@ -306,6 +342,11 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(splitter, "Edycja")
         self.tabs.addTab(self.map_tab, "Mapa")
         self.tabs.currentChanged.connect(self._on_tab_changed)
+        corner = QWidget()
+        corner_layout = QHBoxLayout(corner)
+        corner_layout.setContentsMargins(0, 2, 6, 4)
+        corner_layout.addWidget(self.export_button)
+        self.tabs.setCornerWidget(corner, Qt.TopRightCorner)
 
         self.setCentralWidget(self.tabs)
         self.status = self.statusBar()
@@ -346,7 +387,7 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
         settings_action = QAction("&Ustawienia…", self)
         settings_action.setShortcut(QKeySequence("Ctrl+,"))
-        settings_action.triggered.connect(self.open_settings)
+        settings_action.triggered.connect(lambda: self.open_settings())
         file_menu.addAction(settings_action)
 
         file_menu.addSeparator()
@@ -355,23 +396,66 @@ class MainWindow(QMainWindow):
         quit_action.triggered.connect(self.close)
         file_menu.addAction(quit_action)
 
+        # Korekta i kadrowanie zmieniaja zdjecie, wiec naleza do Edycji,
+        # a nie do Widoku. Skroty zostaja te same.
+        edit_menu = self.menuBar().addMenu("&Edycja")
+        auto_action = QAction("Automatyczna korekcja", self)
+        auto_action.setShortcut(QKeySequence("Ctrl+U"))
+        auto_action.triggered.connect(self._run_auto)
+        edit_menu.addAction(auto_action)
+        crop_action = QAction("Kadrowanie", self)
+        crop_action.setShortcut(QKeySequence("R"))
+        crop_action.triggered.connect(
+            lambda: self.edit_panel.crop_button.setChecked(not self.crop_mode)
+        )
+        edit_menu.addAction(crop_action)
+
         view_menu = self.menuBar().addMenu("&Widok")
         for text, shortcut, slot in (
             ("Dopasuj do okna", "Ctrl+0", self.view.fit_to_window),
             ("Powiększenie 100 %", "Ctrl+1", self.view.zoom_actual),
-            ("Automatyczna korekcja", "Ctrl+U", self._run_auto),
         ):
             action = QAction(text, self)
             action.setShortcut(QKeySequence(shortcut))
             action.triggered.connect(slot)
             view_menu.addAction(action)
 
-        crop_action = QAction("Kadrowanie", self)
-        crop_action.setShortcut(QKeySequence("R"))
-        crop_action.triggered.connect(
-            lambda: self.edit_panel.crop_button.setChecked(not self.crop_mode)
-        )
-        view_menu.addAction(crop_action)
+        help_menu = self.menuBar().addMenu("Pomo&c")
+        about_action = QAction("O programie", self)
+        about_action.triggered.connect(lambda: self.open_settings(ABOUT_TAB))
+        help_menu.addAction(about_action)
+
+    # ------------------------------------------------------------ uklad okna
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        if not self._layout_restored:
+            self._layout_restored = True
+            # po biezacym obiegu petli: okno pokazywane jako zmaksymalizowane
+            # dostaje ostateczny rozmiar dopiero chwile po showEvent
+            QTimer.singleShot(0, self._restore_layout)
+
+    def _restore_layout(self) -> None:
+        """Naklada zapamietane szerokosci paneli i wysokosc paska miniatur."""
+        s = self.settings
+        sizes = self.panel_splitter.sizes()
+        total = sum(sizes)
+        centre = max(1, total - s.left_panel_width - s.right_panel_width)
+        self.panel_splitter.setSizes([s.left_panel_width, centre, s.right_panel_width])
+
+        sizes = self.strip_splitter.sizes()
+        strip = s.filmstrip_height + self._strip_header.sizeHint().height()
+        self.strip_splitter.setSizes([max(1, sum(sizes) - strip), strip])
+
+    def _remember_layout(self, *_args) -> None:
+        """Przepisuje rozmiary do ustawien; na dysk ida przy zamknieciu okna."""
+        left, _centre, right = self.panel_splitter.sizes()
+        # Zakladka Mapa chowa splitter - wtedy rozmiary sa zerowe i nic nie mowia.
+        if left > 0 and right > 0:
+            self.settings.left_panel_width = left
+            self.settings.right_panel_width = right
+        if self.filmstrip.height() > 0:
+            self.settings.filmstrip_height = self.filmstrip.height()
 
     def _build_recent_menu(self) -> None:
         """Lista ostatnich katalogow. Nieistniejace pomijamy, ale nie kasujemy.
@@ -441,8 +525,10 @@ class MainWindow(QMainWindow):
         elif self.gpu_allowed() and self.full_raw is not None and not self.gpu_source_ready:
             self.gpu_source_ready = self.gpu.set_source(self.full_raw.camera_linear)
 
-    def open_settings(self) -> None:
+    def open_settings(self, tab: str | None = None) -> None:
         dialog = SettingsDialog(self.settings, self.system, self)
+        if tab is not None:
+            dialog.show_tab(tab)
         if dialog.exec() != SettingsDialog.Accepted:
             return
 
@@ -1056,6 +1142,10 @@ class MainWindow(QMainWindow):
 
     def _on_view_rect(self, rect: QRectF) -> None:
         self.navigator.set_view_rect(None if rect.isNull() else rect)
+        # Zmiana rozmiaru okna przesuwa dolna granice suwaka ("dopasuj"),
+        # choc samo powiekszenie stoi w miejscu.
+        if not rect.isNull():
+            self.zoom_panel.set_zoom(self.view.zoom, self.view.fit_zoom())
         if rect.width() >= 1.0 and rect.height() >= 1.0:
             self.detail_label.setText("")
 

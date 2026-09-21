@@ -192,7 +192,7 @@ def stage_metadane() -> None:
     window.info_panel.details_button.click()
     app.processEvents()
     check("strzalka rozwija metadane", window.exif_panel.isVisible())
-    check("rozwiniecie nie poszerza prawej kolumny",
+    check("rozwiniecie nie poszerza lewej kolumny",
           column.width() == before_width,
           f"{before_width} → {column.width()} px")
     check("podglad zdjecia nie przeskakuje",

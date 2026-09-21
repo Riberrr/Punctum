@@ -91,6 +91,13 @@ class SettingsDialog(QDialog):
 
     # ------------------------------------------------------- zakładki
 
+    def show_tab(self, title: str) -> None:
+        """Otwiera okno od razu na zakladce o podanym tytule (np. z menu Pomoc)."""
+        for index in range(self.tabs.count()):
+            if self.tabs.tabText(index) == title:
+                self.tabs.setCurrentIndex(index)
+                return
+
     def _performance_tab(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
@@ -206,7 +213,7 @@ class SettingsDialog(QDialog):
             "żeby było widać prawdziwe piksele zamiast interpolacji."
         ))
 
-        self.navigator_box = QCheckBox("Pokazuj nawigator nad histogramem")
+        self.navigator_box = QCheckBox("Pokazuj nawigator w lewym panelu")
         quality_form.addRow("", self.navigator_box)
         layout.addWidget(quality)
 

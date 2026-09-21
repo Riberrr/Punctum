@@ -12,7 +12,17 @@ from PySide6.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate
 from .image_view import numpy_to_pixmap
 from .markers import EDIT_ROLE, GEO_ROLE, LEGEND, PIN_SIZE, paint_dot, paint_pin
 
-THUMB_SIZE = QSize(150, 104)
+# Miniatura jest przechowywana w rozdzielczosci wyzszej niz wyswietlana:
+# kafelki rosna razem z paskiem (do 260 px wysokosci), a obrazek 150 px
+# rozciagniety do takiego kafelka bylby rozmyty. Kosztuje to okolo dwa razy
+# wiecej pamieci na miniatury; czas wczytywania sie nie zmienia, bo i tak
+# dekodujemy podglad wbudowany w plik, a nie pelne zdjecie.
+THUMB_SIZE = QSize(300, 208)
+THUMB_ASPECT = THUMB_SIZE.width() / THUMB_SIZE.height()
+# Czesc wysokosci paska, ktora nie jest obrazkiem: podpis, odstepy i pasek
+# przewijania. Przy dawnej stalej wysokosci 150 px dawalo to kafelek 104 px.
+TILE_OVERHEAD = 46
+TEXT_HEIGHT = 30
 
 
 class BadgeDelegate(QStyledItemDelegate):
@@ -49,8 +59,7 @@ class Filmstrip(QListWidget):
         self.setViewMode(QListWidget.IconMode)
         self.setFlow(QListWidget.LeftToRight)
         self.setWrapping(False)
-        self.setIconSize(THUMB_SIZE)
-        self.setGridSize(QSize(THUMB_SIZE.width() + 14, THUMB_SIZE.height() + 30))
+        self._fit_tiles(150)
         self.setResizeMode(QListWidget.Adjust)
         self.setMovement(QListWidget.Static)
         # Wielokrotny wybor sluzy eksportowi wsadowemu. Podglad pokazuje
@@ -67,6 +76,24 @@ class Filmstrip(QListWidget):
         self._thumbnails: dict[str, QIcon] = {}
         self.setToolTip(LEGEND)
         self.currentItemChanged.connect(self._on_current_changed)
+
+    def _fit_tiles(self, height: int) -> None:
+        """Kafelki dopasowane do wysokosci paska - jeden rzad, bez przewijania w pionie.
+
+        Liczone z wysokosci calego widzetu, nie obszaru widoku: ten zmienia sie,
+        gdy pojawia sie poziomy pasek przewijania, a zmiana kafelkow potrafi
+        ten pasek schowac - i tak w kolko.
+        """
+        icon_height = max(40, height - TILE_OVERHEAD)
+        icon = QSize(round(icon_height * THUMB_ASPECT), icon_height)
+        if icon == self.iconSize():
+            return
+        self.setIconSize(icon)
+        self.setGridSize(QSize(icon.width() + 14, icon.height() + TEXT_HEIGHT))
+
+    def resizeEvent(self, event) -> None:
+        self._fit_tiles(event.size().height())
+        super().resizeEvent(event)
 
     def set_paths(
         self,

@@ -40,14 +40,24 @@ Dwuklik na suwaku przywraca wartość domyślną.
 z analizy histogramu. Wyniki pokrywają się z przyciskiem *Automatycznie*
 w komercyjnym programie, który służył za punkt odniesienia, z dokładnością do kilku punktów (patrz niżej).
 
-**Kadrowanie** — przycisk *Kadruj* (skrót `R`). Ciągnięcie za krawędzie i rogi
-zmienia kadr, `Shift` zachowuje proporcje, ciągnięcie poza kadrem obraca
+**Kadrowanie** — przycisk z ikoną kadru (skrót `R`). Ciągnięcie za krawędzie
+i rogi zmienia kadr, `Shift` zachowuje proporcje, ciągnięcie poza kadrem obraca
 zdjęcie. W spoczynku widać trójpodział, podczas przeciągania siatkę 8×8.
 Osobne przyciski obracają o 90° i 180°. `Enter` zatwierdza.
 
-**Podgląd** — zoom kółkiem, dwuklik przełącza dopasowanie ↔ 100 %, nawigator
-z ramką pokazującą powiększony fragment (klikalny), przytrzymanie *Przed / po*
-pokazuje zdjęcie bez korekt, histogram na żywo.
+**Podgląd** — zoom kółkiem, suwakiem (logarytmicznym, od „dopasuj” do 1600 %)
+albo przyciskami *Dopasuj* / *100 %*; dwuklik przełącza dopasowanie ↔ 100 %.
+Nawigator z ramką pokazującą powiększony fragment (klikalny), przytrzymanie
+*Przed / po* pokazuje zdjęcie bez korekt, histogram na żywo.
+
+**Układ okna Edycji** — po lewej nawigator, powiększenie, *Przed / po* i dane
+zdjęcia (rozwijane do pełnych metadanych; przewija się wtedy tylko ta sekcja).
+Po prawej histogram, kadrowanie i obrót, *Automatycznie* / *Wyzeruj*, a pod
+nimi przewijana lista suwaków. *Eksportuj…* stoi w rogu belki zakładek.
+Szerokość obu paneli i wysokość paska miniatur zmienia się przeciąganiem
+krawędzi; miniatury rosną razem z paskiem, a program pamięta rozmiary między
+uruchomieniami. Menu: *Plik*, *Edycja* (automatyczna korekcja `Ctrl+U`,
+kadrowanie `R`), *Widok*, *Pomoc*.
 
 **Redukcja szumu** — osobno luminancja i kolor.
 
@@ -494,9 +504,10 @@ punctum/core/
 punctum/app/
     main_window.py   złożenie całości
     image_view.py    płótno, zoom, warstwa detalu, kadrowanie
-    edit_panel.py    histogram, dane zdjęcia, suwaki
+    edit_panel.py    histogram, dane zdjęcia, kadrowanie, suwaki
     sliders.py       suwaki, w tym te z gradientem barwnym
     navigator.py     miniatura z ramką powiększenia
+    zoom_panel.py    suwak i przyciski powiększenia w lewym panelu
     filmstrip.py     pasek miniatur
     markers.py       znaczniki przy nazwach zdjęć, wspólne dla obu list
     exif_panel.py    panel metadanych: formularz, podgląd tagów, zapis
@@ -510,7 +521,7 @@ tools/               narzędzia diagnostyczne, testy i CLI
 
 ```powershell
 tools\testy.bat --szybkie                 # same testy bez interfejsu, ~5 s
-tools\testy.bat "C:\Zdjęcia\Wycieczka"    # cała seria, 182 sprawdzenia, ~37 s
+tools\testy.bat "C:\Zdjęcia\Wycieczka"    # cała seria, 221 sprawdzeń, ~40 s
 tools\testy.bat "C:\Zdjęcia\Wycieczka" --pelny   # z pełnymi tabelami wyników
 ```
 

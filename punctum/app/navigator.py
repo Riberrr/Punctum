@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
-from PySide6.QtCore import QPointF, QRectF, Qt, Signal
+from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import QFrame, QSizePolicy
 
@@ -24,9 +24,23 @@ class Navigator(QFrame):
         super().__init__(parent)
         self.setObjectName("navigator")
         self.setMinimumHeight(120)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        # Wysokosc idzie za szerokoscia panelu: po poszerzeniu lewej kolumny
+        # sama szerokosc zostawialaby miniature malenka w srodku szerokiego
+        # pasa, a to przy duzym powiekszeniu jest jedyna mapa kadru.
+        policy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        policy.setHeightForWidth(True)
+        self.setSizePolicy(policy)
         self._pixmap: QPixmap | None = None
         self._view_rect: QRectF | None = None  # znormalizowany 0..1
+
+    def hasHeightForWidth(self) -> bool:
+        return True
+
+    def heightForWidth(self, width: int) -> int:
+        return max(120, round(width * 2 / 3))
+
+    def sizeHint(self) -> QSize:
+        return QSize(260, self.heightForWidth(260))
 
     def set_image(self, rgb8: np.ndarray | None) -> None:
         self._pixmap = None if rgb8 is None else numpy_to_pixmap(rgb8)
