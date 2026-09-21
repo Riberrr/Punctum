@@ -50,15 +50,6 @@ albo przyciskami *Dopasuj* / *100 %*; dwuklik przełącza dopasowanie ↔ 100 %.
 Nawigator z ramką pokazującą powiększony fragment (klikalny), przytrzymanie
 *Przed / po* pokazuje zdjęcie bez korekt, histogram na żywo.
 
-**Układ okna Edycji** — po lewej nawigator, powiększenie, *Przed / po* i dane
-zdjęcia (rozwijane do pełnych metadanych; przewija się wtedy tylko ta sekcja).
-Po prawej histogram, kadrowanie i obrót, *Automatycznie* / *Wyzeruj*, a pod
-nimi przewijana lista suwaków. *Eksportuj…* stoi w rogu belki zakładek.
-Szerokość obu paneli i wysokość paska miniatur zmienia się przeciąganiem
-krawędzi; miniatury rosną razem z paskiem, a program pamięta rozmiary między
-uruchomieniami. Menu: *Plik*, *Edycja* (automatyczna korekcja `Ctrl+U`,
-kadrowanie `R`), *Widok*, *Pomoc*.
-
 **Redukcja szumu** — osobno luminancja i kolor.
 
 **Eksport** — `Ctrl+E` otwiera okno z kompletem opcji: katalog docelowy,
@@ -76,12 +67,99 @@ Program pamięta nastawy **osobno dla każdego zdjęcia**, więc powrót do wcze
 poprawionego kadru przywraca suwaki. Zdjęcia, których nigdy nie otwarto, wychodzą
 bez zmian — okno eksportu mówi o tym wprost, zanim zaczniesz.
 
+## Okno programu
+
+Okno ma dwie zakładki ułożone jak ścieżka pracy: **Edycja** i **Mapa**.
+Kolejne moduły (biblioteka, albumy, pokaz slajdów) mogą w przyszłości
+dochodzić jako następne zakładki. Przycisk *Eksportuj…* stoi w prawym rogu
+belki zakładek, więc jest pod ręką w obu widokach.
+
+Zakładka Edycja:
+
+```
+┌──────────────┬──────────────────────────────────┬─────────────────────┐
+│ nawigator    │                                  │ histogram           │
+│              │                                  ├─────────────────────┤
+│ ─●────────── │                                  │ KADROWANIE I OBRÓT  │
+│ Dopasuj 100 %│             podgląd              │ [kadr] ↺90 180 90↻  │
+│ [Przed / po] │                                  │ Kąt ──────●───────  │
+│              │                                  │ [  Wyzeruj kadr   ] │
+│ dane zdjęcia │                                  │ [Automat.][Wyzeruj] │
+│   ▾ EXIF     │                                  ├─────────────────────┤
+│              │                                  │ suwaki — przewija   │
+│              │                                  │ się tylko ta część  │
+├──────────────┴──────────────────────────────────┴─────────────────────┤
+│ Pokaż: [Wszystkie ▾]   1 RAW • 2 JPEG                                 │
+│ ▢ ▢ ▢ ▢ ▢ ▢ ▢   pasek miniatur                                        │
+└───────────────────────────────────────────────────────────────────────┘
+```
+
+**Lewy panel** odpowiada na pytania „gdzie jestem w zdjęciu" i „co to za
+zdjęcie":
+
+- **nawigator** — całe zdjęcie z ramką widocznego fragmentu; kliknięcie albo
+  przeciągnięcie przenosi tam podgląd. Rośnie razem z szerokością panelu,
+  można go ukryć w ustawieniach,
+- **suwak powiększenia** — logarytmiczny, od „dopasuj do okna" do 1600 %.
+  Skala logarytmiczna, bo między dopasowaniem (np. 12 %) a maksimum jest ponad
+  sto razy: przy liniowej cały zakres poniżej 100 % mieściłby się w kilku
+  pikselach. Suwak, kółko myszy i przyciski *Dopasuj* / *100 %* chodzą
+  razem; pod spodem pojawia się stan dociągania ostrego fragmentu
+  („ostrzenie…", „pełna ostrość"),
+- **Przed / po** — przytrzymanie pokazuje zdjęcie bez korekt. Wiersz ma
+  miejsce na drugi przycisk: podzielony podgląd przed/po jest w planach,
+- **dane zdjęcia** — aparat, ogniskowa, czas, przysłona, ISO, data
+  i lokalizacja. Strzałka w rogu rozwija pełne metadane (patrz niżej); wtedy
+  przewija się wyłącznie ta sekcja, a nawigator i powiększenie zostają na
+  miejscu. Przyciski *Wszystkie tagi*, *Wyczyść zmiany* i *Zapisz do
+  oryginału* są przypięte na dole sekcji.
+
+**Prawy panel** zbiera to, co zmienia zdjęcie. Na górze, zawsze widoczne:
+histogram, kadrowanie i obrót (przycisk kadrowania, obroty o 90° i 180°,
+suwak kąta, *Wyzeruj kadr*) oraz wiersz *Automatycznie* / *Wyzeruj*. Pod
+nimi lista suwaków — balans bieli, odcień, obecność, redukcja szumu —
+przewijana we własnym obszarze.
+
+**Rozmiary.** Szerokość obu paneli i wysokość paska miniatur zmienia się
+przeciąganiem krawędzi (uchwyt podświetla się pod kursorem):
+
+| Element | Zakres | Domyślnie |
+|---|---|---|
+| lewy panel | 220–420 px | 260 px |
+| prawy panel | 290–480 px | 340 px |
+| pasek miniatur | 90–260 px | 150 px |
+
+Przy zmianie rozmiaru okna wolne miejsce dostaje podgląd, panele trzymają
+swoją szerokość. Miniatury rosną razem z paskiem (zawsze jeden rząd) i są
+przechowywane w rozdzielczości 300×208, żeby przy wysokim pasku nie były
+rozmyte. Program pamięta wszystkie trzy rozmiary między uruchomieniami.
+Rozwinięcie metadanych nie zmienia szerokości żadnego panelu ani podglądu.
+
+### Menu i skróty
+
+| Menu | Polecenie | Skrót |
+|---|---|---|
+| Plik | Otwórz folder… | `Ctrl+O` |
+| | Eksportuj… | `Ctrl+E` |
+| | Ostatnie katalogi | |
+| | Ustawienia… | `Ctrl+,` |
+| | Zakończ | `Alt+F4` |
+| Edycja | Automatyczna korekcja | `Ctrl+U` |
+| | Kadrowanie (włącz / wyłącz) | `R` |
+| Widok | Dopasuj do okna | `Ctrl+0` |
+| | Powiększenie 100 % | `Ctrl+1` |
+| Pomoc | O programie | |
+
+W trybie kadrowania `Enter` albo `Esc` kończy kadrowanie. Dwuklik na podglądzie
+przełącza dopasowanie ↔ 100 %, dwuklik na suwaku przywraca jego wartość
+domyślną. *Pomoc ▸ O programie* otwiera okno ustawień od razu na zakładce
+„O programie".
+
 ## Mapa i geotagowanie
 
-Okno ma dwie zakładki: **Edycja** i **Mapa**. W mapie po lewej stoi lista zdjęć
-z miniaturami i znacznikami stanu, pośrodku mapa OpenStreetMap z wyszukiwarką
-miejsc i czterema warstwami (mapa, ciemna, satelita, hybryda), a po prawej
-panel metadanych.
+W zakładce **Mapa** po lewej stoi lista zdjęć z miniaturami i znacznikami
+stanu, pośrodku mapa OpenStreetMap z wyszukiwarką miejsc i czterema warstwami
+(mapa, ciemna, satelita, hybryda), a po prawej panel metadanych.
 
 Nadawanie lokalizacji: zaznacz zdjęcia na liście, włącz *Przypisz zaznaczonym*
 i kliknij miejsce na mapie — wszystkie zaznaczone dostają ten punkt. Pinezki
@@ -170,8 +248,9 @@ pamięta też ostatnio otwierane katalogi.
 ## Metadane (EXIF)
 
 Panel metadanych stoi w obu zakładkach. W Edycji jest chowanym dnem sekcji
-z danymi zdjęcia — rozwija go strzałka w jej rogu, więc zwinięty nie zajmuje
-ani jednego wiersza, a rozwinięty wygląda jak ta sama sekcja, tylko dłuższa.
+z danymi zdjęcia w lewym panelu — rozwija go strzałka w jej rogu, więc zwinięty
+nie zajmuje ani jednego wiersza, a rozwinięty zajmuje resztę wysokości panelu
+i przewija się sam, bez ruszania nawigatora i suwaka powiększenia.
 W Mapie jest kolumną po prawej stronie okna. Obie kopie pokazują ten sam stan.
 
 Edytowalnych pól jest dziewiętnaście, w sześciu grupach: autorstwo (autor,
@@ -278,6 +357,13 @@ Ustawienia lądują w `%APPDATA%\Punctum\settings.json` (na Linuksie
 zostawia uszkodzonego pliku. Odczyt jest pobłażliwy: nieznane klucze są
 pomijane, brakujące uzupełniane domyślnymi, wartości spoza zakresu przycinane —
 uszkodzony plik nie zablokuje uruchomienia programu.
+
+W tym samym pliku program trzyma rzeczy, których nie ustawia się w oknie
+ustawień, tylko przy okazji pracy: filtr formatów w pasku miniatur, historię
+katalogów, ostatnie opcje eksportu oraz rozmiary paneli i paska miniatur
+(`left_panel_width`, `right_panel_width`, `filmstrip_height`). Rozmiary spoza
+dopuszczalnych zakresów są przy odczycie przycinane, więc ręcznie popsuty plik
+nie zostawi panelu, w którym nie mieści się żaden przycisk.
 
 ## Architektura
 
@@ -450,6 +536,28 @@ Odszumianie zostaje na procesorze — non-local means nie ma sensownego
 odpowiednika w shaderze. Jest osobnym, opóźnionym krokiem: podgląd pojawia się
 natychmiast, a szum znika chwilę później, gdy suwak stanie.
 
+### Układ okna
+
+Kilka decyzji, które nie wynikają z samego wyglądu:
+
+- **Panele stoją na splitterach z jawnymi granicami szerokości.** Jawne
+  minimum i maksimum mają w Qt pierwszeństwo przed tym, o co prosi zawartość.
+  Bez tego rozwinięcie metadanych poszerzało kolumnę, bo formularz chciał
+  więcej miejsca niż suwaki, a razem z kolumną przeskakiwał podgląd zdjęcia.
+- **Zapamiętane rozmiary nakładamy dopiero po pokazaniu okna.** Przed
+  pokazaniem splitter nie zna swojej prawdziwej szerokości i przy pierwszym
+  ułożeniu rozdzieliłby różnicę po swojemu; okno otwierane jako
+  zmaksymalizowane dostaje ostateczny rozmiar chwilę po `showEvent`.
+- **Suwak powiększenia niczego nie liczy sam.** Widok zgłasza każdą zmianę
+  (kółko, przycisk, dopasowanie po zmianie rozmiaru okna), a panel tylko ją
+  pokazuje — jeden tor synchronizacji zamiast trzech. Ruch suwaka skaluje
+  obraz względem bieżącego stanu, więc środek widoku zostaje na miejscu.
+- **Kafelki miniatur liczone są z wysokości całego paska**, nie z obszaru
+  widoku. Obszar widoku zmienia się, gdy pojawia się poziomy pasek
+  przewijania, a zmiana kafelków potrafi ten pasek schować — i tak w kółko.
+- **Mapa nadal powstaje przed pokazaniem okna** (patrz wyżej) — przebudowa
+  układu Edycji tego nie zmienia.
+
 ## Zmierzona wydajność
 
 Panasonic DC-G91, 20 Mpix (5200 × 3904), NVIDIA GTX 1660.
@@ -535,6 +643,22 @@ prawdziwe okno, więc potrzebują katalogu ze zdjęciami — wystarczy jeden pli
 i dwa JPEG-i, a które to będą, program dobiera sam. Katalog można podać raz na
 stałe zmienną `PUNCTUM_TESTY`; bez niego seria po prostu pomija tę część.
 
+| Test | Co pilnuje |
+|---|---|
+| `test_geo.py` | współrzędne w sidecarze bez straty dokładności, GPS w eksporcie |
+| `test_sidecar.py` | komplet suwaków zapisany i wczytany daje dokładnie te same wartości |
+| `test_auto_zasady.py` | automat tonalny na scenach o z góry znanych cechach |
+| `test_jpeg.py` | JPEG przepuszczony przez tor liniowy bez korekt wychodzi taki sam |
+| `test_exif.py` | zapis do oryginału nie niszczy obrazu, reszty metadanych ani daty pliku |
+| `test_trwalosc_gui.py` | poprawki przeżywają przejście dalej i ponowne uruchomienie |
+| `test_mapa_gui.py` | przypisanie punktu na mapie i jego trwałość |
+| `test_jpeg_gui.py` | mieszany katalog: filtr formatów, opis balansu bieli |
+| `test_znaczniki_gui.py` | znaczniki na listach i panel metadanych w obu zakładkach |
+| `test_uklad_gui.py` | układ okna: widoczność elementów przy maksymalizacji, szerokości przy rozwinięciu metadanych, suwak powiększenia, przeciąganie i zapamiętywanie rozmiarów |
+
+Test układu zapisuje też zrzut okna (`punctum-uklad.png` w katalogu
+tymczasowym) — tak sprawdzamy wygląd po zmianach bez proszenia o zrzuty.
+
 Testy z interfejsem czekają na **warunek**, nie na ustalony czas — obciążona
 maszyna potrafiła kiedyś nie zdążyć wczytać zdjęcia w wyznaczonych sekundach
 i seria wywracała się przy poprawnym kodzie. Z tego samego powodu etapy testu
@@ -548,3 +672,7 @@ sekundzie. Sama ta zmiana skróciła serię ze 105 do 37 sekund.
 - Presetów i kopiowania ustawień między zdjęciami.
 - Szybkiego eksportu wsadowego — działa, ale liczy sekwencyjnie na procesorze.
 - Integracji z Google Photos.
+- Podzielonego podglądu przed/po (linia podziału albo dwa widoki obok siebie) —
+  na razie *Przed / po* działa przez przytrzymanie przycisku.
+- Ikon narzędzi w jednym stylu — przyciski obrotu to na razie znaki; ikonę ma
+  tylko kadrowanie.
