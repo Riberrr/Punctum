@@ -17,6 +17,7 @@ from ..core import (
     EditParams,
     RawImage,
     auto_tone,
+    default_params_for,
     develop,
     develop_region,
     load_photo,
@@ -24,7 +25,7 @@ from ..core import (
     read_metadata,
 )
 from ..core.metadata import PhotoMetadata
-from ..core.pipeline import apply_noise_reduction
+from ..core.pipeline import apply_detail
 
 
 class _Signals(QObject):
@@ -133,19 +134,16 @@ class NoiseReductionTask(QRunnable):
     a szum znika chwile pozniej, gdy uzytkownik przestanie ruszac suwakiem.
     """
 
-    def __init__(self, job_id: int, image: np.ndarray, params: EditParams):
+    def __init__(self, job_id: int, image: np.ndarray, params: EditParams,
+                 scale: float = 1.0):
         super().__init__()
         self.job_id, self.image, self.params = job_id, image, params
+        self.scale = scale  # skala podgladu - dla promienia wyostrzania
         self.signals = _Signals()
 
     def run(self) -> None:
         try:
-            result = apply_noise_reduction(
-                self.image,
-                self.params.noise_luminance,
-                self.params.noise_color,
-                quality="balanced",
-            )
+            result = apply_detail(self.image, self.params, "balanced", scale=self.scale)
         except Exception:
             result = self.image
         try:
@@ -198,7 +196,7 @@ class ExportTask(QRunnable):
             self.signals.export_progress.emit(index, total, name)
             try:
                 raw = load_photo(source)
-                params = self.params_by_path.get(source) or EditParams()
+                params = self.params_by_path.get(source) or default_params_for(source)
                 rgb8 = develop(
                     raw, params, denoise=True, quality=self.options.noise_quality
                 )

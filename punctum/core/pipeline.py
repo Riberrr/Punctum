@@ -216,7 +216,7 @@ def _region_from_source(
 # ------------------------------------------------------------- redukcja szumu
 
 # Implementacja w denoise.py; import tutaj, bo reszta programu bierze ja z pipeline.
-from .denoise import NLM_WINDOWS, apply_noise_reduction  # noqa: E402,F401
+from .denoise import NLM_WINDOWS, apply_detail, apply_noise_reduction  # noqa: E402,F401
 
 
 # ------------------------------------------------------------------ zlozenie
@@ -245,7 +245,7 @@ def develop(
     img = apply_geometry(raw.camera_linear, p)
     rgb8 = _to_uint8(apply_tone(img, raw, p))
     if denoise:
-        rgb8 = apply_noise_reduction(rgb8, p.noise_luminance, p.noise_color, quality)
+        rgb8 = apply_detail(rgb8, p, quality)
     return rgb8
 
 
@@ -269,7 +269,7 @@ def develop_region(
     patch = _region_from_source(raw, p, rect, render_scale)
     rgb8 = _to_uint8(apply_tone(patch, raw, p))
     if denoise:
-        rgb8 = apply_noise_reduction(rgb8, p.noise_luminance, p.noise_color, quality)
+        rgb8 = apply_detail(rgb8, p, quality, scale=render_scale)
 
     if scale > render_scale:
         out_w = max(1, int(round(rect[2] * scale)))

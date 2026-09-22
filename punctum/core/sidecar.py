@@ -102,6 +102,10 @@ def _lines(params: EditParams) -> list[str]:
         ("crs:Saturation", f"{params.saturation:+.0f}"),
         ("crs:LuminanceSmoothing", f"{params.noise_luminance:.0f}"),
         ("crs:ColorNoiseReduction", f"{params.noise_color:.0f}"),
+        ("crs:Sharpness", f"{params.sharpen_amount:.0f}"),
+        ("crs:SharpenRadius", f"{params.sharpen_radius:+.1f}"),
+        ("crs:SharpenDetail", f"{params.sharpen_detail:.0f}"),
+        ("crs:SharpenEdgeMasking", f"{params.sharpen_masking:.0f}"),
         ("crs:HasCrop", "True" if has_crop else "False"),
         ("crs:CropLeft", f"{crop_left:.6f}"),
         ("crs:CropTop", f"{crop_top:.6f}"),
@@ -138,6 +142,10 @@ def _lines(params: EditParams) -> list[str]:
         ("punctum:CropBottom", f"{crop_bottom:.6f}"),
         ("punctum:NoiseLuminance", f"{params.noise_luminance:.4f}"),
         ("punctum:NoiseColor", f"{params.noise_color:.4f}"),
+        ("punctum:SharpenAmount", f"{params.sharpen_amount:.4f}"),
+        ("punctum:SharpenRadius", f"{params.sharpen_radius:.4f}"),
+        ("punctum:SharpenDetail", f"{params.sharpen_detail:.4f}"),
+        ("punctum:SharpenMasking", f"{params.sharpen_masking:.4f}"),
     ]
 
     if params.has_location:
@@ -182,7 +190,7 @@ def write_sidecar(photo_path: str, params: EditParams) -> str | None:
     wrocilyby przy nastepnym otwarciu.
     """
     target = sidecar_path(photo_path)
-    if params.is_default() and not os.path.exists(target):
+    if params.is_default(not is_raw(photo_path)) and not os.path.exists(target):
         return None
 
     body = "\n".join(_lines(params))
@@ -293,6 +301,12 @@ def read_sidecar(photo_path: str) -> EditParams | None:
             ),
             noise_luminance=number("NoiseLuminance", 0.0),
             noise_color=number("NoiseColor", 25.0),
+            # sidecar sprzed wyostrzania: RAW dostaje domyslne 40, jak nowe
+            # zdjecie; JPEG 0, bo wyostrzyl go juz aparat
+            sharpen_amount=number("SharpenAmount", 40.0 if is_raw(photo_path) else 0.0),
+            sharpen_radius=number("SharpenRadius", 1.0),
+            sharpen_detail=number("SharpenDetail", 25.0),
+            sharpen_masking=number("SharpenMasking", 0.0),
             latitude=coordinate("Latitude"),
             longitude=coordinate("Longitude"),
             metadata={

@@ -32,6 +32,8 @@ from ..core import (
     EditParams,
     RawImage,
     count_formats,
+    default_params_for,
+    is_jpeg,
     develop,
     edited_photos,
     folder_photos,
@@ -619,7 +621,7 @@ class MainWindow(QMainWindow):
         previous = self.current_path
         self.paths = [p for p in self.folder_paths if matches_filter(p, chosen)]
         marked = self.edited_on_disk | {
-            path for path, params in self.edits.items() if not params.is_default()
+            path for path, params in self.edits.items() if not params.is_default(is_jpeg(path))
         }
         self.filmstrip.set_paths(self.paths, marked, self._located_paths())
 
@@ -674,7 +676,7 @@ class MainWindow(QMainWindow):
         """Panel EXIF zglosil zmiane pol dla biezacego zdjecia."""
         if not self.current_path:
             return
-        params = self._params_for(self.current_path) or EditParams()
+        params = self._params_for(self.current_path) or default_params_for(self.current_path or "")
         params.metadata = dict(changes)
         self.edits[self.current_path] = params
         self._store_edits(self.current_path)
@@ -844,7 +846,7 @@ class MainWindow(QMainWindow):
         """Mapa nadala albo skasowala wspolrzedne zaznaczonym zdjeciom."""
         changed: dict[str, tuple[float, float] | None] = {}
         for path in paths:
-            params = self._params_for(path) or EditParams()
+            params = self._params_for(path) or default_params_for(path)
             params.latitude = latitude
             params.longitude = longitude
             self.edits[path] = params
@@ -906,7 +908,7 @@ class MainWindow(QMainWindow):
         if params is None:
             return
         written = write_sidecar(path, params)
-        marked = bool(written) and not params.is_default()
+        marked = bool(written) and not params.is_default(is_jpeg(path))
         self.filmstrip.set_edited(path, marked)
         self.filmstrip.set_located(path, self._has_location(path))
         if self.map_view is not None:
@@ -914,7 +916,7 @@ class MainWindow(QMainWindow):
 
         # Katalog tylko do odczytu albo wyjeta karta: bez slowa uzytkownik
         # pracowalby przez godzine w przekonaniu, ze praca sie zapisuje.
-        if written is None and not params.is_default() and not self._sidecar_warned:
+        if written is None and not params.is_default(is_jpeg(path)) and not self._sidecar_warned:
             self._sidecar_warned = True
             self.status.showMessage(
                 "Nie udało się zapisać korekt obok zdjęcia — katalog jest tylko "
@@ -977,7 +979,7 @@ class MainWindow(QMainWindow):
                 damaged = path in self.edited_on_disk
         if saved is not None:
             self.orientation, self.crop = saved.orientation, saved.crop
-        self.edit_panel.load_params(saved if saved is not None else EditParams())
+        self.edit_panel.load_params(saved if saved is not None else default_params_for(path))
         self.view.set_crop_fractions(self.crop)
 
         # Do pamieci karty wgrywamy PELNA rozdzielczosc, nie proxy. Dzieki temu
@@ -1077,7 +1079,7 @@ class MainWindow(QMainWindow):
     def _show_preview(self, rgb8: np.ndarray, image_size: tuple, params: EditParams) -> None:
         self.current_image = rgb8
         # odszumianie liczy procesor, wiec dokladamy je dopiero po chwili ciszy
-        if params.noise_luminance > 0.5 or params.noise_color > 0.5:
+        if params.needs_detail_pass(rgb8.shape[1] / float(max(1, image_size[0]))):
             self._noise_pending = (rgb8, params)
             self.noise_timer.start()
         else:
@@ -1103,7 +1105,9 @@ class MainWindow(QMainWindow):
         image, params = self._noise_pending
         self._job_counter += 1
         self._latest_job = self._job_counter
-        task = NoiseReductionTask(self._job_counter, image, params)
+        # podglad bywa pomniejszony - promien wyostrzania liczymy w pikselach zdjecia
+        scale = image.shape[1] / float(max(1, self.view.image_size[0]))
+        task = NoiseReductionTask(self._job_counter, image, params, scale)
         task.signals.render_ready.connect(self._on_noise_ready)
         self.pool.start(task)
 
@@ -1122,15 +1126,14 @@ class MainWindow(QMainWindow):
             return
         # Przy "przed" ostry fragment tez ma byc bez korekt - inaczej po
         # chwili na zdjecie bez korekt wjezdzal fragment z korektami.
-        # EditParams() ma domyslnie kolor 25 - "przed" liczymy bez odszumiania,
-        # tak jak podglad before_image.
-        params = (
-            EditParams(noise_color=0.0) if self._before_shown else self.display_params()
-        )
-        # Shader nie odszumia. Gdy szum jest wlaczony, ostry fragment liczymy
-        # na procesorze (tor z odszumianiem); z karty wjezdzal fragment BEZ
-        # odszumiania na odszumiony podglad i efekt suwaka znikal po chwili.
-        denoise = params.noise_luminance > 0.5 or params.noise_color > 0.5
+        # EditParams() ma domyslnie kolor 25 i wyostrzanie 40 - "przed" liczymy
+        # bez nich, tak jak podglad before_image.
+        before = EditParams(noise_color=0.0, sharpen_amount=0.0)
+        params = before if self._before_shown else self.display_params()
+        # Shader nie odszumia ani nie wyostrza. Gdy ktores jest wlaczone, ostry
+        # fragment liczymy na procesorze; z karty wjezdzal fragment BEZ tych
+        # efektow na gotowy podglad i efekt suwaka znikal po chwili.
+        denoise = params.needs_detail_pass(min(scale, 1.0))
 
         if self.gpu_source_ready and not denoise:
             rgb8 = self.gpu.render(
@@ -1351,7 +1354,7 @@ class MainWindow(QMainWindow):
             return
 
         params = {
-            source: self._params_for(source) or EditParams() for source, _ in pairs
+            source: self._params_for(source) or default_params_for(source) for source, _ in pairs
         }
         task = ExportTask(pairs, params, options)
         task.signals.export_progress.connect(self._on_export_progress)

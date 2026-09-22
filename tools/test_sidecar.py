@@ -8,6 +8,7 @@ bo objawia sie dopiero nastepnego dnia, na cudzej pracy sprzed godzin.
 from __future__ import annotations
 
 import os
+import re
 import sys
 import tempfile
 import time
@@ -15,6 +16,7 @@ import time
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from punctum.core import EditParams  # noqa: E402
+from punctum.core.params import default_params  # noqa: E402
 from punctum.core.settings import Settings  # noqa: E402
 from punctum.core.sidecar import (  # noqa: E402
     PUNCTUM_NS,
@@ -43,6 +45,7 @@ FULL = EditParams(
     highlights=-48.0, shadows=57.0, whites=-3.0, blacks=-12.0,
     vibrance=20.0, saturation=-5.0, orientation=270, rotation=-3.75,
     crop=(0.1, 0.2, 0.85, 0.95), noise_luminance=42.0, noise_color=30.0,
+    sharpen_amount=65.0, sharpen_radius=1.4, sharpen_detail=40.0, sharpen_masking=20.0,
 )
 
 with tempfile.TemporaryDirectory() as tmp:
@@ -76,6 +79,22 @@ with tempfile.TemporaryDirectory() as tmp:
     clean = touch(os.path.join(tmp, "czyste.RW2"))
     check("bez korekt nie powstaje zaden plik",
           write_sidecar(clean, EditParams()) is None and not has_edits(clean))
+
+    # --- 4a. wyostrzanie: RAW domyslnie 40, JPEG 0 ---------------------------
+    clean_jpeg = touch(os.path.join(tmp, "czyste.jpg"))
+    check("nietkniety JPEG (wyostrzanie 0) nie dostaje sidecara",
+          write_sidecar(clean_jpeg, default_params(True)) is None)
+    old_raw = touch(os.path.join(tmp, "stary.RW2"))
+    write_sidecar(old_raw, EditParams(exposure=0.3))
+    # usuwamy same atrybuty wyostrzania - tak wyglada sidecar z wczesniejszej wersji
+    with open(sidecar_path(old_raw), encoding="utf-8") as handle:
+        text_old = re.sub(r'\s+\w+:Sharpen\w*="[^"]*"', "", handle.read())
+    with open(sidecar_path(old_raw), "w", encoding="utf-8") as handle:
+        handle.write(text_old)
+    back_old = read_sidecar(old_raw)
+    check("sidecar sprzed wyostrzania: RAW dostaje domyslne 40",
+          back_old is not None and back_old.sharpen_amount == 40.0,
+          f"{back_old.sharpen_amount if back_old else '-'}")
 
     # --- 5. ale cofniecie korekt musi trafic na dysk ------------------------
     write_sidecar(raw, EditParams())

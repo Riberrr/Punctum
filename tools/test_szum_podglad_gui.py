@@ -147,6 +147,30 @@ def stage_after_check() -> None:
               f"sigma {s_det:.2f} wobec {s_ref:.2f}")
 
 
+def fine_energy(rgb8: np.ndarray) -> float:
+    y = cv2.cvtColor(rgb8, cv2.COLOR_RGB2YCrCb)[..., 0].astype(np.float32)
+    return float(np.mean(np.abs(y - cv2.GaussianBlur(y, (0, 0), 1.0))))
+
+
+def stage_sharpen_only() -> None:
+    """Sam szum wylaczony, wyostrzanie domyslne: fragment tez z procesora."""
+    details.clear()
+    window.edit_panel.sliders["noise_luminance"].set_value(0)
+    window.edit_panel.sliders["noise_color"].set_value(0)
+    window._on_params_changed()
+
+
+def stage_sharpen_check() -> None:
+    czekaj(app, lambda: len(details) > 0, "fragment z samym wyostrzaniem", 30000)
+    pauza(1500)
+    rgb8, rect, scale = details[-1]
+    reference = gpu_reference(window.display_params(), rect, scale)
+    if reference is not None:
+        e_det, e_ref = fine_energy(rgb8), fine_energy(reference)
+        check("przy 1:1 fragment jest wyostrzony (nie z karty)", e_det > 1.15 * e_ref,
+              f"energia drobnego pasma {e_det:.2f} wobec {e_ref:.2f}")
+
+
 KOD = 0
 
 
@@ -162,7 +186,8 @@ def report() -> None:
 
 
 lancuch(app, [stage_load, stage_noise_on, stage_noise_check, stage_before,
-              stage_before_check, stage_after_check], report)
+              stage_before_check, stage_after_check, stage_sharpen_only,
+              stage_sharpen_check], report)
 
 app.exec()
 sys.exit(KOD)

@@ -160,7 +160,9 @@ def main() -> None:
     for item in os.environ.get("SZUM_NASTAWY", "0/0,0/25,30/25,50/25").split(","):
         lum, col = (float(v) for v in item.split("/"))
         t = time.perf_counter()
-        named.append((f"P {item}", pl.apply_noise_reduction(rgb8, lum, col, "high")))
+        # pelny przebieg jak w eksporcie: szum + wyostrzanie domyslne dla RAW
+        detail = EditParams(noise_luminance=lum, noise_color=col)
+        named.append((f"P {item}", pl.apply_detail(rgb8, detail, "high")))
         print(f"punctum {item}: {time.perf_counter() - t:.2f} s")
     # warianty robocze: "h0,h1,w0,w1,ostrosc" dla suwaka 30 i 40
     for spec in filter(None, os.environ.get("SZUM_WARIANTY", "").split(";")):

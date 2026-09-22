@@ -39,6 +39,14 @@ class EditParams:
     # kadr jako ulamki szerokosci/wysokosci: (left, top, right, bottom)
     crop: tuple[float, float, float, float] = (0.0, 0.0, 1.0, 1.0)
 
+    # --- wyostrzanie ---------------------------------------------------
+    # Domyslne jak dla RAW (JPEG jest juz wyostrzony w aparacie i dostaje
+    # 0 - patrz default_params_for). Liczone na procesorze razem z szumem.
+    sharpen_amount: float = 40.0  # 0 .. 150
+    sharpen_radius: float = 1.0  # 0.5 .. 3.0 px
+    sharpen_detail: float = 25.0  # 0 .. 100
+    sharpen_masking: float = 0.0  # 0 .. 100
+
     # --- redukcja szumu -------------------------------------------------
     noise_luminance: float = 0.0  # 0 .. 100
     noise_color: float = 25.0  # 0 .. 100
@@ -76,5 +84,28 @@ class EditParams:
             clean["crop"] = tuple(clean["crop"])
         return cls(**clean)
 
-    def is_default(self) -> bool:
-        return self == EditParams()
+    def is_default(self, jpeg: bool = False) -> bool:
+        return self == default_params(jpeg)
+
+    def needs_detail_pass(self, scale: float = 1.0) -> bool:
+        """Czy obraz w skali `scale` wymaga przebiegu na procesorze.
+
+        Shader nie odszumia ani nie wyostrza, wiec kazde miejsce pokazujace
+        obraz musi wtedy isc torem CPU - inaczej efekt znika po dorysowaniu
+        fragmentu. Wyostrzanie liczy sie dopiero, gdy promien w pikselach
+        obrazu przekracza SHARPEN_MIN_RADIUS: na podgladzie dopasowanym do
+        okna i tak nie byloby go widac, a przebieg CPU po kazdym ruchu
+        suwaka dawalby tylko mrugniecie.
+        """
+        if self.noise_luminance > 0.5 or self.noise_color > 0.5:
+            return True
+        return self.sharpen_amount > 0.5 and self.sharpen_radius * scale >= SHARPEN_MIN_RADIUS
+
+
+SHARPEN_MIN_RADIUS = 0.5  # px obrazu wyswietlanego; ponizej wyostrzanie pomijamy
+
+
+def default_params(jpeg: bool = False) -> EditParams:
+    """Nastawy wyjsciowe nowego zdjecia. JPEG byl juz wyostrzony w aparacie -
+    drugie domyslne wyostrzanie dawaloby przeostrzone krawedzie."""
+    return EditParams(sharpen_amount=0.0) if jpeg else EditParams()

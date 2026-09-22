@@ -140,20 +140,34 @@ def _denoise_luma(y: np.ndarray, t: float, quality: str) -> np.ndarray:
     z = f[y]
     zu = np.clip(z * scale + 0.5, 0, 255).astype(np.uint8)
     template, search = NLM_WINDOWS.get(quality, NLM_WINDOWS["high"])
-    # h w wielokrotnosciach sigma: 50 -> 2.5 sigma (poziom Lightrooma 50).
-    # NLM dziala progowo (ponizej ~1 sigma prawie nic nie robi), dlatego
-    # slabe ustawienia uzyskujemy mieszaniem, a nie samym zmniejszaniem h.
-    h = (1.0 + 4.0 * t) * scale
+    # h w wielokrotnosciach sigma: 50 -> 2 sigma. NLM dziala progowo (ponizej
+    # ~1 sigma prawie nic nie robi), dlatego slabe ustawienia uzyskujemy
+    # mieszaniem, a nie samym zmniejszaniem h.
+    h = (1.0 + 2.0 * t) * scale
     zd = cv2.fastNlMeansDenoising(zu, None, h, template, search).astype(np.float32) / scale
     yd = np.interp(zd, f, np.arange(256, dtype=np.float32)).astype(np.float32)
-    # odzyskanie konturu, ktory NLM zmiekcza - na obrazie JUZ odszumionym,
-    # inaczej wyostrzylibysmy szum, ktory za chwile wraca jako ziarno
-    yd += 0.8 * (yd - cv2.GaussianBlur(yd, (0, 0), 1.0))
-    # czesc oryginalu wraca jako ziarno (przy 50 ok. 10 %, przy 100 nic) -
-    # calkiem gladki obraz wyglada jak plastik i gubi resztki faktury
-    weight = min(1.0, t * 4.0) * (0.8 + 0.2 * t)
+    # Szum TLUMIMY, nie wygladzamy: czesc oryginalu wraca jako drobne ziarno
+    # (30 -> ok. 30 %, 50 -> 15 %, od 70 nic). Porownanie z eksportami
+    # Lightrooma pokazalo, ze przy 30-40 zostawia on wyrazne ziarno i wlasnie
+    # to uzytkownik uznal za dobre; pelne wygladzenie dawalo efekt wosku.
+    # Kontur odzyskuje wyostrzanie (sharpen.py), liczone zaraz potem.
+    weight = min(1.0, t * 4.0) * min(1.0, 0.45 + 0.8 * t)
     yf = y.astype(np.float32)
     return np.clip(yf + weight * (yd - yf) + 0.5, 0, 255).astype(np.uint8)
+
+
+def apply_detail(rgb8: np.ndarray, p, quality: str = "high", scale: float = 1.0) -> np.ndarray:
+    """Caly przebieg na procesorze: usuwanie szumu, potem wyostrzanie.
+
+    Kolejnosc ma znaczenie - wyostrzony szum jest wiekszy i trudniejszy do
+    usuniecia. `scale` to skala obrazu wzgledem pelnej rozdzielczosci
+    (podglad pomniejszony), potrzebna, by promien wyostrzania znaczyl to samo.
+    """
+    from .sharpen import sharpen
+
+    rgb8 = apply_noise_reduction(rgb8, p.noise_luminance, p.noise_color, quality)
+    return sharpen(rgb8, p.sharpen_amount, p.sharpen_radius, p.sharpen_detail,
+                   p.sharpen_masking, scale)
 
 
 def apply_noise_reduction(

@@ -276,6 +276,12 @@ class EditPanel(QWidget):
         self._add(layout, "vibrance", "Jaskrawość", -100, 100, 0)
         self._add(layout, "saturation", "Nasycenie", -100, 100, 0)
 
+        layout.addWidget(self._section("Wyostrzanie"))
+        self._add(layout, "sharpen_amount", "Ilość", 0, 150, 40)
+        self._add(layout, "sharpen_radius", "Promień", 0.5, 3.0, 1.0, decimals=1)
+        self._add(layout, "sharpen_detail", "Szczegóły", 0, 100, 25)
+        self._add(layout, "sharpen_masking", "Maskowanie", 0, 100, 0)
+
         layout.addWidget(self._section("Usuwanie szumu"))
         self._add(layout, "noise_luminance", "Szum jasności", 0, 100, 0)
         self._add(layout, "noise_color", "Szum koloru", 0, 100, 25)
@@ -344,6 +350,8 @@ class EditPanel(QWidget):
             if relative else ""
         )
         self.sliders["tint"].set_value(0.0)
+        # JPEG wyostrzyl juz aparat: "Wyzeruj" ma go sprowadzac do 0, nie do 40
+        self.sliders["sharpen_amount"].default = 0.0 if relative else 40.0
         self._loading = False
 
     def load_params(self, p: EditParams) -> None:
@@ -367,6 +375,10 @@ class EditPanel(QWidget):
             "rotation": p.rotation,
             "noise_luminance": p.noise_luminance,
             "noise_color": p.noise_color,
+            "sharpen_amount": p.sharpen_amount,
+            "sharpen_radius": p.sharpen_radius,
+            "sharpen_detail": p.sharpen_detail,
+            "sharpen_masking": p.sharpen_masking,
         }
         for key, value in values.items():
             if key in self.sliders:
@@ -401,6 +413,10 @@ class EditPanel(QWidget):
             crop=crop,
             noise_luminance=get("noise_luminance"),
             noise_color=get("noise_color"),
+            sharpen_amount=get("sharpen_amount"),
+            sharpen_radius=get("sharpen_radius"),
+            sharpen_detail=get("sharpen_detail"),
+            sharpen_masking=get("sharpen_masking"),
         )
 
     def set_rotation_silently(self, degrees: float) -> None:

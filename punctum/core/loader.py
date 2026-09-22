@@ -40,6 +40,13 @@ def is_jpeg(path: str) -> bool:
     return path.lower().endswith(JPEG_EXTENSIONS)
 
 
+def default_params_for(path: str):
+    """Nastawy nowego zdjecia zalezne od formatu (JPEG bez wyostrzania)."""
+    from .params import default_params
+
+    return default_params(is_jpeg(path))
+
+
 def is_photo(path: str) -> bool:
     return path.lower().endswith(PHOTO_EXTENSIONS)
 

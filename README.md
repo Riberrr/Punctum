@@ -50,6 +50,9 @@ albo przyciskami *Dopasuj* / *100 %*; dwuklik przełącza dopasowanie ↔ 100 %.
 Nawigator z ramką pokazującą powiększony fragment (klikalny), przytrzymanie
 *Przed / po* pokazuje zdjęcie bez korekt, histogram na żywo.
 
+**Wyostrzanie** — ilość, promień, szczegóły, maskowanie; RAW domyślnie 40,
+JPEG 0 (wyostrzył go już aparat).
+
 **Usuwanie szumu** — osobno szum jasności i szum koloru, siła dopasowana do
 szumu zmierzonego na zdjęciu.
 
@@ -426,6 +429,22 @@ pliku pokazuje 7100 K.
 Poprawność macierzy potwierdza `tools/verify_color.py` — mnożniki policzone
 dla D65 muszą zgadzać się z `daylight_whitebalance` z pliku. Różnica: 0,006 %.
 
+### Wyostrzanie
+
+Maska wyostrzająca na samej luminancji (`core/sharpen.py`) — wyostrzanie
+kanałów barwnych dawałoby kolorowe obwódki. *Szczegóły* miękko ograniczają
+amplitudę maski (`tanh`): mocna krawędź, która daje aureolę, zostaje ścięta,
+a drobna faktura przechodzi. *Maskowanie* ogranicza wyostrzanie do krawędzi,
+zostawiając gładkie powierzchnie. Domyślne 40 / 1,0 / 25 / 0 dla RAW
+dobrane pomiarem wobec eksportu z Lightrooma przy jego domyślnym
+wyostrzaniu (stosunek energii pasm 0,7–1,5 px i 1,5–4 px, `tools/ostrosc_lab.py`):
+nasze 40 daje 106 % wzorca — celowo odrobinę więcej detalu.
+
+Shader nie wyostrza: tak jak odszumianie, liczy to procesor w przebiegu po
+podglądzie i w ostrym fragmencie przy powiększeniu. Promień podawany jest
+w pikselach zdjęcia; na podglądzie pomniejszonym tak, że promień spada
+poniżej 0,5 piksela, wyostrzanie jest pomijane.
+
 ### Usuwanie szumu
 
 Suwaki *Szum jasności* i *Szum koloru* nie ustawiają bezwzględnej siły
@@ -439,9 +458,10 @@ w cieniach i w światłach, dla RAW-a i JPEG-a.
    samej wielkości w każdej tonacji. Bez tego filtr dobrany do cieni rozmywał
    światła, a dobrany do świateł zostawiał szum w cieniach.
 3. **Jasność.** Non-local means na danych po VST z `h` wyrażonym
-   w wielokrotnościach zmierzonej sigmy (50 → 3σ), potem odzyskanie konturu
-   i powrót części oryginału jako drobnego ziarna — całkiem gładki obraz
-   wygląda jak plastik.
+   w wielokrotnościach zmierzonej sigmy (50 → 2σ). Szum jest **tłumiony,
+   nie wygładzany**: część oryginału wraca jako drobne ziarno (30 → ok. 30 %,
+   50 → 15 %). Lightroom przy 30–40 zostawia wyraźne ziarno i tak wygląda
+   to lepiej niż gładki „wosk”; kontur odzyskuje wyostrzanie.
 4. **Kolor.** Falki à trous na pięciu skalach, w połowie rozdzielczości
    (tak jak JPEG 4:2:0 i tak zapisuje chrominancję). Szum koloru siedzi
    zarówno w drobnych iskrach, jak i w większych plamach, więc tłumimy
@@ -618,6 +638,7 @@ punctum/core/
     loader.py        wspólne wejście dla obu formatów, filtr formatów
     pipeline.py      tor tonalny, geometria
     denoise.py       usuwanie szumu dopasowane do zmierzonego szumu
+    sharpen.py       wyostrzanie (maska wyostrzająca na luminancji)
     auto.py          automatyczny dobór parametrów
     metadata.py      odczyt EXIF (z obsługą pól własnych Panasonica)
     exif_edit.py     podgląd wszystkich tagów i zapis edytowalnych pól
