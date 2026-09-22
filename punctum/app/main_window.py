@@ -122,6 +122,9 @@ class MainWindow(QMainWindow):
         self._job_counter = 0
         self._latest_job = 0
         self._latest_detail = 0
+        # przytrzymany "Przed / po": podglad pokazuje zdjecie bez korekt i nic,
+        # co przyjdzie w tym czasie z watkow, nie moze go podmienic
+        self._before_shown = False
         self._noise_pending = None  # (obraz bez odszumiania, parametry)
 
         # Tor tonalny na karcie graficznej. Bez niego podglad liczy numpy,
@@ -1073,11 +1076,6 @@ class MainWindow(QMainWindow):
 
     def _show_preview(self, rgb8: np.ndarray, image_size: tuple, params: EditParams) -> None:
         self.current_image = rgb8
-        self.view.set_image(rgb8, image_size)
-        self.navigator.set_pixmap(self.view.base_pixmap())
-        self.histogram_widget.set_histogram(histogram(rgb8))
-        if self.crop_mode:
-            self.view.set_crop_fractions(self.crop)
         # odszumianie liczy procesor, wiec dokladamy je dopiero po chwili ciszy
         if params.noise_luminance > 0.5 or params.noise_color > 0.5:
             self._noise_pending = (rgb8, params)
@@ -1085,6 +1083,13 @@ class MainWindow(QMainWindow):
         else:
             self._noise_pending = None
             self.noise_timer.stop()
+        if self._before_shown:
+            return  # pokazemy po puszczeniu przycisku
+        self.view.set_image(rgb8, image_size)
+        self.navigator.set_pixmap(self.view.base_pixmap())
+        self.histogram_widget.set_histogram(histogram(rgb8))
+        if self.crop_mode:
+            self.view.set_crop_fractions(self.crop)
 
     def _on_render_ready(self, job_id: int, rgb8: np.ndarray) -> None:
         if job_id != self._latest_job or self.full_raw is None:
@@ -1106,6 +1111,8 @@ class MainWindow(QMainWindow):
         if job_id != self._latest_job or self.full_raw is None:
             return
         self.current_image = rgb8
+        if self._before_shown:
+            return
         self.view.set_image(rgb8, self.view.image_size)
         self.navigator.set_pixmap(self.view.base_pixmap())
         self.histogram_widget.set_histogram(histogram(rgb8))
@@ -1113,9 +1120,19 @@ class MainWindow(QMainWindow):
     def _render_detail(self, rect: QRect, scale: float) -> None:
         if self.full_raw is None:
             return
-        params = self.display_params()
+        # Przy "przed" ostry fragment tez ma byc bez korekt - inaczej po
+        # chwili na zdjecie bez korekt wjezdzal fragment z korektami.
+        # EditParams() ma domyslnie kolor 25 - "przed" liczymy bez odszumiania,
+        # tak jak podglad before_image.
+        params = (
+            EditParams(noise_color=0.0) if self._before_shown else self.display_params()
+        )
+        # Shader nie odszumia. Gdy szum jest wlaczony, ostry fragment liczymy
+        # na procesorze (tor z odszumianiem); z karty wjezdzal fragment BEZ
+        # odszumiania na odszumiony podglad i efekt suwaka znikal po chwili.
+        denoise = params.noise_luminance > 0.5 or params.noise_color > 0.5
 
-        if self.gpu_source_ready:
+        if self.gpu_source_ready and not denoise:
             rgb8 = self.gpu.render(
                 self.full_raw, params,
                 max(1, round(rect.width() * scale)), max(1, round(rect.height() * scale)),
@@ -1154,6 +1171,8 @@ class MainWindow(QMainWindow):
     def _show_before(self) -> None:
         if self.before_image is None:
             return
+        self._before_shown = True
+        self._latest_detail = -1  # fragment liczony jeszcze "po" ma przepasc
         self.view.clear_detail()
         self.view.set_image(
             self.before_image,
@@ -1162,6 +1181,8 @@ class MainWindow(QMainWindow):
         self.histogram_widget.set_histogram(histogram(self.before_image))
 
     def _show_after(self) -> None:
+        self._before_shown = False
+        self._latest_detail = -1  # fragment "przed" nie moze wjechac na "po"
         if self.current_image is None or self.full_raw is None:
             return
         self.view.set_image(
