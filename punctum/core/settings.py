@@ -39,9 +39,9 @@ LAYOUT_LIMITS = {
 }
 
 NOISE_QUALITY_LABELS = {
-    "fast": "Szybka (filtr bilateralny)",
+    "fast": "Szybka (non-local means 3/7)",
     "balanced": "Zrównoważona (non-local means 5/11)",
-    "high": "Dokładna (non-local means 7/21)",
+    "high": "Dokładna (non-local means 5/13)",
 }
 
 

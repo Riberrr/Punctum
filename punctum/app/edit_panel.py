@@ -276,9 +276,9 @@ class EditPanel(QWidget):
         self._add(layout, "vibrance", "Jaskrawość", -100, 100, 0)
         self._add(layout, "saturation", "Nasycenie", -100, 100, 0)
 
-        layout.addWidget(self._section("Redukcja szumu"))
-        self._add(layout, "noise_luminance", "Luminancja", 0, 100, 0)
-        self._add(layout, "noise_color", "Kolor", 0, 100, 25)
+        layout.addWidget(self._section("Usuwanie szumu"))
+        self._add(layout, "noise_luminance", "Szum jasności", 0, 100, 0)
+        self._add(layout, "noise_color", "Szum koloru", 0, 100, 25)
         layout.addStretch(1)
 
         scroll = QScrollArea()

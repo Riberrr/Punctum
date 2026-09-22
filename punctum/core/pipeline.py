@@ -215,78 +215,8 @@ def _region_from_source(
 
 # ------------------------------------------------------------- redukcja szumu
 
-
-def _denoise_chroma(channel: np.ndarray, strength: float) -> np.ndarray:
-    """Szum koloru to plamy o niskiej czestotliwosci.
-
-    Najtaniej usuwa sie je zmniejszajac kanal, rozmywajac i skalujac
-    z powrotem - szczegoly obrazu i tak siedza w luminancji, wiec
-    rozmycie chrominancji jest praktycznie niewidoczne.
-    """
-    scale = 1.0 / (1.0 + strength * 3.0)
-    small = cv2.resize(channel, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
-    kernel = int(3 + strength * 6) | 1
-    small = cv2.medianBlur(small, min(kernel, 9))
-    small = cv2.GaussianBlur(small, (0, 0), 1.0 + strength * 2.5)
-    return cv2.resize(small, (channel.shape[1], channel.shape[0]), interpolation=cv2.INTER_LINEAR)
-
-
-# Trzy poziomy dokladnosci odszumiania luminancji: (template, search window).
-# Non-local means porownuje otoczenia pikseli, wiec jakosc rosnie z oknem
-# przeszukiwania, a czas rosnie z jego kwadratem.
-NLM_WINDOWS = {"balanced": (5, 11), "high": (7, 21)}
-
-
-def apply_noise_reduction(
-    rgb8: np.ndarray, luminance: float, color: float, quality: str = "fast"
-) -> np.ndarray:
-    """Redukcja szumu rozdzielona na luminancje i kolor.
-
-    WAZNE: te funkcje wolno wywolywac wylacznie na obrazie w rozdzielczosci
-    NATYWNEJ. Po powiekszeniu ziarno jest kilkukrotnie wieksze i zaden filtr
-    o rozsadnym promieniu go nie zobaczy - odszumianie wygladalo wtedy, jakby
-    w ogole nie dzialalo.
-
-    Poziomy: "fast" - filtr bilateralny na podglad dopasowany do okna (szum
-    i tak jest tam zduszony przez pomniejszenie), "balanced" - non-local means
-    na doliczany fragment przy powiekszeniu, "high" - non-local means z pelnym
-    oknem przy eksporcie.
-    """
-    lum_strength = max(0.0, min(100.0, luminance)) / 100.0
-    col_strength = max(0.0, min(100.0, color)) / 100.0
-    if lum_strength < 0.005 and col_strength < 0.005:
-        return rgb8
-
-    ycrcb = cv2.cvtColor(rgb8, cv2.COLOR_RGB2YCrCb)
-    y, cr, cb = cv2.split(ycrcb)
-
-    if col_strength >= 0.005:
-        cr = _denoise_chroma(cr, col_strength)
-        cb = _denoise_chroma(cb, col_strength)
-
-    if lum_strength >= 0.005:
-        # Non-local means dziala progowo: ponizej h okolo 3 nie robi nic,
-        # powyzej 10 jest juz nasycony. Samo odwzorowanie suwaka na h daje
-        # wiec martwe zakresy na obu koncach - przy sile 25 szum znika
-        # calkowicie, a 30..100 nie rozni sie niczym.
-        # Dlatego liczymy jedno mocne odszumianie i MIESZAMY je z oryginalem
-        # proporcjonalnie do suwaka. Szum resztkowy maleje wtedy liniowo,
-        # bo odchylenie standardowe mieszanki skaluje sie wprost z waga.
-        window = NLM_WINDOWS.get(quality)
-        if window:
-            template, search = window
-            strong = cv2.fastNlMeansDenoising(
-                y, None, 4.0 + lum_strength * 9.0, template, search
-            )
-        else:
-            strong = cv2.bilateralFilter(y, 7, 45.0, 9.0)
-        y = (
-            strong
-            if lum_strength > 0.995
-            else cv2.addWeighted(strong, lum_strength, y, 1.0 - lum_strength, 0.0)
-        )
-
-    return cv2.cvtColor(cv2.merge([y, cr, cb]), cv2.COLOR_YCrCb2RGB)
+# Implementacja w denoise.py; import tutaj, bo reszta programu bierze ja z pipeline.
+from .denoise import NLM_WINDOWS, apply_noise_reduction  # noqa: E402,F401
 
 
 # ------------------------------------------------------------------ zlozenie

@@ -189,7 +189,7 @@ class SettingsDialog(QDialog):
         self.noise_delay_box.setRange(0, 5000)
         self.noise_delay_box.setSingleStep(50)
         self.noise_delay_box.setSuffix(" ms")
-        form.addRow("Redukcja szumu:", self.noise_delay_box)
+        form.addRow("Usuwanie szumu:", self.noise_delay_box)
         form.addRow("", _hint(
             "Odszumianie liczy procesor, więc czeka, aż przestaniesz ruszać suwakiem."
         ))

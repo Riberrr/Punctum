@@ -50,7 +50,8 @@ albo przyciskami *Dopasuj* / *100 %*; dwuklik przełącza dopasowanie ↔ 100 %.
 Nawigator z ramką pokazującą powiększony fragment (klikalny), przytrzymanie
 *Przed / po* pokazuje zdjęcie bez korekt, histogram na żywo.
 
-**Redukcja szumu** — osobno luminancja i kolor.
+**Usuwanie szumu** — osobno szum jasności i szum koloru, siła dopasowana do
+szumu zmierzonego na zdjęciu.
 
 **Eksport** — `Ctrl+E` otwiera okno z kompletem opcji: katalog docelowy,
 opcjonalny podfolder, zachowanie wobec istniejących plików, nazwa z numeratorem,
@@ -425,37 +426,51 @@ pliku pokazuje 7100 K.
 Poprawność macierzy potwierdza `tools/verify_color.py` — mnożniki policzone
 dla D65 muszą zgadzać się z `daylight_whitebalance` z pliku. Różnica: 0,006 %.
 
-### Redukcja szumu
+### Usuwanie szumu
 
-Szum koloru to plamy o niskiej częstotliwości — usuwamy je zmniejszając kanały
-chrominancji, rozmywając i skalując z powrotem. Szczegóły obrazu siedzą
-w luminancji, więc jest to praktycznie niewidoczne.
+Suwaki *Szum jasności* i *Szum koloru* nie ustawiają bezwzględnej siły
+filtra, tylko siłę **względem szumu zmierzonego na samym zdjęciu**
+(`core/denoise.py`). Dzięki temu „50" działa podobnie przy ISO 400 i ISO 6400,
+w cieniach i w światłach, dla RAW-a i JPEG-a.
 
-Luminancję czyści non-local means w trzech poziomach dokładności: filtr
-bilateralny na podglądzie dopasowanym do okna, okno 5/11 na doliczanym
-fragmencie przy powiększeniu, okno 7/21 przy eksporcie.
+1. **Pomiar.** Filtr Immerkaera (zerowa odpowiedź na płaskie tło i gradienty)
+   daje sigma szumu w przedziałach jasności co 8 poziomów.
+2. **Wyrównanie szumu (VST).** Tablica `f(v) = ∫ 1/σ(v)` sprowadza szum do tej
+   samej wielkości w każdej tonacji. Bez tego filtr dobrany do cieni rozmywał
+   światła, a dobrany do świateł zostawiał szum w cieniach.
+3. **Jasność.** Non-local means na danych po VST z `h` wyrażonym
+   w wielokrotnościach zmierzonej sigmy (50 → 3σ), potem odzyskanie konturu
+   i powrót części oryginału jako drobnego ziarna — całkiem gładki obraz
+   wygląda jak plastik.
+4. **Kolor.** Falki à trous na pięciu skalach, w połowie rozdzielczości
+   (tak jak JPEG 4:2:0 i tak zapisuje chrominancję). Szum koloru siedzi
+   zarówno w drobnych iskrach, jak i w większych plamach, więc tłumimy
+   wszystkie skale.
 
-Dwie rzeczy okazały się kluczowe i obie były źródłem błędów:
+Kalibracja na zdjęciu ISO 6400 wobec eksportów Lightrooma: jasność 50 daje
+szum resztkowy zbliżony do jego 50, kolor 25 usuwa barwne iskry podobnie jak
+jego domyślne 25. Dawny tor (NLM na obrazie po krzywej tonalnej, stałe `h`)
+usuwał przy 50 ok. 20 % szumu, a Lightroom już przy 30 ok. 85 %.
+
+Koszt przy eksporcie zdjęcia 20 MP: 3,6 s przy 50/25 (dawniej 5,1 s),
+0,8 s przy samym kolorze. Podgląd dopasowany do okna: 0,2 s.
+
+Znana granica: szum zależy nie tylko od jasności, ale i od barwy — w mocno
+nasyconym niebieskim (kanał niebieski ma największe wzmocnienie) zostaje
+więcej ziarna niż w szarościach, bo pomiar dzieli piksele tylko według
+jasności.
 
 **Odszumianie musi działać na pikselach natywnych, przed powiększeniem.**
 Wcześniej tor liczył je po przeskalowaniu, więc przy 400 % ziarno było
 czterokrotnie większe niż zasięg filtra i suwak nie robił nic widocznego.
 Przy okazji poprawna kolejność jest tańsza — im większe powiększenie, tym
-mniej natywnych pikseli trzeba przeliczyć (26 ms przy 400 % wobec 164 ms
-przy 100 %).
+mniej natywnych pikseli trzeba przeliczyć. Na obrazie pomniejszonym pomiar
+sam wykrywa mniejszy szum i filtr słabnie.
 
-**Siłę suwaka realizujemy mieszaniem, nie parametrem `h`.** Non-local means
-działa progowo: poniżej `h ≈ 3` nie robi nic, powyżej 10 jest nasycony.
-Odwzorowanie suwaka wprost na `h` dawało martwe zakresy — przy sile 25 szum
-znikał całkowicie, a 30–100 nie różniło się niczym. Liczymy więc jedno mocne
-odszumianie i mieszamy je z oryginałem proporcjonalnie do suwaka; szum
-resztkowy maleje wtedy liniowo.
-
-Zmierzone na zdjęciu ISO 3200 przy powiększeniu 400 % (odchylenie szumu):
-
-| suwak | 0 | 25 | 50 | 75 | 100 |
-|---|---:|---:|---:|---:|---:|
-| szum | 7,33 | 6,06 | 4,26 | 2,51 | 1,17 |
+Narzędzia: `tools/szum_lab.py` (krzywe szumu na dwóch skalach, czasy
+i mozaika wycinków 1:1 wobec wzorców z innego programu),
+`tools/szum_demozaik.py` (wpływ algorytmu demozaikowania LibRaw — żaden
+z siedmiu wariantów nie zmniejszał szumu, zostajemy przy AHD).
 
 ### Automatyczna korekcja
 
@@ -601,7 +616,8 @@ punctum/core/
     raw_loader.py    dekodowanie RAW, proxy, miniatury, orientacja
     jpeg_loader.py   dekodowanie JPEG, zdjęcie krzywej sRGB
     loader.py        wspólne wejście dla obu formatów, filtr formatów
-    pipeline.py      tor tonalny, geometria, redukcja szumu
+    pipeline.py      tor tonalny, geometria
+    denoise.py       usuwanie szumu dopasowane do zmierzonego szumu
     auto.py          automatyczny dobór parametrów
     metadata.py      odczyt EXIF (z obsługą pól własnych Panasonica)
     exif_edit.py     podgląd wszystkich tagów i zapis edytowalnych pól

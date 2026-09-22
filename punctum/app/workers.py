@@ -148,7 +148,12 @@ class NoiseReductionTask(QRunnable):
             )
         except Exception:
             result = self.image
-        self.signals.render_ready.emit(self.job_id, result)
+        try:
+            self.signals.render_ready.emit(self.job_id, result)
+        except RuntimeError:
+            # okno zamknieto, zanim odszumianie sie skonczylo - wynik
+            # nie ma juz dokad trafic, a wyjatek z watku tylko smieci w konsoli
+            pass
 
 
 class ExportTask(QRunnable):
