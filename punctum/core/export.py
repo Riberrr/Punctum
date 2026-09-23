@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from PIL import Image
 
-from .exif_edit import exif_bytes
+from .exif_edit import exif_bytes, layer_metadata, source_metadata
 from .metadata import PhotoMetadata
 
 # co zrobic, gdy plik o danej nazwie juz istnieje
@@ -53,23 +53,47 @@ def save_image(
     os.makedirs(os.path.dirname(os.path.abspath(out_path)) or ".", exist_ok=True)
     ext = os.path.splitext(out_path)[1].lower()
 
+    # Pillow nie przyjmuje `exif=None` - sprawdza dlugosc, zanim zdazy
+    # zauwazyc, ze nic nie dostal. Blok metadanych podajemy wiec tylko
+    # wtedy, gdy naprawde jest co zapisac. PNG (blok eXIf) i TIFF przyjmuja
+    # ten sam blok co JPEG - wczesniej wychodzily zupelnie bez metadanych.
+    extra = {}
+    block = exif_bytes(metadata, location)
+    if block:
+        extra["exif"] = block
+
     if ext in (".jpg", ".jpeg"):
-        # Pillow nie przyjmuje `exif=None` - sprawdza dlugosc, zanim zdazy
-        # zauwazyc, ze nic nie dostal. Blok metadanych podajemy wiec tylko
-        # wtedy, gdy naprawde jest co zapisac.
-        extra = {}
-        block = exif_bytes(metadata, location)
-        if block:
-            extra["exif"] = block
         img.save(out_path, "JPEG", quality=quality, subsampling=0, optimize=True, **extra)
     elif ext == ".png":
-        img.save(out_path, "PNG", compress_level=6)
+        img.save(out_path, "PNG", compress_level=6, **extra)
     elif ext in (".tif", ".tiff"):
-        img.save(out_path, "TIFF")
+        img.save(out_path, "TIFF", **_tiff_exif(block))
     else:
         raise ValueError(f"Nieobsługiwane rozszerzenie: {ext}")
 
     return out_path
+
+
+def _tiff_exif(block: bytes | None) -> dict:
+    """Blok EXIF w postaci, ktorej zapis TIFF-a nie przekreca.
+
+    Pillow rozpakowuje blok przed zapisem TIFF-a: teksty czyta jako Latin-1,
+    a zapisuje jako ASCII z zamiana, wiec "Łukasz" wychodzil jako "??ukasz".
+    Gotowe bajty zapisuje za to bez przekodowania - oddajemy mu wiec te same
+    bajty UTF-8, ktore sa w bloku (Latin-1 odwraca sie bez strat).
+    Poprawiamy tylko glowny katalog: autor, prawa i opis siedza wlasnie tam.
+    """
+    if not block:
+        return {}
+    exif = Image.Exif()
+    exif.load(block)
+    for tag, value in list(exif.items()):
+        if isinstance(value, str):
+            try:
+                exif[tag] = value.encode("latin-1")
+            except UnicodeEncodeError:
+                pass
+    return {"exif": exif}
 
 
 def output_path_for(raw_path: str, out_dir: str, ext: str = ".jpg") -> str:
@@ -100,6 +124,30 @@ class ExportOptions:
     max_side: int = 0  # 0 = pelna rozdzielczosc
     noise_quality: str = "high"
 
+    # Metadane dla calej serii. Autor i prawa autorskie maja wlasne pola
+    # wyboru, bo ich wartosci przychodza wypelnione z ustawien - samo
+    # niepuste pole nie znaczy tu, ze uzytkownik chce je dopisac.
+    add_author: bool = False
+    author: str = ""
+    add_copyright: bool = False
+    copyright: str = ""
+    keywords: str = ""
+    subject: str = ""
+    comment: str = ""
+
+    def metadata_overrides(self) -> dict[str, str]:
+        """Pola z okna eksportu pod nazwami EXIF; puste i odznaczone pomijamy."""
+        values: dict[str, str] = {}
+        if self.add_author and self.author.strip():
+            values["Artist"] = self.author.strip()
+        if self.add_copyright and self.copyright.strip():
+            values["Copyright"] = self.copyright.strip()
+        for key, value in (("XPKeywords", self.keywords), ("XPSubject", self.subject),
+                           ("UserComment", self.comment)):
+            if value.strip():
+                values[key] = value.strip()
+        return values
+
     def target_folder(self) -> str:
         if self.use_subfolder and self.subfolder.strip():
             return os.path.join(self.folder, self.subfolder.strip())
@@ -116,6 +164,29 @@ class ExportOptions:
 
     def preview_name(self, source_path: str = "P1170926.RW2") -> str:
         return self.file_name(source_path, 0)
+
+
+def export_metadata(source: str, params, options: ExportOptions | None = None
+                    ) -> tuple[dict[str, str], tuple[float, float] | None]:
+    """Metadane i wspolrzedne pliku wynikowego dla jednego zdjecia.
+
+    Podstawa to plik zrodlowy (data, aparat, naswietlenie, GPS), na nia ida
+    pola wpisane przy zdjeciu, a na wierzch pola z okna eksportu. Lokalizacja
+    nadana na mapie wygrywa z GPS-em aparatu - skoro ktos ja poprawil, to
+    dlatego, ze aparatowa byla zla albo jej nie bylo.
+    """
+    from .. import __version__
+
+    camera, camera_location = source_metadata(source)
+    fields = layer_metadata(
+        camera,
+        dict(params.metadata or {}) if params is not None else {},
+        options.metadata_overrides() if options is not None else {},
+        software=f"Punctum {__version__}",
+    )
+    if params is not None and params.has_location:
+        return fields, (params.latitude, params.longitude)
+    return fields, camera_location
 
 
 @dataclass

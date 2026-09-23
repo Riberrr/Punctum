@@ -1271,6 +1271,12 @@ class MainWindow(QMainWindow):
             quality=s.export_quality,
             max_side=s.export_max_side,
             noise_quality=s.export_noise_quality,
+            add_author=s.export_add_author,
+            author=s.export_author,
+            add_copyright=s.export_add_copyright,
+            copyright=s.export_copyright,
+            # Slowa kluczowe, temat i komentarz zaczynaja puste: tag jednej
+            # serii nie ma prawa przez nieuwage trafic do nastepnej.
         )
 
     def _remember_export_options(self, o: ExportOptions) -> None:
@@ -1283,6 +1289,9 @@ class MainWindow(QMainWindow):
         s.export_on_existing = o.on_existing
         (s.export_format, s.export_quality) = (o.file_format, o.quality)
         (s.export_max_side, s.export_noise_quality) = (o.max_side, o.noise_quality)
+        # Same pola wyboru - wartosci autora zmienia sie w ustawieniach
+        # (patrz komentarz przy Settings.export_author).
+        (s.export_add_author, s.export_add_copyright) = (o.add_author, o.add_copyright)
         s.save()
 
     def _ask_about_conflicts(self, plan) -> str | None:

@@ -117,14 +117,94 @@ def read_all_tags(path: str) -> list[TagRow]:
     return rows
 
 
-def current_values(path: str) -> dict[str, str]:
-    """Obecne wartosci pol edytowalnych - to, co widac w polach formularza."""
+def _read_tags(path: str) -> dict:
+    """Tagi pliku do edycji i eksportu.
+
+    `details=True`, bo bez niego exifread pomija UserComment - komentarz
+    wpisany wczesniej znikal z formularza. Kosztuje to milisekunde.
+    Miniatury nie wyciagamy, bo do niczego tu nie sluzy.
+    """
     try:
         with open(path, "rb") as handle:
-            tags = exifread.process_file(handle, details=False)
+            return exifread.process_file(handle, details=True, extract_thumbnail=False)
     except OSError:
         return {}
+    except Exception:  # noqa: BLE001 - nietypowa notatka producenta nie moze zablokowac zdjecia
+        try:
+            with open(path, "rb") as handle:
+                return exifread.process_file(handle, details=False, extract_thumbnail=False)
+        except Exception:  # noqa: BLE001
+            return {}
 
+
+def _decode_user_comment(raw: bytes) -> str:
+    """UserComment: pierwsze osiem bajtow mowi, jak czytac reszte.
+
+    exifread czyta wariant UNICODE jako Latin-1 i robi z ogonkow krzaki.
+    Kolejnosc bajtow UTF-16 zgadujemy po zerach: w tekscie lacinskim co drugi
+    bajt jest zerem, a to, po ktorej stronie stoi, zdradza kolejnosc.
+    """
+    code, body = raw[:8], raw[8:]
+    if code.startswith(b"UNICODE"):
+        even_zeros = body[0::2].count(0)
+        odd_zeros = body[1::2].count(0)
+        encoding = "utf-16-be" if even_zeros > odd_zeros else "utf-16-le"
+        text = body.decode(encoding, errors="ignore")
+    else:  # ASCII, JIS albo osiem zer ("nieokreslone") - w praktyce ASCII/UTF-8
+        text = body.decode("utf-8", errors="ignore")
+    return text.replace("\x00", "").strip()
+
+
+def _tag_text(key: str, tag) -> str:
+    """Wartosc tagu jako tekst do formularza - tam, gdzie str() exifreada klamie."""
+    values = getattr(tag, "values", None)
+    if key.startswith("XP") and isinstance(values, list):
+        # Pola Windows to UTF-16LE zapisane jako BYTE - exifread oddaje liste liczb.
+        try:
+            return bytes(values).decode("utf-16-le", errors="ignore").replace("\x00", "").strip()
+        except (TypeError, ValueError):
+            return ""
+    if key == "UserComment" and isinstance(values, list):
+        try:
+            return _decode_user_comment(bytes(values))
+        except (TypeError, ValueError):
+            return ""
+    if key == "Orientation" and isinstance(values, list) and values:
+        # Formularz zna liczby 1/3/6/8, a exifread podaje opis ("Rotated 90 CW").
+        # Opis nie pasowal do zadnej pozycji listy, lista pokazywala "Normalna"
+        # i przy pierwszej zmianie innego pola do sidecara szla orientacja 1.
+        return str(values[0])
+    return str(tag).strip()
+
+
+def current_values(path: str) -> dict[str, str]:
+    """Obecne wartosci pol edytowalnych - to, co widac w polach formularza."""
+    return _values_from_tags(_read_tags(path))
+
+
+def source_metadata(path: str) -> tuple[dict[str, str], tuple[float, float] | None]:
+    """Wartosci pol i wspolrzedne GPS zapisane w pliku zrodlowym - jednym odczytem.
+
+    Z tego powstaje podstawa metadanych pliku wynikowego: bez niej eksport
+    gubil date wykonania, aparat, naswietlenie i GPS z telefonu.
+    """
+    from .metadata import _dms_to_degrees
+
+    tags = _read_tags(path)
+    location = None
+    if "GPS GPSLatitude" in tags and "GPS GPSLongitude" in tags:
+        latitude = _dms_to_degrees(
+            tags["GPS GPSLatitude"], str(tags.get("GPS GPSLatitudeRef", "")).strip()
+        )
+        longitude = _dms_to_degrees(
+            tags["GPS GPSLongitude"], str(tags.get("GPS GPSLongitudeRef", "")).strip()
+        )
+        if latitude is not None and longitude is not None:
+            location = (latitude, longitude)
+    return _values_from_tags(tags), location
+
+
+def _values_from_tags(tags: dict) -> dict[str, str]:
     # exifread trzyma te same pola pod roznymi przedrostkami, zaleznie od
     # tego, w ktorym bloku pliku siedza.
     lookup = {
@@ -154,9 +234,62 @@ def current_values(path: str) -> dict[str, str]:
     for key, candidates in lookup.items():
         for candidate in candidates:
             if candidate in tags:
-                found[key] = str(tags[candidate]).strip()
+                text = _tag_text(key, tags[candidate])
+                if text:  # aparaty wpisuja puste komentarze ze spacji i zer
+                    found[key] = text
                 break
     return found
+
+
+# --------------------------------------------------- metadane eksportu
+
+
+def merge_keywords(*groups: str) -> str:
+    """Laczy slowa kluczowe z kilku zrodel: kolejnosc zostaje, powtorki znikaja.
+
+    Przyjmujemy srednik (tak zapisuje Windows) i przecinek (tak wpisuje
+    wiekszosc ludzi). Powtorki porownujemy bez wielkosci liter, bo "Tatry"
+    i "tatry" to dla wyszukiwarki zdjec ten sam tag.
+    """
+    seen: set[str] = set()
+    merged: list[str] = []
+    for group in groups:
+        for word in (group or "").replace(",", ";").split(";"):
+            word = word.strip()
+            if word and word.casefold() not in seen:
+                seen.add(word.casefold())
+                merged.append(word)
+    return "; ".join(merged)
+
+
+def layer_metadata(camera: dict[str, str], photo: dict[str, str],
+                   export: dict[str, str], software: str = "") -> dict[str, str]:
+    """Pola pliku wynikowego z trzech warstw: plik zrodlowy < zdjecie < okno eksportu.
+
+    Kolejnosc ustalil uzytkownik: to, co wpisane przy eksporcie, obowiazuje
+    cala serie i wygrywa z polami pojedynczych zdjec. Wyjatkiem sa slowa
+    kluczowe - te sie sumuja, bo tag serii ("Wakacje 2026") i tag zdjecia
+    ("zachod slonca") nie wykluczaja sie.
+    """
+    result = {key: value for key, value in camera.items() if key in FIELDS_BY_KEY}
+    if software:
+        # Program, ktory zapisal plik, to my - nie aparat i nie Lightroom,
+        # ktory wyeksportowal JPEG-a zrodlowego.
+        result["Software"] = software
+    for key, value in photo.items():
+        if str(value).strip():
+            result[key] = str(value).strip()
+    for key, value in export.items():
+        text = str(value).strip()
+        if key == "XPKeywords":
+            text = merge_keywords(result.get("XPKeywords", ""), text)
+        if text:
+            result[key] = text
+    # Piksele sa juz obrocone (LibRaw i exif_transpose robia to przy
+    # wczytaniu), wiec kazda inna orientacja w pliku wynikowym kazalaby
+    # przegladarce obrocic zdjecie drugi raz.
+    result["Orientation"] = "1"
+    return result
 
 
 # ------------------------------------------------------- zapis do pliku
@@ -312,9 +445,23 @@ def exif_bytes(metadata: dict[str, str] | None,
         return None
     try:
         import piexif
-        return piexif.dump(_fill_ifds(metadata or {}, location))
-    except Exception:  # noqa: BLE001 - zla wartosc nie moze przerwac eksportu
+    except ImportError:
         return None
+
+    def dump(fields: dict[str, str]) -> bytes | None:
+        try:
+            return piexif.dump(_fill_ifds(fields, location))
+        except Exception:  # noqa: BLE001 - zla wartosc nie moze przerwac eksportu
+            return None
+
+    block = dump(metadata or {})
+    if block is None and metadata:
+        # Od kiedy przepisujemy dane z pliku zrodlowego, jedna dziwna wartosc
+        # z aparatu zabieralaby cala reszte - z data wykonania wlacznie.
+        # Odsiewamy wiec tylko te pola, ktorych piexif nie przyjmuje.
+        good = {key: value for key, value in metadata.items() if dump({key: value})}
+        block = dump(good)
+    return block
 
 
 def write_into_file(path: str, metadata: dict[str, str] | None,

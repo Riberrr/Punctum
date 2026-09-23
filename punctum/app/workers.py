@@ -184,6 +184,7 @@ class ExportTask(QRunnable):
 
     def run(self) -> None:
         from ..core import load_photo, save_image
+        from ..core.export import export_metadata
 
         total = len(self.pairs)
         saved = 0
@@ -200,15 +201,13 @@ class ExportTask(QRunnable):
                 rgb8 = develop(
                     raw, params, denoise=True, quality=self.options.noise_quality
                 )
+                fields, location = export_metadata(source, params, self.options)
                 save_image(
                     rgb8, target,
                     quality=self.options.quality,
                     max_side=self.options.max_side or None,
-                    location=(
-                        (params.latitude, params.longitude)
-                        if params.has_location else None
-                    ),
-                    metadata=params.metadata or None,
+                    location=location,
+                    metadata=fields,
                 )
                 saved += 1
             except Exception as exc:

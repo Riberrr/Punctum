@@ -291,6 +291,20 @@ class SettingsDialog(QDialog):
         destination_layout.addWidget(browse)
         layout.addWidget(destination)
 
+        authorship = QGroupBox("Autorstwo")
+        authorship_form = QFormLayout(authorship)
+        self.author_edit = QLineEdit()
+        self.author_edit.setPlaceholderText("Imię Nazwisko")
+        authorship_form.addRow("Autor:", self.author_edit)
+        self.copyright_edit = QLineEdit()
+        self.copyright_edit.setPlaceholderText("np. © 2026 Imię Nazwisko")
+        authorship_form.addRow("Prawa autorskie:", self.copyright_edit)
+        authorship_form.addRow("", _hint(
+            "Wartości podpowiadane w oknie eksportu. Czy trafią do plików, "
+            "decydujesz tam, przy każdym eksporcie."
+        ))
+        layout.addWidget(authorship)
+
         general = QGroupBox("Ogólne")
         general_layout = QVBoxLayout(general)
         self.reopen_box = QCheckBox("Otwieraj ostatnio używany folder przy starcie")
@@ -387,6 +401,8 @@ class SettingsDialog(QDialog):
             max(0, self.export_noise_box.findData(s.export_noise_quality))
         )
         self.folder_edit.setText(s.export_folder)
+        self.author_edit.setText(s.export_author)
+        self.copyright_edit.setText(s.export_copyright)
         self.reopen_box.setChecked(s.reopen_last_folder)
         self.store_edits_box.setChecked(s.store_edits)
 
@@ -409,6 +425,8 @@ class SettingsDialog(QDialog):
         s.export_max_side = self.max_side_box.value()
         s.export_noise_quality = self.export_noise_box.currentData()
         s.export_folder = self.folder_edit.text().strip()
+        s.export_author = self.author_edit.text().strip()
+        s.export_copyright = self.copyright_edit.text().strip()
         s.reopen_last_folder = self.reopen_box.isChecked()
         s.store_edits = self.store_edits_box.isChecked()
         return s.normalised()

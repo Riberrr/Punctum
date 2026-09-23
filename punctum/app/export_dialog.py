@@ -47,7 +47,7 @@ class ExportDialog(QDialog):
     def __init__(self, options: ExportOptions, sources: list[str], parent=None):
         super().__init__(parent)
         self.setWindowTitle("Eksportuj zdjęcia")
-        self.setMinimumWidth(560)
+        self.setMinimumWidth(960)
         self.options = ExportOptions(**vars(options))
         self.sources = sources
 
@@ -66,9 +66,22 @@ class ExportDialog(QDialog):
         self.edited_hint.hide()
         layout.addWidget(self.edited_hint)
 
-        layout.addWidget(self._location_group())
-        layout.addWidget(self._naming_group())
-        layout.addWidget(self._format_group())
+        # Dwie kolumny: po dolozeniu metadanych okno w jednej kolumnie mialo
+        # ponad 900 px wysokosci, a przy skalowaniu 125 % ekran Full HD ma
+        # ich do dyspozycji mniej - przyciski wypadalyby pod pasek zadan.
+        columns = QHBoxLayout()
+        columns.setSpacing(10)
+        left = QVBoxLayout()
+        left.addWidget(self._location_group())
+        left.addWidget(self._naming_group())
+        left.addStretch(1)
+        right = QVBoxLayout()
+        right.addWidget(self._format_group())
+        right.addWidget(self._metadata_group())
+        right.addStretch(1)
+        columns.addLayout(left, 1)
+        columns.addLayout(right, 1)
+        layout.addLayout(columns)
 
         self.preview_label = QLabel()
         self.preview_label.setObjectName("settingsLabel")
@@ -183,6 +196,43 @@ class ExportDialog(QDialog):
         form.addRow("Odszumianie:", self.noise_box)
         return group
 
+    def _metadata_group(self) -> QGroupBox:
+        group = QGroupBox("Metadane")
+        form = QFormLayout(group)
+
+        # Pole wyboru stoi w miejscu etykiety: wartosc przychodzi wypelniona
+        # z ustawien, a zaznaczenie wlacza pole obok - mozna ja wtedy zmienic
+        # na ten jeden eksport.
+        self.author_box = QCheckBox("Autor:")
+        self.author_edit = QLineEdit()
+        self.author_edit.setPlaceholderText("domyślnego ustawisz w Ustawieniach ▸ Eksport")
+        self.author_box.toggled.connect(
+            lambda on: self._on_field_toggled(self.author_edit, on)
+        )
+        form.addRow(self.author_box, self.author_edit)
+
+        self.copyright_box = QCheckBox("Prawa autorskie:")
+        self.copyright_edit = QLineEdit()
+        self.copyright_edit.setPlaceholderText("np. © 2026 Imię Nazwisko")
+        self.copyright_box.toggled.connect(
+            lambda on: self._on_field_toggled(self.copyright_edit, on)
+        )
+        form.addRow(self.copyright_box, self.copyright_edit)
+
+        self.keywords_edit = QLineEdit()
+        self.keywords_edit.setPlaceholderText("oddzielone średnikiem, np. Wakacje 2026; Tatry")
+        form.addRow("Słowa kluczowe:", self.keywords_edit)
+        self.subject_edit = QLineEdit()
+        form.addRow("Temat:", self.subject_edit)
+        self.comment_edit = QLineEdit()
+        form.addRow("Komentarz:", self.comment_edit)
+        form.addRow("", _hint(
+            "Wpisane tu pola zastępują te przy zdjęciach, a słowa kluczowe "
+            "dopisują się do słów zdjęcia. Data, aparat, naświetlenie "
+            "i lokalizacja trafiają do pliku zawsze."
+        ))
+        return group
+
     # ------------------------------------------------------------- stan
 
     def _load_into_widgets(self) -> None:
@@ -201,6 +251,15 @@ class ExportDialog(QDialog):
         self.quality_box.setValue(o.quality)
         self.max_side_box.setValue(o.max_side)
         self.noise_box.setCurrentIndex(max(0, self.noise_box.findData(o.noise_quality)))
+        self.author_box.setChecked(o.add_author)
+        self.author_edit.setText(o.author)
+        self.author_edit.setEnabled(o.add_author)
+        self.copyright_box.setChecked(o.add_copyright)
+        self.copyright_edit.setText(o.copyright)
+        self.copyright_edit.setEnabled(o.add_copyright)
+        self.keywords_edit.setText(o.keywords)
+        self.subject_edit.setText(o.subject)
+        self.comment_edit.setText(o.comment)
         self._on_format_changed()
 
     def collect(self) -> ExportOptions:
@@ -217,6 +276,13 @@ class ExportDialog(QDialog):
         o.quality = self.quality_box.value()
         o.max_side = self.max_side_box.value()
         o.noise_quality = self.noise_box.currentData()
+        o.add_author = self.author_box.isChecked()
+        o.author = self.author_edit.text().strip()
+        o.add_copyright = self.copyright_box.isChecked()
+        o.copyright = self.copyright_edit.text().strip()
+        o.keywords = self.keywords_edit.text().strip()
+        o.subject = self.subject_edit.text().strip()
+        o.comment = self.comment_edit.text().strip()
         return o
 
     # ---------------------------------------------------------- reakcje
@@ -227,6 +293,13 @@ class ExportDialog(QDialog):
         )
         if folder:
             self.folder_edit.setText(folder)
+
+    def _on_field_toggled(self, edit: QLineEdit, on: bool) -> None:
+        edit.setEnabled(on)
+        if on and self.isVisible():
+            # Zaznaczenie zwykle znaczy "chce to zmienic" - kursor od razu w polu.
+            edit.setFocus()
+            edit.selectAll()
 
     def _on_subfolder_toggled(self, checked: bool) -> None:
         self.subfolder_edit.setEnabled(checked)

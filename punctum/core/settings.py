@@ -94,6 +94,14 @@ class Settings:
     export_start_number: int = 1
     export_number_digits: int = 3
     export_on_existing: str = "ask"  # ask | overwrite | skip | unique
+    # Autor i prawa autorskie: wartosci domyslne dla okna eksportu. Okno
+    # pozwala je zmienic na jeden eksport, ale nie nadpisuje ich tutaj -
+    # jednorazowa poprawka nie powinna zmieniac podpisu wszystkich kolejnych.
+    # Pamietamy za to, czy pola byly zaznaczone.
+    export_author: str = ""
+    export_copyright: str = ""
+    export_add_author: bool = False
+    export_add_copyright: bool = False
 
     # --- ogolne ---------------------------------------------------------
     reopen_last_folder: bool = True
@@ -142,6 +150,10 @@ class Settings:
             clean.export_naming = "original"
         if clean.export_on_existing not in ("ask", "overwrite", "skip", "unique"):
             clean.export_on_existing = "ask"
+        clean.export_author = str(clean.export_author or "").strip()
+        clean.export_copyright = str(clean.export_copyright or "").strip()
+        clean.export_add_author = bool(clean.export_add_author)
+        clean.export_add_copyright = bool(clean.export_add_copyright)
         if clean.format_filter not in ("all", "raw", "jpeg"):
             clean.format_filter = "all"
         clean.recent_folders_limit = max(0, min(50, int(clean.recent_folders_limit)))

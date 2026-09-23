@@ -140,6 +140,12 @@ QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit {
 QComboBox:focus, QSpinBox:focus, QDoubleSpinBox:focus, QLineEdit:focus {
     border-color: #6a6a76;
 }
+/* Wylaczone pole musi wygladac na wylaczone: w oknie eksportu autor stoi
+   wpisany z ustawien, a to, czy trafi do pliku, mowi wlasnie jasnosc pola
+   obok zaznaczenia. Bez tej reguly oba stany wygladaly tak samo. */
+QComboBox:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QLineEdit:disabled {
+    color: #5a5a60; background: #202023; border-color: #303035;
+}
 QComboBox::drop-down { border: none; width: 18px; }
 
 /* Geometria strzałek w polach liczbowych.  Gdy arkusz stylów dotknie samego
