@@ -48,7 +48,7 @@ from wspolne import czekaj, lancuch, wypisz, zdjecia  # noqa: E402
 from punctum.app import MainWindow  # noqa: E402
 from punctum.app.export_dialog import ExportDialog  # noqa: E402
 from punctum.app.podpowiedzi import WLASCIWOSC  # noqa: E402
-from punctum.app.settings_dialog import SettingsDialog  # noqa: E402
+from punctum.app.settings_dialog import PAGE_INTERFACE, SettingsDialog  # noqa: E402
 from punctum.app.style import ASSETS_DIRECTORY  # noqa: E402
 from punctum.core.export import ExportOptions  # noqa: E402
 from punctum.core.settings import settings_path  # noqa: E402
@@ -210,7 +210,7 @@ def stage_ustawienia() -> None:
     zrzut = os.environ.get("PUNCTUM_ZRZUT")
     if zrzut:  # podglad wygladu dla oceny, poza repozytorium
         dialog.tooltips_box.setChecked(True)
-        dialog.show_tab("Podgląd")
+        dialog.show_page(PAGE_INTERFACE)
         app.processEvents()
         dialog.grab().save(zrzut)
     dialog.close()

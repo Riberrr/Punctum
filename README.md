@@ -154,7 +154,7 @@ the width of any panel or of the preview.
 
 In crop mode `Enter` or `Esc` ends cropping. Double-clicking the preview
 toggles fit ↔ 100 %, double-clicking a slider restores its default.
-*Help ▸ About* opens the settings window directly on the "About" tab.
+*Help ▸ About* opens the settings window directly on the "About" page.
 
 ## Map and geotagging
 
@@ -244,7 +244,7 @@ Two decisions worth noting:
   sidecar from another program would look like carrying the edit over, but it
   would quietly change the photo — the same numbers mean something else here.
 
-The feature can be turned off in `File ▸ Settings… ▸ Export ▸ General`. The
+The feature can be turned off in `File ▸ Settings… ▸ General`. The
 `File` menu also remembers recently opened folders.
 
 ## Metadata (EXIF)
@@ -311,7 +311,12 @@ so it gets a new name regardless of the chosen overwrite policy.
 
 ## Settings
 
-`File ▸ Settings…` (`Ctrl+,`). The window has four tabs:
+`File ▸ Settings…` (`Ctrl+,`). A narrow list of categories on the left, the
+chosen page on the right. The window opens on General; during one run it
+returns to the last page viewed.
+
+**General** — the program language, reopening the last folder at startup,
+keeping edits in XMP files.
 
 **Performance** — detected hardware (CPU with core count and memory, graphics
 card with memory and OpenGL version) and the choice of preview engine:
@@ -326,9 +331,11 @@ This is also where the preview size lives (the long edge of the image computed
 for the fit-to-window view) and the number of threads loading thumbnails.
 
 **Preview** — the delay of the sharp detail and of noise reduction, preview
-noise reduction quality, the zoom above which the image is scaled with nearest
-neighbour, navigator visibility, turning tooltips on (see below), and the
-behavior of the mouse wheel over sliders.
+noise reduction quality, and the zoom above which the image is scaled with
+nearest neighbour.
+
+**Interface** — navigator visibility, tooltips and their delay (see below),
+and the behavior of the mouse wheel over sliders.
 
 ### Mouse wheel over sliders
 
@@ -351,8 +358,7 @@ When the conditions are not met, the slider calls `event.ignore()` and Qt
 passes the event up to the scroll area — the panel scrolls normally.
 
 **Export** — format, JPEG quality, long edge, noise reduction quality, default
-destination folder, default author and copyright, and general options: the
-program language, reopening the last folder, keeping edits in XMP files.
+destination folder, default author and copyright.
 
 **About** — version, full hardware and driver details, the settings file path,
 library versions.
@@ -375,7 +381,7 @@ a panel in which no button fits.
 Every button, slider and field in the program has a tooltip: a bold title,
 a description with practical advice, and a grey line with the keyboard
 shortcut, gesture (double-click resets a slider) or field format. Tooltips are
-turned off in `Settings ▸ Preview ▸ Show tooltips` — immediately, without
+turned off in `Settings ▸ Interface ▸ Show tooltips` — immediately, without
 restarting (it is an event filter on the whole application, not deleting the
 texts).
 
@@ -387,7 +393,7 @@ translation breaks nothing.
 ## Languages
 
 The program is in English and Polish. The language is chosen in
-`Settings ▸ Export ▸ General ▸ Language`; the change takes effect after a
+`Settings ▸ General ▸ Language`; the change takes effect after a
 restart, because labels are computed when the windows are built. On first
 start the program uses the system language, and English when it does not
 know it.

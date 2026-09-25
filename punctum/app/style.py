@@ -82,6 +82,12 @@ QListWidget {
 }
 QListWidget::item { color: #8a8a90; padding: 2px; border-radius: 3px; }
 QListWidget::item:selected { background: #34343c; color: #ffffff; }
+/* lista kategorii w ustawieniach: odrobine ciemniejsza od strony, zeby
+   oddzielic ja bez ramki; wieksze pola do klikania niz na liscie zdjec */
+QListWidget#settingsCategories { background: #1a1a1c; border-radius: 4px; }
+QListWidget#settingsCategories::item { color: #b8b8be; padding: 6px 10px; margin-bottom: 2px; }
+QListWidget#settingsCategories::item:hover:!selected { background: #29292d; }
+QListWidget#settingsCategories::item:selected { background: #3a3a44; color: #ffffff; }
 
 QScrollBar:horizontal { background: #171719; height: 9px; }
 QScrollBar::handle:horizontal { background: #45454d; border-radius: 4px; min-width: 30px; }

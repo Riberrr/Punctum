@@ -24,14 +24,13 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 app = QApplication(sys.argv)
 app.setQuitOnLastWindowClosed(False)
 
-from PySide6.QtCore import QRect  # noqa: E402
+from PySide6.QtCore import QRect, Qt  # noqa: E402
 
 from wspolne import czekaj, lancuch, wypisz, zdjecia  # noqa: E402
 
 from punctum.app import MainWindow  # noqa: E402
 from punctum.app.filmstrip import TILE_OVERHEAD  # noqa: E402
-from punctum.app.main_window import ABOUT_TAB  # noqa: E402
-from punctum.app.settings_dialog import SettingsDialog  # noqa: E402
+from punctum.app.settings_dialog import PAGE_ABOUT, SettingsDialog  # noqa: E402
 from punctum.core.settings import LAYOUT_LIMITS, Settings, settings_path  # noqa: E402
 
 results: list[tuple[str, bool, str]] = []
@@ -211,9 +210,10 @@ def stage_przeciaganie() -> None:
           == (220, 480, 90))
 
     dialog = SettingsDialog(window.settings, window.system, window)
-    dialog.show_tab(ABOUT_TAB)
-    check("Pomoc otwiera ustawienia na zakladce O programie",
-          dialog.tabs.tabText(dialog.tabs.currentIndex()) == ABOUT_TAB)
+    dialog.show_page(PAGE_ABOUT)
+    check("Pomoc otwiera ustawienia na stronie O programie",
+          dialog.current_page() == PAGE_ABOUT
+          and dialog.categories.currentItem().data(Qt.UserRole) == PAGE_ABOUT)
     dialog.deleteLater()
 
 

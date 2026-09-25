@@ -19,7 +19,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 app = QApplication(sys.argv)
 
-from punctum.app.settings_dialog import SettingsDialog  # noqa: E402
+from punctum.app.settings_dialog import (  # noqa: E402
+    PAGE_PERFORMANCE, PAGE_PREVIEW, SettingsDialog,
+)
 from punctum.app.style import stylesheet  # noqa: E402
 from punctum.core.hardware import detect_system  # noqa: E402
 from punctum.core.settings import Settings  # noqa: E402
@@ -104,10 +106,10 @@ for name, box in BOXES.items():
     check(f"{name}: lewa krawędź przycisku działa", box.value() > before,
           f"{before} -> {box.value()}")
 
-dialog.tabs.setCurrentIndex(0)
+dialog.show_page(PAGE_PERFORMANCE)
 app.processEvents()
 dialog.grab().save(os.path.join(out_dir, "spinbox_wydajnosc.png"))
-dialog.tabs.setCurrentIndex(1)
+dialog.show_page(PAGE_PREVIEW)
 app.processEvents()
 dialog.grab().save(os.path.join(out_dir, "spinbox_podglad.png"))
 

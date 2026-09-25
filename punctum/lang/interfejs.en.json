@@ -301,5 +301,10 @@
  "Tylko JPEG": "JPEG only",
  "Szybka (non-local means 3/7)": "Fast (non-local means 3/7)",
  "Zrównoważona (non-local means 5/11)": "Balanced (non-local means 5/11)",
- "Dokładna (non-local means 5/13)": "Precise (non-local means 5/13)"
+ "Dokładna (non-local means 5/13)": "Precise (non-local means 5/13)",
+ "Interfejs": "Interface",
+ "Język": "Language",
+ "Pliki i foldery": "Files and folders",
+ "Okno Edycji": "Edit window",
+ "Podpowiedzi": "Tooltips"
 }

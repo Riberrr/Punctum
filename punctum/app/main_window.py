@@ -64,7 +64,8 @@ from .image_view import ImageView
 from .map_view import MapView
 from .navigator import Navigator
 from .podpowiedzi import StylPodpowiedzi, WylacznikPodpowiedzi, podpowiedz
-from .settings_dialog import SettingsDialog
+# "O programie" nie ma osobnego okna - to strona w ustawieniach.
+from .settings_dialog import PAGE_ABOUT, SettingsDialog
 from .style import stylesheet
 from .workers import (
     AutoToneTask,
@@ -76,15 +77,13 @@ from .workers import (
     ThumbnailTask,
 )
 from .zoom_panel import ZoomPanel
-from ..przeklad import N_, mnoga, t
+from ..przeklad import mnoga, t
 
 # Reszta parametrow mieszka w `core/settings.py` i jest edytowalna przez
 # uzytkownika; te dwa zaleza od wybranego toru liczenia, nie od preferencji.
 DEBOUNCE_CPU_MS = 90  # tor numpy: nie liczymy obrazu na kazdy piksel ruchu suwaka
 DEBOUNCE_GPU_MS = 0  # tor GPU: tylko scalenie zdarzen z jednego obiegu petli
 FULL_CROP = (0.0, 0.0, 1.0, 1.0)
-# "O programie" nie ma osobnego okna - to zakladka w ustawieniach.
-ABOUT_TAB = N_("O programie")
 
 
 class MainWindow(QMainWindow):
@@ -441,7 +440,7 @@ class MainWindow(QMainWindow):
 
         help_menu = self.menuBar().addMenu(t("Pomo&c"))
         about_action = QAction(t("O programie"), self)
-        about_action.triggered.connect(lambda: self.open_settings(t(ABOUT_TAB)))
+        about_action.triggered.connect(lambda: self.open_settings(PAGE_ABOUT))
         help_menu.addAction(about_action)
 
     # ------------------------------------------------------------ uklad okna
@@ -546,10 +545,10 @@ class MainWindow(QMainWindow):
         elif self.gpu_allowed() and self.full_raw is not None and not self.gpu_source_ready:
             self.gpu_source_ready = self.gpu.set_source(self.full_raw.camera_linear)
 
-    def open_settings(self, tab: str | None = None) -> None:
+    def open_settings(self, page: str | None = None) -> None:
         dialog = SettingsDialog(self.settings, self.system, self)
-        if tab is not None:
-            dialog.show_tab(tab)
+        if page is not None:
+            dialog.show_page(page)
         if dialog.exec() != SettingsDialog.Accepted:
             return
 

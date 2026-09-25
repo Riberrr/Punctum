@@ -95,6 +95,12 @@
   "ustawienia.ostatni_folder": {"tytul": "Last folder on startup", "opis": "After starting, the program immediately opens the folder you last worked in."},
   "ustawienia.xmp": {"tytul": "Keeping edits", "opis": "Each photo's edits go into an XMP file next to the original and return to the sliders the next time it is opened, so editing a large folder can be spread over several days. The photo file is never changed."},
   "ustawienia.domyslne": {"tytul": "Restore defaults", "opis": "Sets every field in this window to its factory value. They are saved only after you click “Save”."},
+  "ustawienia.strona_ogolne": {"tytul": "General", "opis": "Program language, reopening the last folder and keeping edits in XMP files."},
+  "ustawienia.strona_wydajnosc": {"tytul": "Performance", "opis": "Detected hardware, graphics card or processor, and the number of threads."},
+  "ustawienia.strona_podglad": {"tytul": "Preview", "opis": "Delays before sharpness and noise are computed, and on-screen image quality."},
+  "ustawienia.strona_interfejs": {"tytul": "Interface", "opis": "Navigator, tooltips and how the mouse wheel behaves over sliders."},
+  "ustawienia.strona_eksport": {"tytul": "Export", "opis": "Default format, quality and size of the output file, destination folder and authorship."},
+  "ustawienia.strona_o_programie": {"tytul": "About", "opis": "Program version, hardware, settings file location and library versions."},
 
   "eksport.katalog": {"tytul": "Destination folder", "opis": "The files from this export go here."},
   "eksport.wybierz_katalog": {"tytul": "Choose folder", "opis": "Opens the folder picker."},

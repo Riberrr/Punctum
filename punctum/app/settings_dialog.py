@@ -1,6 +1,6 @@
 """Okno ustawien aplikacji.
 
-Zakladki odpowiadaja obszarom dzialania programu, nie modulom kodu - dzieki
+Strony odpowiadaja obszarom dzialania programu, nie modulom kodu - dzieki
 temu kolejne parametry beda mialy gdzie trafic bez przebudowy okna.
 
 Dialog pracuje na KOPII ustawien. Zmiany zapisuja sie dopiero po nacisnieciu
@@ -24,10 +24,12 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QPushButton,
     QRadioButton,
     QSpinBox,
-    QTabWidget,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -44,6 +46,7 @@ from ..core.settings import (
 )
 from ..przeklad import N_, jezyk, jezyki, nazwa_jezyka, t
 from .podpowiedzi import podpowiedz, podpowiedz_wiersza
+from .podpowiedzi import tekst as tekst_podpowiedzi
 
 ENGINE_DESCRIPTIONS = {
     ENGINE_AUTO: N_("Użyj karty graficznej, jeśli jest dostępna; w razie problemu przejdź na procesor."),
@@ -59,19 +62,68 @@ def _hint(text: str) -> QLabel:
     return label
 
 
+# Strony rozpoznajemy po stalym kluczu, nie po napisie na liscie: napis
+# zalezy od jezyka interfejsu, a menu "Pomoc" i testy musza trafic na te sama
+# strone w kazdym jezyku.
+PAGE_GENERAL = "ogolne"
+PAGE_PERFORMANCE = "wydajnosc"
+PAGE_PREVIEW = "podglad"
+PAGE_INTERFACE = "interfejs"
+PAGE_EXPORT = "eksport"
+PAGE_ABOUT = "o_programie"
+
+PAGES = (
+    (PAGE_GENERAL, N_("Ogólne"), "ustawienia.strona_ogolne"),
+    (PAGE_PERFORMANCE, N_("Wydajność"), "ustawienia.strona_wydajnosc"),
+    (PAGE_PREVIEW, N_("Podgląd"), "ustawienia.strona_podglad"),
+    (PAGE_INTERFACE, N_("Interfejs"), "ustawienia.strona_interfejs"),
+    (PAGE_EXPORT, N_("Eksport"), "ustawienia.strona_eksport"),
+    (PAGE_ABOUT, N_("O programie"), "ustawienia.strona_o_programie"),
+)
+
+# Ostatnio ogladana strona - tylko w pamieci, do konca uruchomienia. Kto
+# wraca do ustawien w tej samej sesji, zwykle poprawia to samo; po restarcie
+# lepiej zaczac od Ogolnych niz od przypadkowej strony sprzed tygodnia.
+_last_page = PAGE_GENERAL
+
+
 class SettingsDialog(QDialog):
     def __init__(self, settings: Settings, system: SystemInfo, parent=None):
         super().__init__(parent)
         self.setWindowTitle(t("Ustawienia — Punctum"))
-        self.setMinimumWidth(560)
+        self.setMinimumWidth(680)
         self.settings = settings.copy()
         self.system = system
 
-        self.tabs = QTabWidget()
-        self.tabs.addTab(self._performance_tab(), t("Wydajność"))
-        self.tabs.addTab(self._preview_tab(), t("Podgląd"))
-        self.tabs.addTab(self._export_tab(), t("Eksport"))
-        self.tabs.addTab(self._about_tab(), t("O programie"))
+        builders = {
+            PAGE_GENERAL: self._general_page,
+            PAGE_PERFORMANCE: self._performance_page,
+            PAGE_PREVIEW: self._preview_page,
+            PAGE_INTERFACE: self._interface_page,
+            PAGE_EXPORT: self._export_page,
+            PAGE_ABOUT: self._about_page,
+        }
+        self.categories = QListWidget()
+        self.categories.setObjectName("settingsCategories")
+        self.pages = QStackedWidget()
+        self._page_keys: list[str] = []
+        for key, label, hint_key in PAGES:
+            item = QListWidgetItem(t(label))
+            item.setData(Qt.UserRole, key)
+            # Dymek pozycji listy ustawiamy wprost na elemencie - podpowiedz()
+            # dziala na widzetach, a pozycja listy widzetem nie jest.
+            item.setToolTip(tekst_podpowiedzi(hint_key))
+            self.categories.addItem(item)
+            page = builders[key]()
+            # Bez marginesu strony jej pierwsza ramka zaczyna sie rowno
+            # z gora listy kategorii.
+            page.layout().setContentsMargins(0, 0, 0, 0)
+            self.pages.addWidget(page)
+            self._page_keys.append(key)
+        self.categories.currentRowChanged.connect(self._on_category_changed)
+        # Lista tak waska, jak najdluzsza nazwa kategorii w biezacym jezyku.
+        width = max(self.categories.sizeHintForColumn(0), 80)
+        self.categories.setFixedWidth(width + 28)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.Save | QDialogButtonBox.Cancel | QDialogButtonBox.RestoreDefaults
@@ -84,24 +136,70 @@ class SettingsDialog(QDialog):
         buttons.rejected.connect(self.reject)
         buttons.button(QDialogButtonBox.RestoreDefaults).clicked.connect(self._restore_defaults)
 
+        body = QHBoxLayout()
+        body.setSpacing(14)
+        body.addWidget(self.categories)
+        body.addWidget(self.pages, 1)
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
-        layout.addWidget(self.tabs)
+        layout.addLayout(body, 1)
         layout.addWidget(buttons)
 
         self._load_into_widgets()
+        self.show_page(_last_page)
 
-    # ------------------------------------------------------- zakładki
+    # ------------------------------------------------------- strony
 
-    def show_tab(self, title: str) -> None:
-        """Otwiera okno od razu na zakladce o podanym tytule (np. z menu Pomoc)."""
-        for index in range(self.tabs.count()):
-            if self.tabs.tabText(index) == title:
-                self.tabs.setCurrentIndex(index)
-                return
+    def show_page(self, key: str) -> None:
+        """Pokazuje strone o podanym kluczu (np. PAGE_ABOUT z menu Pomoc)."""
+        if key in self._page_keys:
+            self.categories.setCurrentRow(self._page_keys.index(key))
 
-    def _performance_tab(self) -> QWidget:
+    def current_page(self) -> str:
+        return self._page_keys[self.pages.currentIndex()]
+
+    def _on_category_changed(self, row: int) -> None:
+        global _last_page
+        if row < 0:
+            return
+        self.pages.setCurrentIndex(row)
+        _last_page = self._page_keys[row]
+
+    def _general_page(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setSpacing(10)
+
+        language = QGroupBox(t("Język"))
+        language_layout = QVBoxLayout(language)
+        language_form = QFormLayout()
+        self.language_box = QComboBox()
+        # Nazwa jezyka w nim samym: tak odnajdzie swoj jezyk ktos, kto nie
+        # zna jezyka, w ktorym jest akurat program.
+        for kod in jezyki():
+            self.language_box.addItem(nazwa_jezyka(kod), kod)
+        language_form.addRow(t("Język:"), self.language_box)
+        podpowiedz_wiersza(language_form, self.language_box, "ustawienia.jezyk")
+        language_layout.addLayout(language_form)
+        language_layout.addWidget(_hint(t("Nowy język obowiązuje od ponownego uruchomienia programu.")))
+        layout.addWidget(language)
+
+        files = QGroupBox(t("Pliki i foldery"))
+        files_layout = QVBoxLayout(files)
+        self.reopen_box = QCheckBox(t("Otwieraj ostatnio używany folder przy starcie"))
+        podpowiedz(self.reopen_box, "ustawienia.ostatni_folder")
+        files_layout.addWidget(self.reopen_box)
+        self.store_edits_box = QCheckBox(t("Zapamiętuj korekty obok zdjęć (pliki XMP)"))
+        podpowiedz(self.store_edits_box, "ustawienia.xmp")
+        files_layout.addWidget(self.store_edits_box)
+        layout.addWidget(files)
+
+        layout.addStretch(1)
+        return page
+
+    def _performance_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setSpacing(10)
@@ -174,7 +272,7 @@ class SettingsDialog(QDialog):
         layout.addStretch(1)
         return page
 
-    def _preview_tab(self) -> QWidget:
+    def _preview_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setSpacing(10)
@@ -224,21 +322,37 @@ class SettingsDialog(QDialog):
             "żeby było widać prawdziwe piksele zamiast interpolacji.")
         ))
 
+        layout.addWidget(quality)
+
+        layout.addStretch(1)
+        return page
+
+    def _interface_page(self) -> QWidget:
+        page = QWidget()
+        layout = QVBoxLayout(page)
+        layout.setSpacing(10)
+
+        panels = QGroupBox(t("Okno Edycji"))
+        panels_layout = QVBoxLayout(panels)
         self.navigator_box = QCheckBox(t("Pokazuj nawigator w lewym panelu"))
-        quality_form.addRow("", self.navigator_box)
         podpowiedz(self.navigator_box, "ustawienia.nawigator")
+        panels_layout.addWidget(self.navigator_box)
+        layout.addWidget(panels)
+
+        tips = QGroupBox(t("Podpowiedzi"))
+        tips_form = QFormLayout(tips)
         self.tooltips_box = QCheckBox(t("Pokazuj podpowiedzi"))
         podpowiedz(self.tooltips_box, "ustawienia.podpowiedzi")
-        quality_form.addRow("", self.tooltips_box)
+        tips_form.addRow(self.tooltips_box)
         self.tooltip_delay_box = QSpinBox()
         self.tooltip_delay_box.setRange(0, 5000)
         self.tooltip_delay_box.setSingleStep(100)
         self.tooltip_delay_box.setSuffix(" ms")
-        quality_form.addRow(t("Opóźnienie podpowiedzi:"), self.tooltip_delay_box)
-        podpowiedz_wiersza(quality_form, self.tooltip_delay_box, "ustawienia.opoznienie_podpowiedzi")
+        tips_form.addRow(t("Opóźnienie podpowiedzi:"), self.tooltip_delay_box)
+        podpowiedz_wiersza(tips_form, self.tooltip_delay_box, "ustawienia.opoznienie_podpowiedzi")
         # przy wylaczonych dymkach opoznienie nic nie znaczy
         self.tooltips_box.toggled.connect(self.tooltip_delay_box.setEnabled)
-        layout.addWidget(quality)
+        layout.addWidget(tips)
 
         wheel = QGroupBox(t("Kółko myszy nad suwakami"))
         wheel_form = QFormLayout(wheel)
@@ -272,7 +386,7 @@ class SettingsDialog(QDialog):
         layout.addStretch(1)
         return page
 
-    def _export_tab(self) -> QWidget:
+    def _export_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setSpacing(10)
@@ -338,30 +452,10 @@ class SettingsDialog(QDialog):
         ))
         layout.addWidget(authorship)
 
-        general = QGroupBox(t("Ogólne"))
-        general_layout = QVBoxLayout(general)
-        language_form = QFormLayout()
-        self.language_box = QComboBox()
-        # Nazwa jezyka w nim samym: tak odnajdzie swoj jezyk ktos, kto nie
-        # zna jezyka, w ktorym jest akurat program.
-        for kod in jezyki():
-            self.language_box.addItem(nazwa_jezyka(kod), kod)
-        language_form.addRow(t("Język:"), self.language_box)
-        podpowiedz_wiersza(language_form, self.language_box, "ustawienia.jezyk")
-        general_layout.addLayout(language_form)
-        general_layout.addWidget(_hint(t("Nowy język obowiązuje od ponownego uruchomienia programu.")))
-        self.reopen_box = QCheckBox(t("Otwieraj ostatnio używany folder przy starcie"))
-        podpowiedz(self.reopen_box, "ustawienia.ostatni_folder")
-        general_layout.addWidget(self.reopen_box)
-        self.store_edits_box = QCheckBox(t("Zapamiętuj korekty obok zdjęć (pliki XMP)"))
-        podpowiedz(self.store_edits_box, "ustawienia.xmp")
-        general_layout.addWidget(self.store_edits_box)
-        layout.addWidget(general)
-
         layout.addStretch(1)
         return page
 
-    def _about_tab(self) -> QWidget:
+    def _about_page(self) -> QWidget:
         from .. import __version__
 
         page = QWidget()

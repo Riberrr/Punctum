@@ -94,6 +94,12 @@
   "ustawienia.ostatni_folder": {"tytul": "Ostatni folder przy starcie", "opis": "Po uruchomieniu program od razu otwiera katalog, w którym ostatnio pracowałeś."},
   "ustawienia.xmp": {"tytul": "Zapamiętywanie korekt", "opis": "Korekty każdego zdjęcia trafiają do pliku XMP obok oryginału i wracają na suwaki przy kolejnym otwarciu, więc obróbkę dużego katalogu można rozłożyć na kilka dni. Plik ze zdjęciem nie jest zmieniany."},
   "ustawienia.domyslne": {"tytul": "Przywróć domyślne", "opis": "Ustawia wszystkie pola w tym oknie na wartości fabryczne. Zapiszą się dopiero po kliknięciu „Zapisz”."},
+  "ustawienia.strona_ogolne": {"tytul": "Ogólne", "opis": "Język programu, otwieranie ostatniego folderu i zapamiętywanie korekt w plikach XMP."},
+  "ustawienia.strona_wydajnosc": {"tytul": "Wydajność", "opis": "Wykryty sprzęt, wybór karty graficznej albo procesora i liczba wątków."},
+  "ustawienia.strona_podglad": {"tytul": "Podgląd", "opis": "Opóźnienia doliczania ostrości i szumu oraz jakość obrazu na ekranie."},
+  "ustawienia.strona_interfejs": {"tytul": "Interfejs", "opis": "Nawigator, podpowiedzi i zachowanie kółka myszy nad suwakami."},
+  "ustawienia.strona_eksport": {"tytul": "Eksport", "opis": "Domyślny format, jakość i rozmiar pliku wynikowego, katalog docelowy oraz autorstwo."},
+  "ustawienia.strona_o_programie": {"tytul": "O programie", "opis": "Wersja programu, sprzęt, położenie pliku ustawień i wersje bibliotek."},
 
   "eksport.katalog": {"tytul": "Katalog docelowy", "opis": "Tu trafią pliki z tego eksportu."},
   "eksport.wybierz_katalog": {"tytul": "Wybierz katalog", "opis": "Otwiera okno wyboru katalogu."},

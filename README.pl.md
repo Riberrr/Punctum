@@ -155,7 +155,7 @@ Rozwinięcie metadanych nie zmienia szerokości żadnego panelu ani podglądu.
 
 W trybie kadrowania `Enter` albo `Esc` kończy kadrowanie. Dwuklik na podglądzie
 przełącza dopasowanie ↔ 100 %, dwuklik na suwaku przywraca jego wartość
-domyślną. *Pomoc ▸ O programie* otwiera okno ustawień od razu na zakładce
+domyślną. *Pomoc ▸ O programie* otwiera okno ustawień od razu na stronie
 „O programie".
 
 ## Mapa i geotagowanie
@@ -245,7 +245,7 @@ Dwie decyzje warte uwagi:
   z innego programu wyglądałoby jak przeniesienie edycji, a po cichu zmieniałoby
   zdjęcie — te same liczby znaczą u nas co innego.
 
-Funkcję można wyłączyć w `Plik ▸ Ustawienia… ▸ Eksport ▸ Ogólne`. Menu `Plik`
+Funkcję można wyłączyć w `Plik ▸ Ustawienia… ▸ Ogólne`. Menu `Plik`
 pamięta też ostatnio otwierane katalogi.
 
 ## Metadane (EXIF)
@@ -311,7 +311,12 @@ dostaje więc nową nazwę niezależnie od wybranej polityki nadpisywania.
 
 ## Ustawienia
 
-`Plik ▸ Ustawienia…` (`Ctrl+,`). Okno ma cztery zakładki:
+`Plik ▸ Ustawienia…` (`Ctrl+,`). Po lewej wąska lista kategorii, po prawej
+strona wybranej. Okno otwiera się na Ogólnych, a w trakcie jednego
+uruchomienia wraca do ostatnio oglądanej strony.
+
+**Ogólne** — język programu, otwieranie ostatniego folderu przy starcie,
+zapis korekt w plikach XMP.
 
 **Wydajność** — wykryty sprzęt (procesor z liczbą rdzeni i pamięcią, karta
 graficzna z pamięcią i wersją OpenGL) oraz wybór silnika podglądu:
@@ -326,9 +331,11 @@ Tu też mieszka rozmiar podglądu (dłuższy bok obrazu liczonego dla widoku
 dopasowanego do okna) i liczba wątków wczytujących miniatury.
 
 **Podgląd** — opóźnienie doliczania ostrego fragmentu i redukcji szumu, jakość
-odszumiania podglądu, próg powiększenia, powyżej którego obraz skalowany jest
-najbliższym sąsiadem, widoczność nawigatora, włączanie podpowiedzi (patrz
-niżej), a także zachowanie kółka myszy nad suwakami.
+odszumiania podglądu i próg powiększenia, powyżej którego obraz skalowany jest
+najbliższym sąsiadem.
+
+**Interfejs** — widoczność nawigatora, podpowiedzi i ich opóźnienie (patrz
+niżej) oraz zachowanie kółka myszy nad suwakami.
 
 ### Kółko myszy nad suwakami
 
@@ -350,8 +357,7 @@ Gdy warunki nie są spełnione, suwak wywołuje `event.ignore()` i Qt przekazuje
 zdarzenie wyżej, do obszaru przewijania — panel przewija się normalnie.
 
 **Eksport** — format, jakość JPEG, dłuższy bok, jakość odszumiania, domyślny
-katalog docelowy, domyślny autor i prawa autorskie oraz sprawy ogólne: język
-programu, otwieranie ostatniego folderu, zapis korekt w plikach XMP.
+katalog docelowy, domyślny autor i prawa autorskie.
 
 **O programie** — wersja, pełne dane sprzętu i sterownika, ścieżka pliku
 ustawień, wersje bibliotek.
@@ -374,7 +380,7 @@ nie zostawi panelu, w którym nie mieści się żaden przycisk.
 Każdy przycisk, suwak i pole w programie ma dymek: pogrubiony tytuł, opis
 działania z praktyczną radą oraz szarą linię ze skrótem klawiszowym, gestem
 (dwuklik zeruje suwak) albo formatem pola. Dymki wyłącza się w
-`Ustawienia ▸ Podgląd ▸ Pokazuj podpowiedzi` — od razu, bez ponownego
+`Ustawienia ▸ Interfejs ▸ Pokazuj podpowiedzi` — od razu, bez ponownego
 uruchamiania (to filtr zdarzeń na całej aplikacji, nie kasowanie tekstów).
 
 Kod zna tylko klucze (`suwak.shadows`, `eksport.podfolder`…). Teksty leżą
@@ -386,7 +392,7 @@ niczego nie psuje.
 ## Języki
 
 Program jest po polsku i po angielsku. Język wybiera się w
-`Ustawienia ▸ Eksport ▸ Ogólne ▸ Język`; zmiana działa po ponownym
+`Ustawienia ▸ Ogólne ▸ Język`; zmiana działa po ponownym
 uruchomieniu, bo napisy liczą się przy tworzeniu okien. Przy pierwszym
 starcie program bierze język systemu, a gdy go nie zna — angielski.
 

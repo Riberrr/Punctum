@@ -20,7 +20,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 app = QApplication(sys.argv)
 
 from punctum.app import MainWindow  # noqa: E402
-from punctum.app.settings_dialog import SettingsDialog  # noqa: E402
+from punctum.app import settings_dialog  # noqa: E402
+from punctum.app.settings_dialog import PAGE_GENERAL, PAGES, SettingsDialog  # noqa: E402
 from punctum.core.settings import ENGINE_AUTO, ENGINE_CPU, ENGINE_GPU, Settings  # noqa: E402
 
 folder = sys.argv[1]
@@ -163,19 +164,37 @@ def stage_engines() -> None:
 
 
 def stage_dialog() -> None:
+    # pamiec ostatniej strony zyje do konca uruchomienia - inne etapy
+    # mogly juz otworzyc okno, wiec zaczynamy jak po starcie programu
+    settings_dialog._last_page = PAGE_GENERAL
     dialog = SettingsDialog(window.settings, window.system, window)
-    dialog.resize(600, 620)
     dialog.show()
     app.processEvents()
     time.sleep(0.4)
     app.processEvents()
-    for index, name in enumerate(("wydajnosc", "podglad", "eksport", "o_programie")):
-        dialog.tabs.setCurrentIndex(index)
+    check("okno otwiera się na Ogólnych", dialog.current_page() == PAGE_GENERAL)
+    check("sześć kategorii na liście",
+          dialog.categories.count() == dialog.pages.count() == len(PAGES) == 6)
+    bez_dymka = [dialog.categories.item(i).text() for i in range(dialog.categories.count())
+                 if not dialog.categories.item(i).toolTip()]
+    check("każda kategoria ma podpowiedź", not bez_dymka, ", ".join(bez_dymka))
+    ciasne = []
+    for index, (key, *_rest) in enumerate(PAGES):
+        dialog.categories.setCurrentRow(index)
         app.processEvents()
         time.sleep(0.25)
         app.processEvents()
-        dialog.grab().save(os.path.join(out_dir, f"ustawienia_{index}_{name}.png"))
-    check("okno ma cztery zakładki", dialog.tabs.count() == 4)
+        page = dialog.pages.currentWidget()
+        # strona musi sie zmiescic bez sciskania: jej minimalna wysokosc
+        # nie moze przekraczac miejsca, jakie daje okno
+        if page.minimumSizeHint().height() > dialog.pages.height():
+            ciasne.append(f"{key} {page.minimumSizeHint().height()}>{dialog.pages.height()}")
+        dialog.grab().save(os.path.join(out_dir, f"ustawienia_{index}_{key}.png"))
+    check("każda strona mieści się w oknie", not ciasne, "; ".join(ciasne))
+    dialog.close()
+    again = SettingsDialog(window.settings, window.system, window)
+    check("okno pamięta ostatnią kategorię", again.current_page() == PAGES[-1][0])
+    again.deleteLater()
     check("wybór karty dostępny", dialog.engine_buttons["gpu"].isEnabled())
     dialog.close()
 
