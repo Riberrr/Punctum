@@ -105,11 +105,12 @@ class DetailRenderTask(QRunnable):
     """
 
     def __init__(
-        self, job_id: int, raw: RawImage, params: EditParams, rect: QRect, scale: float
+        self, job_id: int, raw: RawImage, params: EditParams, rect: QRect, scale: float,
+        quality: str = "balanced",
     ):
         super().__init__()
         self.job_id, self.raw, self.params = job_id, raw, params
-        self.rect, self.scale = rect, scale
+        self.rect, self.scale, self.quality = rect, scale, quality
         self.signals = _Signals()
 
     def run(self) -> None:
@@ -119,6 +120,7 @@ class DetailRenderTask(QRunnable):
                 self.params,
                 (self.rect.x(), self.rect.y(), self.rect.width(), self.rect.height()),
                 scale=self.scale,
+                quality=self.quality,
             )
         except Exception:
             return
@@ -135,15 +137,18 @@ class NoiseReductionTask(QRunnable):
     """
 
     def __init__(self, job_id: int, image: np.ndarray, params: EditParams,
-                 scale: float = 1.0):
+                 scale: float = 1.0, quality: str = "balanced"):
         super().__init__()
         self.job_id, self.image, self.params = job_id, image, params
         self.scale = scale  # skala podgladu - dla promienia wyostrzania
+        # Jakosc z ustawien ("Odszumianie podgladu"). Byla tu wpisana na
+        # sztywno, przez co pole w Ustawieniach niczego nie zmienialo.
+        self.quality = quality
         self.signals = _Signals()
 
     def run(self) -> None:
         try:
-            result = apply_detail(self.image, self.params, "balanced", scale=self.scale)
+            result = apply_detail(self.image, self.params, self.quality, scale=self.scale)
         except Exception:
             result = self.image
         try:

@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..core.exif_edit import FIELDS, GROUPS, current_values, is_writable_format, validate
+from .podpowiedzi import podpowiedz, podpowiedz_wiersza
 
 
 class ExifPanel(QWidget):
@@ -64,7 +65,9 @@ class ExifPanel(QWidget):
             # Waskiej kolumnie wolno zlamac wiersz, zamiast rozpychac panel.
             grid.setRowWrapPolicy(QFormLayout.WrapLongRows)
             for field in (f for f in FIELDS if f.group == group):
-                grid.addRow(field.label, self._editor(field))
+                editor = self._editor(field)
+                grid.addRow(field.label, editor)
+                podpowiedz_wiersza(grid, editor, f"exif.{field.key}")
             form.addLayout(grid)
 
         self.problem = QLabel("")
@@ -85,19 +88,15 @@ class ExifPanel(QWidget):
 
         self.all_button = QPushButton("Wszystkie tagi")
         self.all_button.setCheckable(True)
-        self.all_button.setToolTip("Pokaż wszystko, co jest zapisane w pliku")
+        podpowiedz(self.all_button, "exif.wszystkie_tagi")
         self.all_button.toggled.connect(self._on_show_all)
 
         self.write_button = QPushButton("Zapisz do oryginału")
-        self.write_button.setToolTip(
-            "Wpisuje metadane wprost w plik ze zdjęciem — bezstratnie, tylko\n"
-            "nagłówek, z zachowaniem daty pliku. Pliki RAW zostają nietknięte:\n"
-            "tam metadane czekają w pliku XMP i trafią do wyeksportowanego zdjęcia."
-        )
+        podpowiedz(self.write_button, "exif.zapisz_oryginal")
         self.write_button.clicked.connect(self.write_requested.emit)
 
         self.clear_button = QPushButton("Wyczyść zmiany")
-        self.clear_button.setToolTip("Cofa niezapisane zmiany w tym panelu")
+        podpowiedz(self.clear_button, "exif.wyczysc")
         self.clear_button.clicked.connect(self._on_clear)
 
         # Dwa rzedy, nie jeden: w kolumnie szerokosci 330 px trzeci przycisk
@@ -151,7 +150,6 @@ class ExifPanel(QWidget):
             widget.setPlaceholderText(field.hint)
             widget.textEdited.connect(lambda _="": self._on_edited())
         widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        widget.setToolTip(field.hint)
         self.editors[field.key] = widget
         return widget
 

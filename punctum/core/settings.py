@@ -73,6 +73,9 @@ class Settings:
     preview_noise_quality: str = "balanced"
     pixel_peek_zoom: float = 2.5  # powyzej tego skalujemy najblizszym sasiadem
     show_navigator: bool = True
+    # Dymki z objasnieniami. Wylaczalne, bo komus, kto zna program na
+    # pamiec, wyskakujace okienka zaslaniaja suwaki.
+    show_tooltips: bool = True
 
     # --- kolko myszy ----------------------------------------------------
     # Po przewinieciu listy suwaki przez ten czas nie reaguja na kolko,

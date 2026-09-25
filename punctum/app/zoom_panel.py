@@ -7,6 +7,8 @@ import math
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QSlider, QVBoxLayout, QWidget
 
+from .podpowiedzi import podpowiedz
+
 STEPS = 1000
 
 
@@ -34,14 +36,14 @@ class ZoomPanel(QWidget):
 
         self.slider = QSlider(Qt.Horizontal)
         self.slider.setRange(0, STEPS)
-        self.slider.setToolTip("Powiększenie")
+        podpowiedz(self.slider, "podglad.powiekszenie")
         self.slider.valueChanged.connect(self._on_slider)
 
         self.fit_button = QPushButton("Dopasuj")
-        self.fit_button.setToolTip("Dopasuj do okna (Ctrl+0)")
+        podpowiedz(self.fit_button, "podglad.dopasuj")
         self.fit_button.clicked.connect(self.fit_requested.emit)
         self.actual_button = QPushButton("100 %")
-        self.actual_button.setToolTip("Powiększenie 100 % (Ctrl+1)")
+        podpowiedz(self.actual_button, "podglad.sto")
         self.actual_button.clicked.connect(self.actual_requested.emit)
         self.zoom_label = QLabel("—")
         self.zoom_label.setMinimumWidth(44)

@@ -32,6 +32,7 @@ from ..core.export import (
     ExportOptions,
 )
 from ..core.settings import NOISE_QUALITY_LABELS
+from .podpowiedzi import podpowiedz, podpowiedz_wiersza
 
 
 def _hint(text: str) -> QLabel:
@@ -115,6 +116,8 @@ class ExportDialog(QDialog):
         row_layout.addWidget(self.folder_edit, 1)
         row_layout.addWidget(browse)
         form.addRow("Katalog:", row)
+        podpowiedz(browse, "eksport.wybierz_katalog")
+        podpowiedz(self.folder_edit, "eksport.katalog", etykieta=form.labelForField(row))
 
         subfolder_row = QWidget()
         subfolder_layout = QHBoxLayout(subfolder_row)
@@ -126,11 +129,14 @@ class ExportDialog(QDialog):
         subfolder_layout.addWidget(self.subfolder_box)
         subfolder_layout.addWidget(self.subfolder_edit, 1)
         form.addRow("", subfolder_row)
+        podpowiedz(self.subfolder_box, "eksport.podfolder")
+        podpowiedz(self.subfolder_edit, "eksport.podfolder")
 
         self.existing_box = QComboBox()
         for key, label in EXISTING_LABELS.items():
             self.existing_box.addItem(label, key)
         form.addRow("Istniejące pliki:", self.existing_box)
+        podpowiedz_wiersza(form, self.existing_box, "eksport.istniejace")
         form.addRow("", _hint(
             "Kolizje nazw sprawdzamy przed rozpoczęciem, więc pytanie pojawi się "
             "raz — eksport nie zatrzyma się w połowie."
@@ -144,6 +150,8 @@ class ExportDialog(QDialog):
         self.naming_group = QButtonGroup(self)
         self.original_radio = QRadioButton("Zachowaj oryginalną nazwę")
         self.custom_radio = QRadioButton("Nadaj nazwę z numeratorem")
+        podpowiedz(self.original_radio, "eksport.nazwa_oryginalna")
+        podpowiedz(self.custom_radio, "eksport.nazwa_numer")
         for button in (self.original_radio, self.custom_radio):
             self.naming_group.addButton(button)
             layout.addWidget(button)
@@ -156,16 +164,19 @@ class ExportDialog(QDialog):
         self.custom_edit.setPlaceholderText("np. Wakacje")
         self.custom_edit.textChanged.connect(self._refresh_preview)
         form.addRow("Tekst:", self.custom_edit)
+        podpowiedz_wiersza(form, self.custom_edit, "eksport.tekst")
 
         self.start_number_box = QSpinBox()
         self.start_number_box.setRange(0, 999999)
         self.start_number_box.valueChanged.connect(self._refresh_preview)
         form.addRow("Numer początkowy:", self.start_number_box)
+        podpowiedz_wiersza(form, self.start_number_box, "eksport.numer_poczatkowy")
 
         self.digits_box = QSpinBox()
         self.digits_box.setRange(1, 8)
         self.digits_box.valueChanged.connect(self._refresh_preview)
         form.addRow("Cyfr w numerze:", self.digits_box)
+        podpowiedz_wiersza(form, self.digits_box, "eksport.cyfry")
         layout.addWidget(self.custom_row)
         return group
 
@@ -178,10 +189,12 @@ class ExportDialog(QDialog):
             self.format_box.addItem(label, extension)
         self.format_box.currentIndexChanged.connect(self._on_format_changed)
         form.addRow("Format:", self.format_box)
+        podpowiedz_wiersza(form, self.format_box, "eksport.format")
 
         self.quality_box = QSpinBox()
         self.quality_box.setRange(50, 100)
         form.addRow("Jakość JPEG:", self.quality_box)
+        podpowiedz_wiersza(form, self.quality_box, "eksport.jakosc_jpeg")
 
         self.max_side_box = QSpinBox()
         self.max_side_box.setRange(0, 20000)
@@ -189,11 +202,13 @@ class ExportDialog(QDialog):
         self.max_side_box.setSpecialValueText("pełna rozdzielczość")
         self.max_side_box.setSuffix(" px")
         form.addRow("Dłuższy bok:", self.max_side_box)
+        podpowiedz_wiersza(form, self.max_side_box, "eksport.dluzszy_bok")
 
         self.noise_box = QComboBox()
         for key, label in NOISE_QUALITY_LABELS.items():
             self.noise_box.addItem(label, key)
         form.addRow("Odszumianie:", self.noise_box)
+        podpowiedz_wiersza(form, self.noise_box, "eksport.odszumianie")
         return group
 
     def _metadata_group(self) -> QGroupBox:
@@ -210,6 +225,8 @@ class ExportDialog(QDialog):
             lambda on: self._on_field_toggled(self.author_edit, on)
         )
         form.addRow(self.author_box, self.author_edit)
+        podpowiedz(self.author_box, "eksport.autor")
+        podpowiedz(self.author_edit, "eksport.autor")
 
         self.copyright_box = QCheckBox("Prawa autorskie:")
         self.copyright_edit = QLineEdit()
@@ -218,14 +235,19 @@ class ExportDialog(QDialog):
             lambda on: self._on_field_toggled(self.copyright_edit, on)
         )
         form.addRow(self.copyright_box, self.copyright_edit)
+        podpowiedz(self.copyright_box, "eksport.prawa")
+        podpowiedz(self.copyright_edit, "eksport.prawa")
 
         self.keywords_edit = QLineEdit()
         self.keywords_edit.setPlaceholderText("oddzielone średnikiem, np. Wakacje 2026; Tatry")
         form.addRow("Słowa kluczowe:", self.keywords_edit)
+        podpowiedz_wiersza(form, self.keywords_edit, "eksport.slowa")
         self.subject_edit = QLineEdit()
         form.addRow("Temat:", self.subject_edit)
+        podpowiedz_wiersza(form, self.subject_edit, "eksport.temat")
         self.comment_edit = QLineEdit()
         form.addRow("Komentarz:", self.comment_edit)
+        podpowiedz_wiersza(form, self.comment_edit, "eksport.komentarz")
         form.addRow("", _hint(
             "Wpisane tu pola zastępują te przy zdjęciach, a słowa kluczowe "
             "dopisują się do słów zdjęcia. Data, aparat, naświetlenie "

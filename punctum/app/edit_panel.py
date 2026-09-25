@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from ..core import EditParams
 from ..core.metadata import PhotoMetadata
+from .podpowiedzi import podpowiedz
 from .sliders import TEMPERATURE_STOPS, TINT_STOPS, ParamSlider, WheelGuard
 from .style import ASSETS_DIRECTORY
 
@@ -112,7 +113,7 @@ class InfoPanel(QFrame):
         self.details_button.setText("▾")
         self.details_button.setAutoRaise(True)
         self.details_button.setFixedSize(20, 18)
-        self.details_button.setToolTip("Pokaż wszystkie metadane (EXIF)")
+        podpowiedz(self.details_button, "podglad.metadane_rozwin")
         self.details_button.toggled.connect(self._on_details_toggled)
         self.details_button.hide()  # pojawia sie dopiero z podpieta trescia
 
@@ -140,9 +141,7 @@ class InfoPanel(QFrame):
 
     def _on_details_toggled(self, on: bool) -> None:
         self.details_button.setText("▴" if on else "▾")
-        self.details_button.setToolTip(
-            "Ukryj metadane (EXIF)" if on else "Pokaż wszystkie metadane (EXIF)"
-        )
+        podpowiedz(self.details_button, "podglad.metadane_zwin" if on else "podglad.metadane_rozwin")
         if self.details is not None:
             self.details.setVisible(on)
         self.details_toggled.emit(on)
@@ -213,11 +212,7 @@ class EditPanel(QWidget):
         self.crop_button.setIcon(QIcon(os.path.join(ASSETS_DIRECTORY, "crop.svg")))
         self.crop_button.setIconSize(QSize(18, 18))
         self.crop_button.setCheckable(True)
-        self.crop_button.setToolTip(
-            "Kadrowanie (R)\n"
-            "Ciągnij za krawędzie, aby zmienić kadr (Shift zachowuje proporcje).\n"
-            "Ciągnij poza kadrem, aby obrócić zdjęcie."
-        )
+        podpowiedz(self.crop_button, "edycja.kadrowanie")
         self.crop_button.toggled.connect(self.crop_mode_toggled.emit)
 
         rotate_row = QHBoxLayout()
@@ -225,12 +220,12 @@ class EditPanel(QWidget):
         rotate_row.addWidget(self.crop_button)
         rotate_row.addSpacing(6)
         for label, step, tip in (
-            ("↺ 90°", -90, "Obróć w lewo"),
-            ("180°", 180, "Obróć o 180°"),
-            ("90° ↻", 90, "Obróć w prawo"),
+            ("↺ 90°", -90, "edycja.obrot_lewo"),
+            ("180°", 180, "edycja.obrot_180"),
+            ("90° ↻", 90, "edycja.obrot_prawo"),
         ):
             button = QPushButton(label)
-            button.setToolTip(tip)
+            podpowiedz(button, tip)
             button.clicked.connect(lambda _=False, s=step: self.orientation_step.emit(s))
             rotate_row.addWidget(button, 1)
         fixed.addLayout(rotate_row)
@@ -238,14 +233,15 @@ class EditPanel(QWidget):
         self._add(fixed, "rotation", "Kąt", -45, 45, 0, 1, "°")
 
         self.crop_reset_button = QPushButton("Wyzeruj kadr")
+        podpowiedz(self.crop_reset_button, "edycja.wyzeruj_kadr")
         self.crop_reset_button.clicked.connect(self.crop_reset_requested.emit)
         fixed.addWidget(self.crop_reset_button)
 
         self.auto_button = QPushButton("Automatycznie")
-        self.auto_button.setToolTip("Dobierz parametry tonalne na podstawie histogramu (Ctrl+U)")
+        podpowiedz(self.auto_button, "edycja.automatycznie")
         self.auto_button.clicked.connect(self.auto_requested.emit)
         self.reset_button = QPushButton("Wyzeruj")
-        self.reset_button.setToolTip("Wyzeruj wszystkie korekty zdjęcia")
+        podpowiedz(self.reset_button, "edycja.wyzeruj")
         self.reset_button.clicked.connect(self.reset_requested.emit)
         action_row = QHBoxLayout()
         action_row.setSpacing(4)
@@ -321,6 +317,7 @@ class EditPanel(QWidget):
         )
         slider.value_changed.connect(self._on_change)
         self.sliders[key] = slider
+        podpowiedz(slider, f"suwak.{key}", suwak=True)
         layout.addWidget(slider)
 
     def _on_change(self, key: str, value: float) -> None:
@@ -343,12 +340,8 @@ class EditPanel(QWidget):
         slider.default = temp
         slider.set_value(temp)
         slider.name_label.setText("Temperatura (wzgl.)" if relative else "Temperatura")
-        slider.setToolTip(
-            "JPEG nie niesie mnożników aparatu ani macierzy barw, więc temperatury\n"
-            "„jak na ujęciu” nie da się odtworzyć. Suwak przesuwa barwę względem\n"
-            "stanu zapisanego w pliku — kelwiny są tu umowne."
-            if relative else ""
-        )
+        podpowiedz(slider, "suwak.temperature", suwak=True,
+                   dopisek="suwak.temperature_jpeg" if relative else None)
         self.sliders["tint"].set_value(0.0)
         # JPEG wyostrzyl juz aparat: "Wyzeruj" ma go sprowadzac do 0, nie do 40
         self.sliders["sharpen_amount"].default = 0.0 if relative else 40.0

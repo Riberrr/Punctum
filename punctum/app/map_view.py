@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
 
 from .exif_panel import ExifPanel
 from .map_page import MAP_HTML
+from .podpowiedzi import podpowiedz
 from .markers import EDIT_ROLE, GEO_ROLE, LEGEND, MARK_COLUMN, paint_marks
 
 # Miniatura w liscie: na tyle duza, zeby rozpoznac kadr, na tyle mala, zeby
@@ -154,18 +155,15 @@ class MapView(QWidget):
 
         self.tag_button = QPushButton("Przypisz zaznaczonym")
         self.tag_button.setCheckable(True)
-        self.tag_button.setToolTip(
-            "Włącz, zaznacz zdjęcia na liście i kliknij miejsce na mapie.\n"
-            "Wszystkie zaznaczone dostaną te współrzędne."
-        )
+        podpowiedz(self.tag_button, "mapa.przypisz")
         self.tag_button.toggled.connect(self._on_tagging)
 
         self.clear_button = QPushButton("Usuń lokalizację")
-        self.clear_button.setToolTip("Zdejmuje współrzędne z zaznaczonych zdjęć")
+        podpowiedz(self.clear_button, "mapa.usun")
         self.clear_button.clicked.connect(self._on_clear)
 
         self.fit_button = QPushButton("Pokaż wszystkie")
-        self.fit_button.setToolTip("Dopasuj mapę tak, żeby było widać wszystkie pinezki")
+        podpowiedz(self.fit_button, "mapa.pokaz_wszystkie")
         self.fit_button.clicked.connect(lambda: self._js("fitToMarkers()"))
 
         self.status = QLabel("")

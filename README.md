@@ -328,8 +328,8 @@ dopasowanego do okna) i liczba wątków wczytujących miniatury.
 
 **Podgląd** — opóźnienie doliczania ostrego fragmentu i redukcji szumu, jakość
 odszumiania podglądu, próg powiększenia, powyżej którego obraz skalowany jest
-najbliższym sąsiadem, widoczność nawigatora, a także zachowanie kółka myszy nad
-suwakami (patrz niżej).
+najbliższym sąsiadem, widoczność nawigatora, włączanie podpowiedzi (patrz
+niżej), a także zachowanie kółka myszy nad suwakami.
 
 ### Kółko myszy nad suwakami
 
@@ -368,6 +368,21 @@ katalogów, ostatnie opcje eksportu oraz rozmiary paneli i paska miniatur
 (`left_panel_width`, `right_panel_width`, `filmstrip_height`). Rozmiary spoza
 dopuszczalnych zakresów są przy odczycie przycinane, więc ręcznie popsuty plik
 nie zostawi panelu, w którym nie mieści się żaden przycisk.
+
+## Podpowiedzi
+
+Każdy przycisk, suwak i pole w programie ma dymek: pogrubiony tytuł, opis
+działania z praktyczną radą oraz szarą linię ze skrótem klawiszowym, gestem
+(dwuklik zeruje suwak) albo formatem pola. Dymki wyłącza się w
+`Ustawienia ▸ Podgląd ▸ Pokazuj podpowiedzi` — od razu, bez ponownego
+uruchamiania (to filtr zdarzeń na całej aplikacji, nie kasowanie tekstów).
+
+Kod zna tylko klucze (`suwak.shadows`, `eksport.podfolder`…). Teksty leżą
+w `punctum/lang/podpowiedzi.pl.json` — polski jest bazowy i kompletny. Nowy
+język to kopia tego pliku pod nazwą `podpowiedzi.<kod>.json`, bez zmian
+w kodzie; brakujący wpis albo pole zastępuje polski, więc niepełny przekład
+niczego nie psuje. Wybór języka w ustawieniach pojawi się razem z przekładem
+całego interfejsu.
 
 ## Architektura
 
@@ -659,6 +674,8 @@ punctum/app/
     map_view.py      zakładka mapy: lista zdjęć, most do strony, przypisywanie
     map_page.py      strona mapy (Leaflet) jako HTML i JavaScript
     workers.py       zadania w tle
+    podpowiedzi.py   dymki: klucze, składanie tekstu, języki, wyłącznik
+punctum/lang/        teksty podpowiedzi, jeden plik na język
 tools/               narzędzia diagnostyczne, testy i CLI
 ```
 
@@ -666,7 +683,7 @@ tools/               narzędzia diagnostyczne, testy i CLI
 
 ```powershell
 tools\testy.bat --szybkie                 # same testy bez interfejsu, ~5 s
-tools\testy.bat "C:\Zdjęcia\Wycieczka"    # cała seria, 221 sprawdzeń, ~40 s
+tools\testy.bat "C:\Zdjęcia\Wycieczka"    # cała seria, ~300 sprawdzeń, ~60 s
 tools\testy.bat "C:\Zdjęcia\Wycieczka" --pelny   # z pełnymi tabelami wyników
 ```
 
@@ -687,11 +704,13 @@ stałe zmienną `PUNCTUM_TESTY`; bez niego seria po prostu pomija tę część.
 | `test_auto_zasady.py` | automat tonalny na scenach o z góry znanych cechach |
 | `test_jpeg.py` | JPEG przepuszczony przez tor liniowy bez korekt wychodzi taki sam |
 | `test_exif.py` | zapis do oryginału nie niszczy obrazu, reszty metadanych ani daty pliku |
+| `test_podpowiedzi.py` | każdy klucz z kodu ma tekst, brak tekstów nieużywanych, język z niepełnym przekładem uzupełniany polskim, jakość odszumiania podglądu z ustawień |
 | `test_trwalosc_gui.py` | poprawki przeżywają przejście dalej i ponowne uruchomienie |
 | `test_mapa_gui.py` | przypisanie punktu na mapie i jego trwałość |
 | `test_jpeg_gui.py` | mieszany katalog: filtr formatów, opis balansu bieli |
 | `test_znaczniki_gui.py` | znaczniki na listach i panel metadanych w obu zakładkach |
 | `test_uklad_gui.py` | układ okna: widoczność elementów przy maksymalizacji, szerokości przy rozwinięciu metadanych, suwak powiększenia, przeciąganie i zapamiętywanie rozmiarów |
+| `test_podpowiedzi_gui.py` | żaden przycisk, suwak ani pole w oknie głównym, Ustawieniach i eksporcie bez podpowiedzi; wyłącznik dymków |
 
 Test układu zapisuje też zrzut okna (`punctum-uklad.png` w katalogu
 tymczasowym) — tak sprawdzamy wygląd po zmianach bez proszenia o zrzuty.

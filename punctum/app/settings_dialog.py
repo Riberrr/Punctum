@@ -48,6 +48,7 @@ ENGINE_DESCRIPTIONS = {
     ENGINE_GPU: "Wymuś liczenie na karcie. Podgląd odświeża się w kilka milisekund.",
     ENGINE_CPU: "Wymuś liczenie na procesorze. Wolniejsze, ale niezależne od sterowników.",
 }
+from .podpowiedzi import podpowiedz, podpowiedz_wiersza
 
 
 def _hint(text: str) -> QLabel:
@@ -77,6 +78,7 @@ class SettingsDialog(QDialog):
         buttons.button(QDialogButtonBox.Save).setText("Zapisz")
         buttons.button(QDialogButtonBox.Cancel).setText("Anuluj")
         buttons.button(QDialogButtonBox.RestoreDefaults).setText("Przywróć domyślne")
+        podpowiedz(buttons.button(QDialogButtonBox.RestoreDefaults), "ustawienia.domyslne")
         buttons.accepted.connect(self._on_accept)
         buttons.rejected.connect(self.reject)
         buttons.button(QDialogButtonBox.RestoreDefaults).clicked.connect(self._restore_defaults)
@@ -131,6 +133,7 @@ class SettingsDialog(QDialog):
             )
             self.engine_group.addButton(button)
             self.engine_buttons[key] = button
+            podpowiedz(button, f"ustawienia.silnik_{key}")
             engine_layout.addWidget(button)
             hint = _hint(ENGINE_DESCRIPTIONS[key])
             hint.setContentsMargins(22, 0, 0, 6)
@@ -151,6 +154,7 @@ class SettingsDialog(QDialog):
         for size in PREVIEW_SIZES:
             self.preview_size_box.addItem(f"{size} px", size)
         resource_form.addRow("Rozmiar podglądu:", self.preview_size_box)
+        podpowiedz_wiersza(resource_form, self.preview_size_box, "ustawienia.rozmiar_podgladu")
         resource_form.addRow("", _hint(
             "Dłuższy bok obrazu liczonego dla widoku dopasowanego do okna. "
             "Przy powiększeniu i tak dokładany jest fragment z pełnej rozdzielczości."
@@ -160,6 +164,7 @@ class SettingsDialog(QDialog):
         self.threads_box.setRange(0, 32)
         self.threads_box.setSpecialValueText("automatycznie")
         resource_form.addRow("Wątki miniatur:", self.threads_box)
+        podpowiedz_wiersza(resource_form, self.threads_box, "ustawienia.watki")
         cores = self.system.cpu.cores_logical or 4
         resource_form.addRow("", _hint(f"Zero oznacza dobór automatyczny: {max(2, cores - 1)}."))
 
@@ -180,6 +185,7 @@ class SettingsDialog(QDialog):
         self.detail_delay_box.setSingleStep(20)
         self.detail_delay_box.setSuffix(" ms")
         form.addRow("Doliczanie ostrego fragmentu:", self.detail_delay_box)
+        podpowiedz_wiersza(form, self.detail_delay_box, "ustawienia.opoznienie_ostrosci")
         form.addRow("", _hint(
             "Po tym czasie od zatrzymania kadru wczytywany jest fragment "
             "w pełnej rozdzielczości."
@@ -190,6 +196,7 @@ class SettingsDialog(QDialog):
         self.noise_delay_box.setSingleStep(50)
         self.noise_delay_box.setSuffix(" ms")
         form.addRow("Usuwanie szumu:", self.noise_delay_box)
+        podpowiedz_wiersza(form, self.noise_delay_box, "ustawienia.opoznienie_szumu")
         form.addRow("", _hint(
             "Odszumianie liczy procesor, więc czeka, aż przestaniesz ruszać suwakiem."
         ))
@@ -202,12 +209,14 @@ class SettingsDialog(QDialog):
         for key, label in NOISE_QUALITY_LABELS.items():
             self.preview_noise_box.addItem(label, key)
         quality_form.addRow("Odszumianie podglądu:", self.preview_noise_box)
+        podpowiedz_wiersza(quality_form, self.preview_noise_box, "ustawienia.odszumianie_podgladu")
 
         self.pixel_peek_box = QDoubleSpinBox()
         self.pixel_peek_box.setRange(1.0, 16.0)
         self.pixel_peek_box.setSingleStep(0.5)
         self.pixel_peek_box.setSuffix(" ×")
         quality_form.addRow("Podgląd pikseli od:", self.pixel_peek_box)
+        podpowiedz_wiersza(quality_form, self.pixel_peek_box, "ustawienia.podglad_pikseli")
         quality_form.addRow("", _hint(
             "Powyżej tego powiększenia obraz skalowany jest najbliższym sąsiadem, "
             "żeby było widać prawdziwe piksele zamiast interpolacji."
@@ -215,6 +224,10 @@ class SettingsDialog(QDialog):
 
         self.navigator_box = QCheckBox("Pokazuj nawigator w lewym panelu")
         quality_form.addRow("", self.navigator_box)
+        podpowiedz(self.navigator_box, "ustawienia.nawigator")
+        self.tooltips_box = QCheckBox("Pokazuj podpowiedzi")
+        podpowiedz(self.tooltips_box, "ustawienia.podpowiedzi")
+        quality_form.addRow("", self.tooltips_box)
         layout.addWidget(quality)
 
         wheel = QGroupBox("Kółko myszy nad suwakami")
@@ -226,6 +239,7 @@ class SettingsDialog(QDialog):
         self.wheel_lockout_box.setSuffix(" ms")
         self.wheel_lockout_box.setSpecialValueText("bez blokady")
         wheel_form.addRow("Blokada po przewinięciu:", self.wheel_lockout_box)
+        podpowiedz_wiersza(wheel_form, self.wheel_lockout_box, "ustawienia.blokada_kolka")
         wheel_form.addRow("", _hint(
             "Po przewinięciu listy suwaki przez ten czas nie reagują na kółko. "
             "Dzięki temu przewijanie panelu nie zmienia przypadkiem parametrów. "
@@ -237,6 +251,7 @@ class SettingsDialog(QDialog):
         self.wheel_dwell_box.setSingleStep(20)
         self.wheel_dwell_box.setSuffix(" ms")
         wheel_form.addRow("Wymagane zatrzymanie:", self.wheel_dwell_box)
+        podpowiedz_wiersza(wheel_form, self.wheel_dwell_box, "ustawienia.zatrzymanie_kolka")
         wheel_form.addRow("", _hint(
             "Kursor musi postać nad suwakiem tyle czasu, zanim kółko zacznie "
             "go zmieniać. Chroni przed suwakiem, który dopiero podjechał pod "
@@ -259,10 +274,12 @@ class SettingsDialog(QDialog):
         for extension, label in ((".jpg", "JPEG"), (".png", "PNG"), (".tif", "TIFF")):
             self.format_box.addItem(label, extension)
         form.addRow("Format:", self.format_box)
+        podpowiedz_wiersza(form, self.format_box, "ustawienia.format")
 
         self.quality_box = QSpinBox()
         self.quality_box.setRange(50, 100)
         form.addRow("Jakość JPEG:", self.quality_box)
+        podpowiedz_wiersza(form, self.quality_box, "ustawienia.jakosc_jpeg")
 
         self.max_side_box = QSpinBox()
         self.max_side_box.setRange(0, 20000)
@@ -270,11 +287,13 @@ class SettingsDialog(QDialog):
         self.max_side_box.setSpecialValueText("pełna rozdzielczość")
         self.max_side_box.setSuffix(" px")
         form.addRow("Dłuższy bok:", self.max_side_box)
+        podpowiedz_wiersza(form, self.max_side_box, "ustawienia.dluzszy_bok")
 
         self.export_noise_box = QComboBox()
         for key, label in NOISE_QUALITY_LABELS.items():
             self.export_noise_box.addItem(label, key)
         form.addRow("Odszumianie:", self.export_noise_box)
+        podpowiedz_wiersza(form, self.export_noise_box, "ustawienia.odszumianie_eksportu")
         form.addRow("", _hint(
             "Przy eksporcie warto wybrać wariant dokładny — liczy się raz, "
             "a różnica jest widoczna w pełnej rozdzielczości."
@@ -287,6 +306,8 @@ class SettingsDialog(QDialog):
         self.folder_edit.setPlaceholderText("pytaj przy każdym eksporcie")
         browse = QPushButton("Wybierz…")
         browse.clicked.connect(self._choose_folder)
+        podpowiedz(browse, "ustawienia.wybierz_katalog")
+        podpowiedz(self.folder_edit, "ustawienia.katalog")
         destination_layout.addWidget(self.folder_edit, 1)
         destination_layout.addWidget(browse)
         layout.addWidget(destination)
@@ -296,9 +317,11 @@ class SettingsDialog(QDialog):
         self.author_edit = QLineEdit()
         self.author_edit.setPlaceholderText("Imię Nazwisko")
         authorship_form.addRow("Autor:", self.author_edit)
+        podpowiedz_wiersza(authorship_form, self.author_edit, "ustawienia.autor")
         self.copyright_edit = QLineEdit()
         self.copyright_edit.setPlaceholderText("np. © 2026 Imię Nazwisko")
         authorship_form.addRow("Prawa autorskie:", self.copyright_edit)
+        podpowiedz_wiersza(authorship_form, self.copyright_edit, "ustawienia.prawa")
         authorship_form.addRow("", _hint(
             "Wartości podpowiadane w oknie eksportu. Czy trafią do plików, "
             "decydujesz tam, przy każdym eksporcie."
@@ -308,14 +331,10 @@ class SettingsDialog(QDialog):
         general = QGroupBox("Ogólne")
         general_layout = QVBoxLayout(general)
         self.reopen_box = QCheckBox("Otwieraj ostatnio używany folder przy starcie")
+        podpowiedz(self.reopen_box, "ustawienia.ostatni_folder")
         general_layout.addWidget(self.reopen_box)
         self.store_edits_box = QCheckBox("Zapamiętuj korekty obok zdjęć (pliki XMP)")
-        self.store_edits_box.setToolTip(
-            "Korekty każdego zdjęcia lądują w osobnym pliku XMP obok oryginału,\n"
-            "a przy kolejnym otwarciu wracają na suwaki. Dzięki temu obróbkę\n"
-            "dużego katalogu można rozłożyć na kilka dni.\n\n"
-            "Plik ze zdjęciem nie jest przy tym zmieniany."
-        )
+        podpowiedz(self.store_edits_box, "ustawienia.xmp")
         general_layout.addWidget(self.store_edits_box)
         layout.addWidget(general)
 
@@ -392,6 +411,7 @@ class SettingsDialog(QDialog):
         )
         self.pixel_peek_box.setValue(s.pixel_peek_zoom)
         self.navigator_box.setChecked(s.show_navigator)
+        self.tooltips_box.setChecked(s.show_tooltips)
         self.wheel_lockout_box.setValue(s.wheel_lockout_ms)
         self.wheel_dwell_box.setValue(s.wheel_dwell_ms)
         self.format_box.setCurrentIndex(max(0, self.format_box.findData(s.export_format)))
@@ -418,6 +438,7 @@ class SettingsDialog(QDialog):
         s.preview_noise_quality = self.preview_noise_box.currentData()
         s.pixel_peek_zoom = self.pixel_peek_box.value()
         s.show_navigator = self.navigator_box.isChecked()
+        s.show_tooltips = self.tooltips_box.isChecked()
         s.wheel_lockout_ms = self.wheel_lockout_box.value()
         s.wheel_dwell_ms = self.wheel_dwell_box.value()
         s.export_format = self.format_box.currentData()

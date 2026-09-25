@@ -63,6 +63,7 @@ from .gpu_renderer import GpuRenderer
 from .image_view import ImageView
 from .map_view import MapView
 from .navigator import Navigator
+from .podpowiedzi import WylacznikPodpowiedzi, podpowiedz
 from .settings_dialog import SettingsDialog
 from .style import stylesheet
 from .workers import (
@@ -150,6 +151,10 @@ class MainWindow(QMainWindow):
         self.noise_timer.setSingleShot(True)
         self.noise_timer.timeout.connect(self._render_noise_pass)
 
+        # Wylacznik dymkow jest filtrem na calej aplikacji: dziala od razu
+        # po zmianie ustawienia, bez odtwarzania podpowiedzi w oknach.
+        self.tooltip_switch = WylacznikPodpowiedzi(self)
+        QApplication.instance().installEventFilter(self.tooltip_switch)
         self._apply_settings()
 
         # Mapa powstaje TERAZ, zanim okno zostanie pokazane - i jest to
@@ -209,7 +214,7 @@ class MainWindow(QMainWindow):
         self.detail_label = self.zoom_panel.detail_label
 
         self.before_button = QPushButton("Przed / po")
-        self.before_button.setToolTip("Przytrzymaj, aby zobaczyć zdjęcie bez korekt")
+        podpowiedz(self.before_button, "podglad.przed_po")
         self.before_button.pressed.connect(self._show_before)
         self.before_button.released.connect(self._show_after)
         # Wiersz, nie sam przycisk: obok stanie przelacznik podzielonego
@@ -263,7 +268,7 @@ class MainWindow(QMainWindow):
         # zajmowal caly wiersz na kilka przyciskow, ktore teraz maja swoje
         # miejsca w panelach.
         self.export_button = QPushButton("Eksportuj…")
-        self.export_button.setToolTip("Eksportuj zaznaczone zdjęcia (Ctrl+E)")
+        podpowiedz(self.export_button, "okno.eksportuj")
         self.export_button.clicked.connect(self.export_current)
 
         self.filmstrip = Filmstrip()
@@ -276,6 +281,7 @@ class MainWindow(QMainWindow):
         # Pasek nad miniaturami. Katalogu, w ktorym lezy kilkanascie tysiecy
         # JPEG-ow i garsc RAW-ow, nie da sie przejrzec bez takiego filtra.
         self.format_combo = QComboBox()
+        podpowiedz(self.format_combo, "okno.filtr")
         for key in (FORMAT_ALL, FORMAT_RAW, FORMAT_JPEG):
             self.format_combo.addItem(FORMAT_LABELS[key], key)
         index = self.format_combo.findData(self.settings.format_filter)
@@ -369,6 +375,7 @@ class MainWindow(QMainWindow):
         self.progress_bar.setFixedWidth(180)
         self.progress_bar.setTextVisible(False)
         self.cancel_export_button = QPushButton("Przerwij")
+        podpowiedz(self.cancel_export_button, "okno.przerwij")
         self.cancel_export_button.clicked.connect(self._cancel_export)
         progress_layout.addWidget(self.progress_label)
         progress_layout.addWidget(self.progress_bar)
@@ -521,6 +528,7 @@ class MainWindow(QMainWindow):
         self.noise_timer.setInterval(s.noise_delay_ms)
         self.view.set_detail_delay(s.detail_delay_ms)
         self.navigator.setVisible(s.show_navigator)
+        self.tooltip_switch.wlaczone = s.show_tooltips
         self.edit_panel.set_wheel_protection(s.wheel_lockout_ms, s.wheel_dwell_ms)
 
         if self.gpu.available and self.settings.render_engine == ENGINE_CPU:
@@ -1107,7 +1115,8 @@ class MainWindow(QMainWindow):
         self._latest_job = self._job_counter
         # podglad bywa pomniejszony - promien wyostrzania liczymy w pikselach zdjecia
         scale = image.shape[1] / float(max(1, self.view.image_size[0]))
-        task = NoiseReductionTask(self._job_counter, image, params, scale)
+        task = NoiseReductionTask(self._job_counter, image, params, scale,
+                                  quality=self.settings.preview_noise_quality)
         task.signals.render_ready.connect(self._on_noise_ready)
         self.pool.start(task)
 
@@ -1149,7 +1158,8 @@ class MainWindow(QMainWindow):
 
         self._job_counter += 1
         self._latest_detail = self._job_counter
-        task = DetailRenderTask(self._job_counter, self.full_raw, params, rect, scale)
+        task = DetailRenderTask(self._job_counter, self.full_raw, params, rect, scale,
+                                quality=self.settings.preview_noise_quality)
         task.signals.detail_ready.connect(self._on_detail_ready)
         self.pool.start(task)
         self.detail_label.setText("ostrzenie…")
