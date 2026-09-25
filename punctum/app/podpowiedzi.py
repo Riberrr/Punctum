@@ -18,6 +18,7 @@ import json
 import os
 
 from PySide6.QtCore import QEvent, QObject
+from PySide6.QtWidgets import QProxyStyle, QStyle
 
 LANG_DIRECTORY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lang")
 BAZOWY = "pl"
@@ -121,6 +122,25 @@ def podpowiedz(widget, klucz: str, *, suwak: bool = False, dopisek: str | None =
 def podpowiedz_wiersza(form, pole, klucz: str) -> None:
     """Podpowiedz dla pola formularza i jego etykiety (QFormLayout)."""
     podpowiedz(pole, klucz, etykieta=form.labelForField(pole))
+
+
+class StylPodpowiedzi(QProxyStyle):
+    """Nakladka na styl aplikacji, ktora podaje wlasne opoznienie dymka.
+
+    Qt nie ma do tego osobnego ustawienia - czas czytany jest ze stylu
+    (SH_ToolTip_WakeUpDelay) przy kazdym ruchu myszy, wiec zmiana pola
+    `opoznienie_ms` dziala od razu. Nakladka na styl o tej samej nazwie,
+    zeby wyglad okien sie nie zmienil.
+    """
+
+    def __init__(self, nazwa_stylu: str, opoznienie_ms: int = 700):
+        super().__init__(nazwa_stylu)
+        self.opoznienie_ms = opoznienie_ms
+
+    def styleHint(self, hint, option=None, widget=None, returnData=None):  # noqa: N802
+        if hint == QStyle.SH_ToolTip_WakeUpDelay:
+            return self.opoznienie_ms
+        return super().styleHint(hint, option, widget, returnData)
 
 
 class WylacznikPodpowiedzi(QObject):

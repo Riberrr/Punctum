@@ -76,6 +76,7 @@ class Settings:
     # Dymki z objasnieniami. Wylaczalne, bo komus, kto zna program na
     # pamiec, wyskakujace okienka zaslaniaja suwaki.
     show_tooltips: bool = True
+    tooltip_delay_ms: int = 700  # tyle co domyslnie w Qt
 
     # --- kolko myszy ----------------------------------------------------
     # Po przewinieciu listy suwaki przez ten czas nie reaguja na kolko,
@@ -138,6 +139,7 @@ class Settings:
         clean.thumbnail_threads = max(0, min(32, int(clean.thumbnail_threads)))
         clean.detail_delay_ms = max(0, min(2000, int(clean.detail_delay_ms)))
         clean.noise_delay_ms = max(0, min(5000, int(clean.noise_delay_ms)))
+        clean.tooltip_delay_ms = max(0, min(5000, int(clean.tooltip_delay_ms)))
         if clean.preview_noise_quality not in NOISE_QUALITY_LABELS:
             clean.preview_noise_quality = "balanced"
         if clean.export_noise_quality not in NOISE_QUALITY_LABELS:

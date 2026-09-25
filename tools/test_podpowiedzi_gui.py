@@ -36,6 +36,7 @@ from PySide6.QtWidgets import (  # noqa: E402
     QLineEdit,
     QPlainTextEdit,
     QScrollBar,
+    QStyle,
     QTabBar,
     QTextEdit,
     QToolTip,
@@ -48,6 +49,7 @@ from punctum.app import MainWindow  # noqa: E402
 from punctum.app.export_dialog import ExportDialog  # noqa: E402
 from punctum.app.podpowiedzi import WLASCIWOSC  # noqa: E402
 from punctum.app.settings_dialog import SettingsDialog  # noqa: E402
+from punctum.app.style import ASSETS_DIRECTORY  # noqa: E402
 from punctum.core.export import ExportOptions  # noqa: E402
 from punctum.core.settings import settings_path  # noqa: E402
 
@@ -179,6 +181,14 @@ def stage_wylacznik() -> None:
     window._apply_settings()
     check("wlaczone z powrotem od razu", dymek_po_zdarzeniu(target))
     QToolTip.hideText()
+    # opoznienie czyta Qt ze stylu widzetu - ten z arkuszem stylow musi je
+    # przepuscic z nakladki, inaczej ustawienie nic by nie zmienialo
+    window.settings.tooltip_delay_ms = 1234
+    window._apply_settings()
+    delay = target.style().styleHint(QStyle.SH_ToolTip_WakeUpDelay)
+    check("opoznienie dymka z ustawien", delay == 1234, f"{delay} ms")
+    window.settings.tooltip_delay_ms = 700
+    window._apply_settings()
 
 
 def stage_ustawienia() -> None:
@@ -188,9 +198,21 @@ def stage_ustawienia() -> None:
     braki = bez_podpowiedzi(dialog)
     check("Ustawienia: wszystko z podpowiedzia", not braki, "; ".join(braki[:8]))
     check("pole Pokazuj podpowiedzi zaznaczone", dialog.tooltips_box.isChecked())
+    dialog.tooltip_delay_box.setValue(1500)
     dialog.tooltips_box.setChecked(False)
-    check("pole Pokazuj podpowiedzi trafia do ustawien",
-          dialog._collect_from_widgets().show_tooltips is False)
+    zebrane = dialog._collect_from_widgets()
+    check("pole Pokazuj podpowiedzi trafia do ustawien", zebrane.show_tooltips is False)
+    check("opoznienie podpowiedzi trafia do ustawien", zebrane.tooltip_delay_ms == 1500)
+    check("bez podpowiedzi pole opoznienia wyszarzone", not dialog.tooltip_delay_box.isEnabled())
+    arkusz = window.styleSheet()
+    check("zaznaczone pole wyboru z fajka",
+          "check.png" in arkusz and os.path.exists(os.path.join(ASSETS_DIRECTORY, "check.png")))
+    zrzut = os.environ.get("PUNCTUM_ZRZUT")
+    if zrzut:  # podglad wygladu dla oceny, poza repozytorium
+        dialog.tooltips_box.setChecked(True)
+        dialog.show_tab("Podgląd")
+        app.processEvents()
+        dialog.grab().save(zrzut)
     dialog.close()
     dialog.deleteLater()
 

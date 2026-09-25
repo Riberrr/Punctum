@@ -63,7 +63,7 @@ from .gpu_renderer import GpuRenderer
 from .image_view import ImageView
 from .map_view import MapView
 from .navigator import Navigator
-from .podpowiedzi import WylacznikPodpowiedzi, podpowiedz
+from .podpowiedzi import StylPodpowiedzi, WylacznikPodpowiedzi, podpowiedz
 from .settings_dialog import SettingsDialog
 from .style import stylesheet
 from .workers import (
@@ -91,6 +91,12 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Punctum")
         self.resize(1560, 980)
+        # Nakladka na styl daje opoznienie dymkow z ustawien. Zakladana przed
+        # arkuszem stylow i raz na aplikacje (testy tworza kilka okien).
+        app = QApplication.instance()
+        if not isinstance(app.style(), StylPodpowiedzi):
+            app.setStyle(StylPodpowiedzi(app.style().name()))
+        self.tooltip_style = app.style()
         self.setStyleSheet(stylesheet())
 
         self.settings = Settings.load()
@@ -529,6 +535,7 @@ class MainWindow(QMainWindow):
         self.view.set_detail_delay(s.detail_delay_ms)
         self.navigator.setVisible(s.show_navigator)
         self.tooltip_switch.wlaczone = s.show_tooltips
+        self.tooltip_style.opoznienie_ms = s.tooltip_delay_ms
         self.edit_panel.set_wheel_protection(s.wheel_lockout_ms, s.wheel_dwell_ms)
 
         if self.gpu.available and self.settings.render_engine == ENGINE_CPU:

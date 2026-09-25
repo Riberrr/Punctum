@@ -79,6 +79,7 @@
   "ustawienia.podglad_pikseli": {"tytul": "Podgląd pikseli", "opis": "Powyżej tego powiększenia widać prawdziwe piksele, bez wygładzania. Przydaje się przy ocenie szumu i ostrości."},
   "ustawienia.nawigator": {"tytul": "Nawigator", "opis": "Pokazuje w lewym panelu miniaturę całego zdjęcia z ramką widocznego fragmentu. Kliknij albo przeciągnij, żeby przejść w inne miejsce."},
   "ustawienia.podpowiedzi": {"tytul": "Podpowiedzi", "opis": "Pokazuje takie dymki jak ten po najechaniu na przycisk albo suwak. Wyłącz, gdy znasz już program na pamięć."},
+  "ustawienia.opoznienie_podpowiedzi": {"tytul": "Opóźnienie podpowiedzi", "opis": "Jak długo kursor musi stać nad przyciskiem albo suwakiem, zanim pojawi się dymek. Krócej — dymki szybciej, ale częściej wyskakują przy zwykłym przesuwaniu myszy.", "uwaga": "Domyślnie 700 ms"},
   "ustawienia.blokada_kolka": {"tytul": "Blokada kółka", "opis": "Po przewinięciu listy suwaki przez ten czas nie reagują na kółko, więc przewijanie panelu nie zmienia przypadkiem wartości.", "uwaga": "0 = bez blokady"},
   "ustawienia.zatrzymanie_kolka": {"tytul": "Zatrzymanie nad suwakiem", "opis": "Tak długo kursor musi stać nad suwakiem, zanim kółko zacznie go zmieniać. Chroni przed suwakiem, który sam podjechał pod nieruchomy kursor."},
   "ustawienia.format": {"tytul": "Format pliku", "opis": "Domyślny format eksportu. JPEG do oglądania i publikacji; PNG i TIFF bez strat jakości, ale z dużymi plikami, najlepsze do dalszej obróbki."},

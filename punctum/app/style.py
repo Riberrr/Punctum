@@ -106,7 +106,14 @@ QRadioButton::indicator:checked {
     background: qradialgradient(cx:0.5, cy:0.5, radius:0.5, fx:0.5, fy:0.5,
         stop:0 #eaeaee, stop:0.42 #eaeaee, stop:0.48 #2a2a2e, stop:1 #2a2a2e);
 }
-QCheckBox::indicator:checked { background: #d4d4da; border-color: #b8b8c0; }
+QCheckBox::indicator:checked {
+    background: #d4d4da; border-color: #b8b8c0;
+    image: url("@ASSETS@/check.png");
+}
+QCheckBox::indicator:checked:disabled {
+    background: #6a6a72; border-color: #6a6a72;
+    image: url("@ASSETS@/check-disabled.png");
+}
 QRadioButton:disabled, QCheckBox:disabled { color: #5a5a60; }
 
 QGroupBox {

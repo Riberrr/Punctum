@@ -44,4 +44,26 @@ for suffix, color in VARIANTS.items():
             image.save(path)
             print(f"  {os.path.basename(path):<28} {w}x{h}")
 
+# Fajka zaznaczonego pola wyboru. Sam jasny kwadrat (bez znaku) czytal sie
+# odwrotnie niz w innych programach: bialy wygladal jak "wylaczony".
+# Ciemna fajka na jasnym tle, wariant wyszarzony dla pola nieaktywnego.
+CHECK = 11  # pole ma 13 px, minus ramka
+CHECK_VARIANTS = {"": (32, 32, 36, 255), "-disabled": (58, 58, 64, 255)}
+CHECK_POINTS = [(0.18, 0.52), (0.42, 0.76), (0.84, 0.26)]
+
+for suffix, color in CHECK_VARIANTS.items():
+    for scale, tag in ((1, ""), (2, "@2x")):
+        size = CHECK * scale
+        oversample = 8
+        big_size = size * oversample
+        big = Image.new("RGBA", (big_size, big_size), (0, 0, 0, 0))
+        ImageDraw.Draw(big).line(
+            [(x * big_size, y * big_size) for x, y in CHECK_POINTS],
+            fill=color, width=round(big_size * 0.17), joint="curve",
+        )
+        image = big.resize((size, size), Image.LANCZOS)
+        path = os.path.join(ASSETS, f"check{suffix}{tag}.png")
+        image.save(path)
+        print(f"  {os.path.basename(path):<28} {size}x{size}")
+
 print(f"\nzapisano w {ASSETS}")
