@@ -16,6 +16,7 @@ import numpy as np
 
 from .jpeg_loader import JPEG_EXTENSIONS, jpeg_thumbnail, load_jpeg
 from .raw_loader import RawImage, load_raw, load_thumbnail
+from ..przeklad import N_
 
 RAW_EXTENSIONS = (
     ".rw2", ".raw", ".cr2", ".cr3", ".nef", ".arw", ".orf", ".dng", ".raf", ".pef",
@@ -26,9 +27,9 @@ FORMAT_ALL = "all"
 FORMAT_RAW = "raw"
 FORMAT_JPEG = "jpeg"
 FORMAT_LABELS = {
-    FORMAT_ALL: "Wszystkie",
-    FORMAT_RAW: "Tylko RAW",
-    FORMAT_JPEG: "Tylko JPEG",
+    FORMAT_ALL: N_("Wszystkie"),
+    FORMAT_RAW: N_("Tylko RAW"),
+    FORMAT_JPEG: N_("Tylko JPEG"),
 }
 
 

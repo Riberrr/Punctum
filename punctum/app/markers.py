@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QPainter, QPainterPath
+from ..przeklad import N_, t
 
 # Role danych w pozycjach list - obie listy trzymaja stan tak samo.
 EDIT_ROLE = Qt.UserRole + 1
@@ -28,7 +29,8 @@ GEO_COLOR = QColor("#d9634f")  # ten sam pomysl na kolor, co pinezki na mapie
 MARK_COLUMN = 26
 PIN_SIZE = (11, 15)
 
-LEGEND = (
+# Tlumaczona przy uzyciu (t(LEGEND)) - stala liczy sie przed wyborem jezyka.
+LEGEND = N_(
     "Kropka — zdjęcie ma zapisane poprawki\n"
     "Pinezka — zdjęcie ma współrzędne"
 )

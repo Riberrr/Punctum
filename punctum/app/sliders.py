@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QStyleOptionSlider,
     QWidget,
 )
+from ..przeklad import liczba
 
 # Kierunek gradientow wynika z tego, co suwak opisuje: pokazuje, w ktora
 # strone pojdzie ZDJECIE, a nie jaki jest kolor swiatla. Dlatego przesuniecie
@@ -196,7 +197,7 @@ class ParamSlider(QWidget):
 
     def _refresh_label(self) -> None:
         value = self.value()
-        text = f"{value:+.{self.decimals}f}" if self.default == 0 else f"{value:.{self.decimals}f}"
+        text = liczba(value, self.decimals, znak=self.default == 0)
         self.value_label.setText(text + self.suffix)
         self.value_label.setStyleSheet(
             "color:#e8e8ea;" if abs(value - self.default) > 1e-9 else "color:#8a8a90;"

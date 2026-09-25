@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..core.export import (
+    DEFAULT_SUBFOLDER,
     EXISTING_LABELS,
     FORMAT_LABELS,
     NAMING_CUSTOM,
@@ -33,6 +34,7 @@ from ..core.export import (
 )
 from ..core.settings import NOISE_QUALITY_LABELS
 from .podpowiedzi import podpowiedz, podpowiedz_wiersza
+from ..przeklad import mnoga, t
 
 
 def _hint(text: str) -> QLabel:
@@ -47,7 +49,7 @@ class ExportDialog(QDialog):
 
     def __init__(self, options: ExportOptions, sources: list[str], parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Eksportuj zdjęcia")
+        self.setWindowTitle(t("Eksportuj zdjęcia"))
         self.setMinimumWidth(960)
         self.options = ExportOptions(**vars(options))
         self.sources = sources
@@ -58,8 +60,8 @@ class ExportDialog(QDialog):
 
         count = len(sources)
         self.headline = QLabel(
-            f"Do wyeksportowania: {count} "
-            + ("zdjęcie" if count == 1 else "zdjęcia" if 2 <= count <= 4 else "zdjęć")
+            mnoga(count, "Do wyeksportowania: {n} zdjęcie|Do wyeksportowania: {n} zdjęcia|"
+            "Do wyeksportowania: {n} zdjęć")
         )
         self.headline.setObjectName("cameraLabel")
         layout.addWidget(self.headline)
@@ -90,8 +92,8 @@ class ExportDialog(QDialog):
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         self.export_button = buttons.button(QDialogButtonBox.Ok)
-        self.export_button.setText("Eksportuj")
-        buttons.button(QDialogButtonBox.Cancel).setText("Anuluj")
+        self.export_button.setText(t("Eksportuj"))
+        buttons.button(QDialogButtonBox.Cancel).setText(t("Anuluj"))
         buttons.accepted.connect(self._on_accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
@@ -102,27 +104,27 @@ class ExportDialog(QDialog):
     # ------------------------------------------------------------ sekcje
 
     def _location_group(self) -> QGroupBox:
-        group = QGroupBox("Lokalizacja")
+        group = QGroupBox(t("Lokalizacja"))
         form = QFormLayout(group)
 
         row = QWidget()
         row_layout = QHBoxLayout(row)
         row_layout.setContentsMargins(0, 0, 0, 0)
         self.folder_edit = QLineEdit()
-        self.folder_edit.setPlaceholderText("wybierz katalog docelowy")
+        self.folder_edit.setPlaceholderText(t("wybierz katalog docelowy"))
         self.folder_edit.textChanged.connect(self._refresh_preview)
-        browse = QPushButton("Wybierz…")
+        browse = QPushButton(t("Wybierz…"))
         browse.clicked.connect(self._choose_folder)
         row_layout.addWidget(self.folder_edit, 1)
         row_layout.addWidget(browse)
-        form.addRow("Katalog:", row)
+        form.addRow(t("Katalog:"), row)
         podpowiedz(browse, "eksport.wybierz_katalog")
         podpowiedz(self.folder_edit, "eksport.katalog", etykieta=form.labelForField(row))
 
         subfolder_row = QWidget()
         subfolder_layout = QHBoxLayout(subfolder_row)
         subfolder_layout.setContentsMargins(0, 0, 0, 0)
-        self.subfolder_box = QCheckBox("Umieść w podfolderze:")
+        self.subfolder_box = QCheckBox(t("Umieść w podfolderze:"))
         self.subfolder_box.toggled.connect(self._on_subfolder_toggled)
         self.subfolder_edit = QLineEdit()
         self.subfolder_edit.textChanged.connect(self._refresh_preview)
@@ -134,22 +136,22 @@ class ExportDialog(QDialog):
 
         self.existing_box = QComboBox()
         for key, label in EXISTING_LABELS.items():
-            self.existing_box.addItem(label, key)
-        form.addRow("Istniejące pliki:", self.existing_box)
+            self.existing_box.addItem(t(label), key)
+        form.addRow(t("Istniejące pliki:"), self.existing_box)
         podpowiedz_wiersza(form, self.existing_box, "eksport.istniejace")
         form.addRow("", _hint(
-            "Kolizje nazw sprawdzamy przed rozpoczęciem, więc pytanie pojawi się "
-            "raz — eksport nie zatrzyma się w połowie."
+            t("Kolizje nazw sprawdzamy przed rozpoczęciem, więc pytanie pojawi się "
+            "raz — eksport nie zatrzyma się w połowie.")
         ))
         return group
 
     def _naming_group(self) -> QGroupBox:
-        group = QGroupBox("Nazwa pliku")
+        group = QGroupBox(t("Nazwa pliku"))
         layout = QVBoxLayout(group)
 
         self.naming_group = QButtonGroup(self)
-        self.original_radio = QRadioButton("Zachowaj oryginalną nazwę")
-        self.custom_radio = QRadioButton("Nadaj nazwę z numeratorem")
+        self.original_radio = QRadioButton(t("Zachowaj oryginalną nazwę"))
+        self.custom_radio = QRadioButton(t("Nadaj nazwę z numeratorem"))
         podpowiedz(self.original_radio, "eksport.nazwa_oryginalna")
         podpowiedz(self.custom_radio, "eksport.nazwa_numer")
         for button in (self.original_radio, self.custom_radio):
@@ -161,66 +163,66 @@ class ExportDialog(QDialog):
         form = QFormLayout(self.custom_row)
         form.setContentsMargins(22, 2, 0, 0)
         self.custom_edit = QLineEdit()
-        self.custom_edit.setPlaceholderText("np. Wakacje")
+        self.custom_edit.setPlaceholderText(t("np. Wakacje"))
         self.custom_edit.textChanged.connect(self._refresh_preview)
-        form.addRow("Tekst:", self.custom_edit)
+        form.addRow(t("Tekst:"), self.custom_edit)
         podpowiedz_wiersza(form, self.custom_edit, "eksport.tekst")
 
         self.start_number_box = QSpinBox()
         self.start_number_box.setRange(0, 999999)
         self.start_number_box.valueChanged.connect(self._refresh_preview)
-        form.addRow("Numer początkowy:", self.start_number_box)
+        form.addRow(t("Numer początkowy:"), self.start_number_box)
         podpowiedz_wiersza(form, self.start_number_box, "eksport.numer_poczatkowy")
 
         self.digits_box = QSpinBox()
         self.digits_box.setRange(1, 8)
         self.digits_box.valueChanged.connect(self._refresh_preview)
-        form.addRow("Cyfr w numerze:", self.digits_box)
+        form.addRow(t("Cyfr w numerze:"), self.digits_box)
         podpowiedz_wiersza(form, self.digits_box, "eksport.cyfry")
         layout.addWidget(self.custom_row)
         return group
 
     def _format_group(self) -> QGroupBox:
-        group = QGroupBox("Format i jakość")
+        group = QGroupBox(t("Format i jakość"))
         form = QFormLayout(group)
 
         self.format_box = QComboBox()
         for extension, label in FORMAT_LABELS.items():
             self.format_box.addItem(label, extension)
         self.format_box.currentIndexChanged.connect(self._on_format_changed)
-        form.addRow("Format:", self.format_box)
+        form.addRow(t("Format:"), self.format_box)
         podpowiedz_wiersza(form, self.format_box, "eksport.format")
 
         self.quality_box = QSpinBox()
         self.quality_box.setRange(50, 100)
-        form.addRow("Jakość JPEG:", self.quality_box)
+        form.addRow(t("Jakość JPEG:"), self.quality_box)
         podpowiedz_wiersza(form, self.quality_box, "eksport.jakosc_jpeg")
 
         self.max_side_box = QSpinBox()
         self.max_side_box.setRange(0, 20000)
         self.max_side_box.setSingleStep(100)
-        self.max_side_box.setSpecialValueText("pełna rozdzielczość")
+        self.max_side_box.setSpecialValueText(t("pełna rozdzielczość"))
         self.max_side_box.setSuffix(" px")
-        form.addRow("Dłuższy bok:", self.max_side_box)
+        form.addRow(t("Dłuższy bok:"), self.max_side_box)
         podpowiedz_wiersza(form, self.max_side_box, "eksport.dluzszy_bok")
 
         self.noise_box = QComboBox()
         for key, label in NOISE_QUALITY_LABELS.items():
-            self.noise_box.addItem(label, key)
-        form.addRow("Odszumianie:", self.noise_box)
+            self.noise_box.addItem(t(label), key)
+        form.addRow(t("Odszumianie:"), self.noise_box)
         podpowiedz_wiersza(form, self.noise_box, "eksport.odszumianie")
         return group
 
     def _metadata_group(self) -> QGroupBox:
-        group = QGroupBox("Metadane")
+        group = QGroupBox(t("Metadane"))
         form = QFormLayout(group)
 
         # Pole wyboru stoi w miejscu etykiety: wartosc przychodzi wypelniona
         # z ustawien, a zaznaczenie wlacza pole obok - mozna ja wtedy zmienic
         # na ten jeden eksport.
-        self.author_box = QCheckBox("Autor:")
+        self.author_box = QCheckBox(t("Autor:"))
         self.author_edit = QLineEdit()
-        self.author_edit.setPlaceholderText("domyślnego ustawisz w Ustawieniach ▸ Eksport")
+        self.author_edit.setPlaceholderText(t("domyślnego ustawisz w Ustawieniach ▸ Eksport"))
         self.author_box.toggled.connect(
             lambda on: self._on_field_toggled(self.author_edit, on)
         )
@@ -228,9 +230,9 @@ class ExportDialog(QDialog):
         podpowiedz(self.author_box, "eksport.autor")
         podpowiedz(self.author_edit, "eksport.autor")
 
-        self.copyright_box = QCheckBox("Prawa autorskie:")
+        self.copyright_box = QCheckBox(t("Prawa autorskie:"))
         self.copyright_edit = QLineEdit()
-        self.copyright_edit.setPlaceholderText("np. © 2026 Imię Nazwisko")
+        self.copyright_edit.setPlaceholderText(t("np. © 2026 Imię Nazwisko"))
         self.copyright_box.toggled.connect(
             lambda on: self._on_field_toggled(self.copyright_edit, on)
         )
@@ -239,19 +241,19 @@ class ExportDialog(QDialog):
         podpowiedz(self.copyright_edit, "eksport.prawa")
 
         self.keywords_edit = QLineEdit()
-        self.keywords_edit.setPlaceholderText("oddzielone średnikiem, np. Wakacje 2026; Tatry")
-        form.addRow("Słowa kluczowe:", self.keywords_edit)
+        self.keywords_edit.setPlaceholderText(t("oddzielone średnikiem, np. Wakacje 2026; Tatry"))
+        form.addRow(t("Słowa kluczowe:"), self.keywords_edit)
         podpowiedz_wiersza(form, self.keywords_edit, "eksport.slowa")
         self.subject_edit = QLineEdit()
-        form.addRow("Temat:", self.subject_edit)
+        form.addRow(t("Temat:"), self.subject_edit)
         podpowiedz_wiersza(form, self.subject_edit, "eksport.temat")
         self.comment_edit = QLineEdit()
-        form.addRow("Komentarz:", self.comment_edit)
+        form.addRow(t("Komentarz:"), self.comment_edit)
         podpowiedz_wiersza(form, self.comment_edit, "eksport.komentarz")
         form.addRow("", _hint(
-            "Wpisane tu pola zastępują te przy zdjęciach, a słowa kluczowe "
+            t("Wpisane tu pola zastępują te przy zdjęciach, a słowa kluczowe "
             "dopisują się do słów zdjęcia. Data, aparat, naświetlenie "
-            "i lokalizacja trafiają do pliku zawsze."
+            "i lokalizacja trafiają do pliku zawsze.")
         ))
         return group
 
@@ -261,7 +263,7 @@ class ExportDialog(QDialog):
         o = self.options
         self.folder_edit.setText(o.folder)
         self.subfolder_box.setChecked(o.use_subfolder)
-        self.subfolder_edit.setText(o.subfolder)
+        self.subfolder_edit.setText(t(o.subfolder) if o.subfolder == DEFAULT_SUBFOLDER else o.subfolder)
         self.subfolder_edit.setEnabled(o.use_subfolder)
         self.existing_box.setCurrentIndex(max(0, self.existing_box.findData(o.on_existing)))
         (self.custom_radio if o.naming == NAMING_CUSTOM else self.original_radio).setChecked(True)
@@ -311,7 +313,7 @@ class ExportDialog(QDialog):
 
     def _choose_folder(self) -> None:
         folder = QFileDialog.getExistingDirectory(
-            self, "Katalog docelowy", self.folder_edit.text()
+            self, t("Katalog docelowy"), self.folder_edit.text()
         )
         if folder:
             self.folder_edit.setText(folder)
@@ -342,13 +344,13 @@ class ExportDialog(QDialog):
         options = self.collect()
         sample = self.sources[0] if self.sources else "P1170926.RW2"
         target = os.path.join(options.target_folder(), options.file_name(sample, 0))
-        self.preview_label.setText(f"Pierwszy plik:  {target}")
+        self.preview_label.setText(t("Pierwszy plik:  {plik}", plik=target))
 
         ready = bool(options.folder) and os.path.isdir(options.folder)
         if not options.folder:
-            self.preview_label.setText("Wskaż katalog docelowy.")
+            self.preview_label.setText(t("Wskaż katalog docelowy."))
         elif not os.path.isdir(options.folder):
-            self.preview_label.setText(f"Katalog nie istnieje:  {options.folder}")
+            self.preview_label.setText(t("Katalog nie istnieje:  {katalog}", katalog=options.folder))
         self.export_button.setEnabled(ready and bool(self.sources))
 
     def set_edited_count(self, edited: int) -> None:
@@ -363,8 +365,8 @@ class ExportDialog(QDialog):
             self.edited_hint.hide()
             return
         self.edited_hint.setText(
-            f"Korekty zapisane dla {edited} z {total} zdjęć. Pozostałe zostaną "
-            "wyeksportowane bez zmian, tak jak wyszły z aparatu."
+            t("Korekty zapisane dla {e} z {n} zdjęć. Pozostałe zostaną "
+              "wyeksportowane bez zmian, tak jak wyszły z aparatu.", e=edited, n=total)
         )
         self.edited_hint.show()
 

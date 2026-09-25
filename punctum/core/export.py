@@ -10,6 +10,7 @@ from PIL import Image
 
 from .exif_edit import exif_bytes, layer_metadata, source_metadata
 from .metadata import PhotoMetadata
+from ..przeklad import N_, t
 
 # co zrobic, gdy plik o danej nazwie juz istnieje
 ON_EXISTING_ASK = "ask"
@@ -17,11 +18,13 @@ ON_EXISTING_OVERWRITE = "overwrite"
 ON_EXISTING_SKIP = "skip"
 ON_EXISTING_UNIQUE = "unique"
 
+DEFAULT_SUBFOLDER = N_("Eksport")
+
 EXISTING_LABELS = {
-    ON_EXISTING_ASK: "Zapytaj, co robić",
-    ON_EXISTING_OVERWRITE: "Zastąp istniejący plik",
-    ON_EXISTING_SKIP: "Pomiń to zdjęcie",
-    ON_EXISTING_UNIQUE: "Wybierz nową nazwę",
+    ON_EXISTING_ASK: N_("Zapytaj, co robić"),
+    ON_EXISTING_OVERWRITE: N_("Zastąp istniejący plik"),
+    ON_EXISTING_SKIP: N_("Pomiń to zdjęcie"),
+    ON_EXISTING_UNIQUE: N_("Wybierz nową nazwę"),
 }
 
 NAMING_ORIGINAL = "original"
@@ -69,7 +72,7 @@ def save_image(
     elif ext in (".tif", ".tiff"):
         img.save(out_path, "TIFF", **_tiff_exif(block))
     else:
-        raise ValueError(f"Nieobsługiwane rozszerzenie: {ext}")
+        raise ValueError(t("Nieobsługiwane rozszerzenie: {ext}", ext=ext))
 
     return out_path
 
@@ -110,7 +113,9 @@ class ExportOptions:
 
     folder: str = ""
     use_subfolder: bool = False
-    subfolder: str = "Eksport"
+    # Domyslna nazwa jest po polsku w danych, a na ekranie w jezyku programu
+    # (okno eksportu tlumaczy ja tylko wtedy, gdy nikt jej nie zmienil).
+    subfolder: str = DEFAULT_SUBFOLDER
 
     naming: str = NAMING_ORIGINAL
     custom_name: str = ""

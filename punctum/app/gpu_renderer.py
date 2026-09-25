@@ -24,6 +24,7 @@ from ..core import EditParams, RawImage
 from ..core import whitebalance as wb
 from ..core.geometry import output_to_source
 from ..core.hardware import GpuInfo
+from ..przeklad import t
 
 VERTEX_SHADER = """
 #version 330 core
@@ -175,7 +176,7 @@ class GpuRenderer:
                 QOpenGLVertexArrayObject,
             )
         except ImportError as exc:
-            self._error = f"brak modułów OpenGL: {exc}"
+            self._error = t("brak modułów OpenGL: {blad}", blad=exc)
             return False
 
         fmt = QSurfaceFormat()
@@ -187,24 +188,24 @@ class GpuRenderer:
         self._surface.setFormat(fmt)
         self._surface.create()
         if not self._surface.isValid():
-            self._error = "nie udało się utworzyć powierzchni offscreen"
+            self._error = t("nie udało się utworzyć powierzchni offscreen")
             return False
 
         self._context = QOpenGLContext()
         self._context.setFormat(fmt)
         if not self._context.create() or not self._context.makeCurrent(self._surface):
-            self._error = "nie udało się utworzyć kontekstu OpenGL 3.3"
+            self._error = t("nie udało się utworzyć kontekstu OpenGL 3.3")
             return False
 
         program = QOpenGLShaderProgram()
         if not program.addShaderFromSourceCode(QOpenGLShader.Vertex, VERTEX_SHADER):
-            self._error = f"shader wierzchołków: {program.log()}"
+            self._error = t("shader wierzchołków: {blad}", blad=program.log())
             return False
         if not program.addShaderFromSourceCode(QOpenGLShader.Fragment, FRAGMENT_SHADER):
-            self._error = f"shader fragmentów: {program.log()}"
+            self._error = t("shader fragmentów: {blad}", blad=program.log())
             return False
         if not program.link():
-            self._error = f"konsolidacja shaderów: {program.log()}"
+            self._error = t("konsolidacja shaderów: {blad}", blad=program.log())
             return False
         self._program = program
 
@@ -243,7 +244,7 @@ class GpuRenderer:
     def describe(self) -> GpuInfo:
         """Dane karty odczytane prosto z kontekstu OpenGL."""
         if not self._ready:
-            return GpuInfo(available=False, problem=self._error or "OpenGL niedostępny")
+            return GpuInfo(available=False, problem=self._error or t("OpenGL niedostępny"))
 
         current = self._context.makeCurrent(self._surface)
         try:
@@ -318,7 +319,7 @@ class GpuRenderer:
             self._source_size = (width, height)
             return True
         except Exception as exc:
-            self._error = f"wgranie tekstury: {exc}"
+            self._error = t("wgranie tekstury: {blad}", blad=exc)
             return False
         finally:
             self._context.doneCurrent()
@@ -418,7 +419,7 @@ class GpuRenderer:
             fbo.release()
             return _qimage_to_rgb(image)
         except Exception as exc:
-            self._error = f"renderowanie: {exc}"
+            self._error = t("renderowanie: {blad}", blad=exc)
             return None
         finally:
             self._context.doneCurrent()

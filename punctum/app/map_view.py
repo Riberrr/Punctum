@@ -31,9 +31,10 @@ from PySide6.QtWidgets import (
 )
 
 from .exif_panel import ExifPanel
-from .map_page import MAP_HTML
+from .map_page import strona
 from .podpowiedzi import podpowiedz
 from .markers import EDIT_ROLE, GEO_ROLE, LEGEND, MARK_COLUMN, paint_marks
+from ..przeklad import t
 
 # Miniatura w liscie: na tyle duza, zeby rozpoznac kadr, na tyle mala, zeby
 # przy dwustu zdjeciach dalo sie przewijac liste, a nie album.
@@ -147,22 +148,22 @@ class MapView(QWidget):
         self.list.setSpacing(1)
         self.list.setUniformItemSizes(True)
         self.list.setItemDelegate(PhotoRowDelegate(self.list))
-        self.list.setToolTip(LEGEND)
+        self.list.setToolTip(t(LEGEND))
         self.list.itemSelectionChanged.connect(self._on_selection)
         self.list.itemDoubleClicked.connect(
             lambda item: self.photo_activated.emit(item.data(Qt.UserRole))
         )
 
-        self.tag_button = QPushButton("Przypisz zaznaczonym")
+        self.tag_button = QPushButton(t("Przypisz zaznaczonym"))
         self.tag_button.setCheckable(True)
         podpowiedz(self.tag_button, "mapa.przypisz")
         self.tag_button.toggled.connect(self._on_tagging)
 
-        self.clear_button = QPushButton("Usuń lokalizację")
+        self.clear_button = QPushButton(t("Usuń lokalizację"))
         podpowiedz(self.clear_button, "mapa.usun")
         self.clear_button.clicked.connect(self._on_clear)
 
-        self.fit_button = QPushButton("Pokaż wszystkie")
+        self.fit_button = QPushButton(t("Pokaż wszystkie"))
         podpowiedz(self.fit_button, "mapa.pokaz_wszystkie")
         self.fit_button.clicked.connect(lambda: self._js("fitToMarkers()"))
 
@@ -184,7 +185,7 @@ class MapView(QWidget):
         self.bridge.place_found.connect(self._on_place_found)
         # Baza "http://localhost/" jest potrzebna, zeby strona mogla siegac po
         # kafelki i Nominatim - dokument bez adresu nie ma prawa do sieci.
-        self.web.setHtml(MAP_HTML, QUrl("http://localhost/"))
+        self.web.setHtml(strona(), QUrl("http://localhost/"))
 
         buttons = QHBoxLayout()
         buttons.setContentsMargins(0, 0, 0, 0)
@@ -195,7 +196,7 @@ class MapView(QWidget):
         side = QVBoxLayout()
         side.setContentsMargins(8, 8, 4, 8)
         side.setSpacing(6)
-        side.addWidget(QLabel("Zdjęcia"))
+        side.addWidget(QLabel(t("Zdjęcia")))
         side.addWidget(self.list, 1)
         side.addLayout(buttons)
         side.addWidget(self.fit_button)
@@ -237,8 +238,8 @@ class MapView(QWidget):
         if not has_map:
             self.tag_button.setEnabled(False)
             self.status.setText(
-                "Mapa nie wczytała się — potrzebuje połączenia z internetem. "
-                "Lista zdjęć i usuwanie lokalizacji działają bez niej."
+                t("Mapa nie wczytała się — potrzebuje połączenia z internetem. "
+                "Lista zdjęć i usuwanie lokalizacji działają bez niej.")
             )
             return
         if self._pending:
@@ -263,7 +264,7 @@ class MapView(QWidget):
         for path in paths:
             item = QListWidgetItem(os.path.basename(path))
             item.setData(Qt.UserRole, path)
-            item.setToolTip(f"{os.path.basename(path)}\n\n{LEGEND}")
+            item.setToolTip(f"{os.path.basename(path)}\n\n{t(LEGEND)}")
             self._apply_marks(item, path)
             icon = self.icons.get(path)
             if icon is not None:
@@ -347,14 +348,14 @@ class MapView(QWidget):
     def _on_map_click(self, latitude: float, longitude: float) -> None:
         chosen = self.selected_paths()
         if not chosen:
-            self.status.setText("Najpierw zaznacz zdjęcia na liście.")
+            self.status.setText(t("Najpierw zaznacz zdjęcia na liście."))
             return
         self.location_assigned.emit(chosen, latitude, longitude)
 
     def _on_clear(self) -> None:
         chosen = [p for p in self.selected_paths() if p in self.locations]
         if not chosen:
-            self.status.setText("Zaznaczone zdjęcia nie mają lokalizacji.")
+            self.status.setText(t("Zaznaczone zdjęcia nie mają lokalizacji."))
             return
         self.location_assigned.emit(chosen, None, None)
 
@@ -369,7 +370,7 @@ class MapView(QWidget):
     def _on_place_found(self, latitude: float, longitude: float, name: str) -> None:
         self.status.setText(
             f"{name}: {latitude:.5f}, {longitude:.5f}\n"
-            "Kliknij mapę w trybie przypisywania, żeby nadać ten punkt."
+            + t("Kliknij mapę w trybie przypisywania, żeby nadać ten punkt.")
         )
 
     def apply_locations(self, changed: dict[str, tuple[float, float] | None]) -> None:
@@ -393,9 +394,9 @@ class MapView(QWidget):
             if self.list.item(row).data(Qt.UserRole) in self.locations
         )
         chosen = len(self.selected_paths())
-        parts = [f"Z lokalizacją: {with_location} z {total}"]
+        parts = [t("Z lokalizacją: {z} z {n}", z=with_location, n=total)]
         if chosen:
-            parts.append(f"zaznaczonych: {chosen}")
+            parts.append(t("zaznaczonych: {n}", n=chosen))
         if self.tag_button.isChecked() and chosen:
-            parts.append("kliknij miejsce na mapie")
+            parts.append(t("kliknij miejsce na mapie"))
         self.status.setText("  •  ".join(parts))

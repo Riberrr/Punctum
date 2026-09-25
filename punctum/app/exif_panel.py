@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
 
 from ..core.exif_edit import FIELDS, GROUPS, current_values, is_writable_format, validate
 from .podpowiedzi import podpowiedz, podpowiedz_wiersza
+from ..przeklad import t
 
 
 class ExifPanel(QWidget):
@@ -54,7 +55,7 @@ class ExifPanel(QWidget):
         form.setSpacing(8)
 
         for group in GROUPS:
-            label = QLabel(group.upper())
+            label = QLabel(t(group).upper())
             label.setObjectName("sectionLabel")
             form.addWidget(label)
             grid = QFormLayout()
@@ -66,7 +67,7 @@ class ExifPanel(QWidget):
             grid.setRowWrapPolicy(QFormLayout.WrapLongRows)
             for field in (f for f in FIELDS if f.group == group):
                 editor = self._editor(field)
-                grid.addRow(field.label, editor)
+                grid.addRow(t(field.label), editor)
                 podpowiedz_wiersza(grid, editor, f"exif.{field.key}")
             form.addLayout(grid)
 
@@ -86,16 +87,16 @@ class ExifPanel(QWidget):
         self.scroll.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Expanding)
         self.scroll.setMinimumWidth(0)
 
-        self.all_button = QPushButton("Wszystkie tagi")
+        self.all_button = QPushButton(t("Wszystkie tagi"))
         self.all_button.setCheckable(True)
         podpowiedz(self.all_button, "exif.wszystkie_tagi")
         self.all_button.toggled.connect(self._on_show_all)
 
-        self.write_button = QPushButton("Zapisz do oryginału")
+        self.write_button = QPushButton(t("Zapisz do oryginału"))
         podpowiedz(self.write_button, "exif.zapisz_oryginal")
         self.write_button.clicked.connect(self.write_requested.emit)
 
-        self.clear_button = QPushButton("Wyczyść zmiany")
+        self.clear_button = QPushButton(t("Wyczyść zmiany"))
         podpowiedz(self.clear_button, "exif.wyczysc")
         self.clear_button.clicked.connect(self._on_clear)
 
@@ -138,7 +139,7 @@ class ExifPanel(QWidget):
         if field.kind == "choice":
             widget = QComboBox()
             widget.addItem("", "")
-            for value, label in field.choices:
+            for value, label in ((v, t(opis)) for v, opis in field.choices):
                 widget.addItem(label, value)
             widget.currentIndexChanged.connect(lambda _=0: self._on_edited())
         elif field.kind == "multiline":
@@ -147,7 +148,7 @@ class ExifPanel(QWidget):
             widget.textChanged.connect(self._on_edited)
         else:
             widget = QLineEdit()
-            widget.setPlaceholderText(field.hint)
+            widget.setPlaceholderText(t(field.hint))
             widget.textEdited.connect(lambda _="": self._on_edited())
         widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.editors[field.key] = widget
@@ -200,8 +201,9 @@ class ExifPanel(QWidget):
             self.problem.setText("")
         elif not writable:
             self.problem.setText(
-                f"{os.path.basename(path)}: tego formatu nie zapiszemy w miejscu — "
-                "metadane czekają w pliku XMP i trafią do wyeksportowanego zdjęcia."
+                t("{plik}: tego formatu nie zapiszemy w miejscu — metadane czekają "
+                  "w pliku XMP i trafią do wyeksportowanego zdjęcia.",
+                  plik=os.path.basename(path))
             )
         else:
             self.problem.setText("")
@@ -252,7 +254,7 @@ class ExifPanel(QWidget):
 
         rows = read_all_tags(self.path) if self.path else []
         if not rows:
-            self.table_layout.addWidget(QLabel("Brak metadanych w pliku"), 0, 0)
+            self.table_layout.addWidget(QLabel(t("Brak metadanych w pliku")), 0, 0)
             return
 
         for row, tag in enumerate(rows):

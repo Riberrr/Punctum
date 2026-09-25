@@ -90,6 +90,7 @@
   "ustawienia.wybierz_katalog": {"tytul": "Wybierz katalog", "opis": "Otwiera okno wyboru katalogu."},
   "ustawienia.autor": {"tytul": "Domyślny autor", "opis": "Podpowiadany w oknie eksportu. Czy trafi do plików, decydujesz przy każdym eksporcie."},
   "ustawienia.prawa": {"tytul": "Domyślne prawa autorskie", "opis": "Podpowiadane w oknie eksportu. Czy trafią do plików, decydujesz przy każdym eksporcie.", "uwaga": "np. © 2026 Imię Nazwisko"},
+  "ustawienia.jezyk": {"tytul": "Język programu", "opis": "Język napisów, podpowiedzi i liczb. Lista pochodzi z plików przekładu, więc nowy język pojawia się tu sam, gdy dojdzie jego plik.", "uwaga": "Zmiana działa po ponownym uruchomieniu programu."},
   "ustawienia.ostatni_folder": {"tytul": "Ostatni folder przy starcie", "opis": "Po uruchomieniu program od razu otwiera katalog, w którym ostatnio pracowałeś."},
   "ustawienia.xmp": {"tytul": "Zapamiętywanie korekt", "opis": "Korekty każdego zdjęcia trafiają do pliku XMP obok oryginału i wracają na suwaki przy kolejnym otwarciu, więc obróbkę dużego katalogu można rozłożyć na kilka dni. Plik ze zdjęciem nie jest zmieniany."},
   "ustawienia.domyslne": {"tytul": "Przywróć domyślne", "opis": "Ustawia wszystkie pola w tym oknie na wartości fabryczne. Zapiszą się dopiero po kliknięciu „Zapisz”."},

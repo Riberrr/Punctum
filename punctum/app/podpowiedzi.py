@@ -32,6 +32,9 @@ DLUGI_OPIS = 70
 KOLOR_UWAGI = "#9a9aa0"
 
 _katalogi: dict[str, dict] = {}
+# Slowo, od ktorego zaczyna sie rada w opisie ("Rada:", "Tip:") - lamiemy
+# przed nim linie, wiec kazdy jezyk podaje wlasne.
+_rady: dict[str, str] = {}
 _jezyk = BAZOWY
 
 
@@ -54,8 +57,9 @@ def katalog(jezyk: str = BAZOWY) -> dict[str, dict]:
             if jezyk == BAZOWY:
                 raise  # bez bazowego katalogu to blad instalacji, nie brak przekladu
             dane = {}
-        # klucze z podkreslnikiem to komentarze w pliku
+        # klucze z podkreslnikiem to komentarze i ustawienia pliku (np. "_rada")
         _katalogi[jezyk] = {k: v for k, v in dane.items() if not k.startswith("_")}
+        _rady[jezyk] = dane.get("_rada", "Rada:")
     return _katalogi[jezyk]
 
 
@@ -93,7 +97,9 @@ def tekst(klucz: str, suwak: bool = False, dopisek: str | None = None) -> str:
         czesci.append(f"<b>{html.escape(w['tytul'])}</b>")
     if opis:
         # rada w osobnej linii - wtedy dzialanie i wskazowka nie zlewaja sie
-        czesci.append(html.escape(opis).replace(" Rada:", "<br>Rada:"))
+        katalog(_jezyk)  # wczytuje tez slowo rady tego jezyka
+        rada = _rady.get(_jezyk, "Rada:")
+        czesci.append(html.escape(opis).replace(f" {rada}", f"<br>{rada}"))
     tresc = "<br>".join(czesci)
     if uwagi:
         # kreska oddziela opis od "instrukcji obslugi" (skroty, gesty, format)

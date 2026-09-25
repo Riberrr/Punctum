@@ -8,12 +8,16 @@ import sys
 from PySide6.QtWidgets import QApplication
 
 from .app import MainWindow
+from .app.jezyk import zastosuj_jezyk
+from .core.settings import Settings
 
 
 def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName("Punctum")
     app.setOrganizationName("Punctum")
+    # Jezyk przed pierwszym oknem - napisy licza sie przy tworzeniu widzetow.
+    zastosuj_jezyk(app, Settings.load().language)
 
     window = MainWindow()
     window.show()

@@ -11,6 +11,7 @@ from PySide6.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate
 
 from .image_view import numpy_to_pixmap
 from .markers import EDIT_ROLE, GEO_ROLE, LEGEND, PIN_SIZE, paint_dot, paint_pin
+from ..przeklad import t
 
 # Miniatura jest przechowywana w rozdzielczosci wyzszej niz wyswietlana:
 # kafelki rosna razem z paskiem (do 260 px wysokosci), a obrazek 150 px
@@ -74,7 +75,7 @@ class Filmstrip(QListWidget):
         self._edited: set[str] = set()
         self._located: set[str] = set()
         self._thumbnails: dict[str, QIcon] = {}
-        self.setToolTip(LEGEND)
+        self.setToolTip(t(LEGEND))
         self.currentItemChanged.connect(self._on_current_changed)
 
     def _fit_tiles(self, height: int) -> None:
@@ -118,7 +119,7 @@ class Filmstrip(QListWidget):
             item.setData(EDIT_ROLE, path in self._edited)
             item.setData(GEO_ROLE, path in self._located)
             item.setTextAlignment(Qt.AlignHCenter | Qt.AlignBottom)
-            item.setToolTip(f"{os.path.basename(path)}\n\n{LEGEND}")
+            item.setToolTip(f"{os.path.basename(path)}\n\n{t(LEGEND)}")
             self.addItem(item)
 
     def _item_for(self, path: str) -> QListWidgetItem | None:
@@ -167,7 +168,7 @@ class Filmstrip(QListWidget):
         if item is None:
             return
         if image is None:
-            item.setText(item.text() + "  (błąd)")
+            item.setText(item.text() + t("  (błąd)"))
             return
         pixmap = numpy_to_pixmap(image).scaled(
             THUMB_SIZE, Qt.KeepAspectRatio, Qt.SmoothTransformation

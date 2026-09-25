@@ -24,6 +24,7 @@ from ..core.metadata import PhotoMetadata
 from .podpowiedzi import podpowiedz
 from .sliders import TEMPERATURE_STOPS, TINT_STOPS, ParamSlider, WheelGuard
 from .style import ASSETS_DIRECTORY
+from ..przeklad import t
 
 
 class HistogramWidget(QFrame):
@@ -50,7 +51,7 @@ class HistogramWidget(QFrame):
 
         if self._data is None:
             painter.setPen(QColor(120, 120, 125))
-            painter.drawText(rect, Qt.AlignCenter, "brak zdjęcia")
+            painter.drawText(rect, Qt.AlignCenter, t("brak zdjęcia"))
             return
 
         peak = float(self._data.max()) or 1.0
@@ -165,20 +166,20 @@ class InfoPanel(QFrame):
                 widget.setText("—")
             if location is not None:
                 self.gps_label.setText(
-                    f"{location[0]:.5f}, {location[1]:.5f}  (nadana)"
+                    t("{wsp}  (nadana)", wsp=f"{location[0]:.5f}, {location[1]:.5f}")
                 )
             return
-        self.camera_label.setText(meta.camera or "nieznany aparat")
+        self.camera_label.setText(meta.camera or t("nieznany aparat"))
         self.settings_label.setText(meta.summary())
         self.date_label.setText(
-            meta.shot_at.strftime("%d.%m.%Y  %H:%M:%S") if meta.shot_at else "brak daty"
+            meta.shot_at.strftime("%d.%m.%Y  %H:%M:%S") if meta.shot_at else t("brak daty")
         )
         if location is not None:
-            self.gps_label.setText(f"{location[0]:.5f}, {location[1]:.5f}  (nadana)")
+            self.gps_label.setText(t("{wsp}  (nadana)", wsp=f"{location[0]:.5f}, {location[1]:.5f}"))
         elif meta.has_gps:
             self.gps_label.setText(f"{meta.latitude:.5f}, {meta.longitude:.5f}")
         else:
-            self.gps_label.setText("brak lokalizacji")
+            self.gps_label.setText(t("brak lokalizacji"))
 
 
 class EditPanel(QWidget):
@@ -207,7 +208,7 @@ class EditPanel(QWidget):
         fixed.setContentsMargins(0, 0, 0, 0)
         fixed.setSpacing(4)
 
-        fixed.addWidget(self._section("Kadrowanie i obrót"))
+        fixed.addWidget(self._section(t("Kadrowanie i obrót")))
         self.crop_button = QPushButton()
         self.crop_button.setIcon(QIcon(os.path.join(ASSETS_DIRECTORY, "crop.svg")))
         self.crop_button.setIconSize(QSize(18, 18))
@@ -230,17 +231,17 @@ class EditPanel(QWidget):
             rotate_row.addWidget(button, 1)
         fixed.addLayout(rotate_row)
 
-        self._add(fixed, "rotation", "Kąt", -45, 45, 0, 1, "°")
+        self._add(fixed, "rotation", t("Kąt"), -45, 45, 0, 1, "°")
 
-        self.crop_reset_button = QPushButton("Wyzeruj kadr")
+        self.crop_reset_button = QPushButton(t("Wyzeruj kadr"))
         podpowiedz(self.crop_reset_button, "edycja.wyzeruj_kadr")
         self.crop_reset_button.clicked.connect(self.crop_reset_requested.emit)
         fixed.addWidget(self.crop_reset_button)
 
-        self.auto_button = QPushButton("Automatycznie")
+        self.auto_button = QPushButton(t("Automatycznie"))
         podpowiedz(self.auto_button, "edycja.automatycznie")
         self.auto_button.clicked.connect(self.auto_requested.emit)
-        self.reset_button = QPushButton("Wyzeruj")
+        self.reset_button = QPushButton(t("Wyzeruj"))
         podpowiedz(self.reset_button, "edycja.wyzeruj")
         self.reset_button.clicked.connect(self.reset_requested.emit)
         action_row = QHBoxLayout()
@@ -255,32 +256,32 @@ class EditPanel(QWidget):
         layout.setContentsMargins(0, 0, 8, 8)
         layout.setSpacing(4)
 
-        layout.addWidget(self._section("Balans bieli"))
-        self._add(layout, "temperature", "Temperatura", 2000, 15000, 5500, 0, " K",
+        layout.addWidget(self._section(t("Balans bieli")))
+        self._add(layout, "temperature", t("Temperatura"), 2000, 15000, 5500, 0, " K",
                   gradient=TEMPERATURE_STOPS)
-        self._add(layout, "tint", "Tinta", -100, 100, 0, gradient=TINT_STOPS)
+        self._add(layout, "tint", t("Tinta"), -100, 100, 0, gradient=TINT_STOPS)
 
-        layout.addWidget(self._section("Odcień"))
-        self._add(layout, "exposure", "Ekspozycja", -5, 5, 0, 2)
-        self._add(layout, "contrast", "Kontrast", -100, 100, 0)
-        self._add(layout, "highlights", "Podświetlenia", -100, 100, 0)
-        self._add(layout, "shadows", "Cienie", -100, 100, 0)
-        self._add(layout, "whites", "Biele", -100, 100, 0)
-        self._add(layout, "blacks", "Czernie", -100, 100, 0)
+        layout.addWidget(self._section(t("Odcień")))
+        self._add(layout, "exposure", t("Ekspozycja"), -5, 5, 0, 2)
+        self._add(layout, "contrast", t("Kontrast"), -100, 100, 0)
+        self._add(layout, "highlights", t("Podświetlenia"), -100, 100, 0)
+        self._add(layout, "shadows", t("Cienie"), -100, 100, 0)
+        self._add(layout, "whites", t("Biele"), -100, 100, 0)
+        self._add(layout, "blacks", t("Czernie"), -100, 100, 0)
 
-        layout.addWidget(self._section("Obecność"))
-        self._add(layout, "vibrance", "Jaskrawość", -100, 100, 0)
-        self._add(layout, "saturation", "Nasycenie", -100, 100, 0)
+        layout.addWidget(self._section(t("Obecność")))
+        self._add(layout, "vibrance", t("Jaskrawość"), -100, 100, 0)
+        self._add(layout, "saturation", t("Nasycenie"), -100, 100, 0)
 
-        layout.addWidget(self._section("Wyostrzanie"))
-        self._add(layout, "sharpen_amount", "Ilość", 0, 150, 40)
-        self._add(layout, "sharpen_radius", "Promień", 0.5, 3.0, 1.0, decimals=1)
-        self._add(layout, "sharpen_detail", "Szczegóły", 0, 100, 25)
-        self._add(layout, "sharpen_masking", "Maskowanie", 0, 100, 0)
+        layout.addWidget(self._section(t("Wyostrzanie")))
+        self._add(layout, "sharpen_amount", t("Ilość"), 0, 150, 40)
+        self._add(layout, "sharpen_radius", t("Promień"), 0.5, 3.0, 1.0, decimals=1)
+        self._add(layout, "sharpen_detail", t("Szczegóły"), 0, 100, 25)
+        self._add(layout, "sharpen_masking", t("Maskowanie"), 0, 100, 0)
 
-        layout.addWidget(self._section("Usuwanie szumu"))
-        self._add(layout, "noise_luminance", "Szum jasności", 0, 100, 0)
-        self._add(layout, "noise_color", "Szum koloru", 0, 100, 25)
+        layout.addWidget(self._section(t("Usuwanie szumu")))
+        self._add(layout, "noise_luminance", t("Szum jasności"), 0, 100, 0)
+        self._add(layout, "noise_color", t("Szum koloru"), 0, 100, 25)
         layout.addStretch(1)
 
         scroll = QScrollArea()
@@ -339,7 +340,7 @@ class EditPanel(QWidget):
         slider = self.sliders["temperature"]
         slider.default = temp
         slider.set_value(temp)
-        slider.name_label.setText("Temperatura (wzgl.)" if relative else "Temperatura")
+        slider.name_label.setText(t("Temperatura (wzgl.)") if relative else t("Temperatura"))
         podpowiedz(slider, "suwak.temperature", suwak=True,
                    dopisek="suwak.temperature_jpeg" if relative else None)
         self.sliders["tint"].set_value(0.0)

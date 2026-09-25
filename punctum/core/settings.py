@@ -17,6 +17,7 @@ import os
 import platform
 from dataclasses import asdict, dataclass, field, fields
 from typing import Any
+from ..przeklad import N_, jezyki
 
 APP_NAME = "Punctum"
 
@@ -24,9 +25,9 @@ ENGINE_AUTO = "auto"
 ENGINE_GPU = "gpu"
 ENGINE_CPU = "cpu"
 ENGINE_LABELS = {
-    ENGINE_AUTO: "Automatycznie",
-    ENGINE_GPU: "Karta graficzna",
-    ENGINE_CPU: "Procesor",
+    ENGINE_AUTO: N_("Automatycznie"),
+    ENGINE_GPU: N_("Karta graficzna"),
+    ENGINE_CPU: N_("Procesor"),
 }
 
 PREVIEW_SIZES = (1200, 1600, 2048, 2560, 3200)
@@ -39,9 +40,9 @@ LAYOUT_LIMITS = {
 }
 
 NOISE_QUALITY_LABELS = {
-    "fast": "Szybka (non-local means 3/7)",
-    "balanced": "Zrównoważona (non-local means 5/11)",
-    "high": "Dokładna (non-local means 5/13)",
+    "fast": N_("Szybka (non-local means 3/7)"),
+    "balanced": N_("Zrównoważona (non-local means 5/11)"),
+    "high": N_("Dokładna (non-local means 5/13)"),
 }
 
 
@@ -92,7 +93,7 @@ class Settings:
     export_noise_quality: str = "high"
     export_folder: str = ""
     export_use_subfolder: bool = False
-    export_subfolder: str = "Eksport"
+    export_subfolder: str = N_("Eksport")  # patrz ExportOptions.subfolder
     export_naming: str = "original"  # original | custom
     export_custom_name: str = ""
     export_start_number: int = 1
@@ -108,6 +109,9 @@ class Settings:
     export_add_copyright: bool = False
 
     # --- ogolne ---------------------------------------------------------
+    # Kod jezyka interfejsu (pl, en...). Pusty = jeszcze nie wybrany: przy
+    # starcie bierzemy jezyk systemu, o ile mamy dla niego plik przekladu.
+    language: str = ""
     reopen_last_folder: bool = True
     last_folder: str = ""
     # Zapis korekt obok zdjec (sidecar XMP). Dzieki temu obrobke 2000 zdjec
@@ -140,6 +144,8 @@ class Settings:
         clean.detail_delay_ms = max(0, min(2000, int(clean.detail_delay_ms)))
         clean.noise_delay_ms = max(0, min(5000, int(clean.noise_delay_ms)))
         clean.tooltip_delay_ms = max(0, min(5000, int(clean.tooltip_delay_ms)))
+        if clean.language not in jezyki():
+            clean.language = ""  # plik jezyka zniknal - wybierzemy od nowa przy starcie
         if clean.preview_noise_quality not in NOISE_QUALITY_LABELS:
             clean.preview_noise_quality = "balanced"
         if clean.export_noise_quality not in NOISE_QUALITY_LABELS:

@@ -1,734 +1,776 @@
 # Punctum
 
-Nieniszczący edytor zdjęć — RAW (RW2, CR2/CR3, NEF, ARW, DNG) oraz JPEG,
-z podglądem liczonym na karcie graficznej i geotagowaniem na mapie.
+A non-destructive photo editor for RAW (RW2, CR2/CR3, NEF, ARW, DNG) and JPEG,
+with a preview computed on the graphics card and geotagging on a map.
 
-> *A non-destructive photo editor for RAW and JPEG files, with a
-> GPU-accelerated preview pipeline. The interface and documentation are
-> currently Polish-only.*
+> Wersja polska: [README.pl.md](README.pl.md). The program runs in English and
+> Polish; the language is chosen in the settings.
 
-## Uruchomienie
+## Running
 
-Dwuklik na `Punctum.bat` (można przeciągnąć na pulpit albo upuścić na niego
-folder ze zdjęciami), lub z wiersza poleceń:
+Double-click `Punctum.bat` (you can drag it to the desktop or drop a photo
+folder onto it), or from the command line:
 
 ```powershell
-python -m punctum "C:\Zdjęcia\Wycieczka"
+python -m punctum "C:\Photos\Trip"
 ```
 
-Pierwsza instalacja:
+First installation:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-## Co działa
+## What works
 
-**Przeglądanie** — pasek miniatur wczytywany z podglądów wbudowanych w pliki
-RAW (ok. 100 ms na zdjęcie), panel z aparatem, ogniskową, czasem, przysłoną,
-ISO, datą i lokalizacją. Uszkodzone pliki są oznaczane, nie wywalają programu.
-Nad paskiem miniatur siedzi przełącznik formatów (wszystkie / tylko RAW /
-tylko JPEG) — w katalogu z tysiącami JPEG-ów i garścią RAW-ów bez tego nie
-da się pracować. Wybór jest zapamiętywany.
+**Browsing** — a thumbnail strip loaded from the previews embedded in RAW
+files (about 100 ms per photo), a panel with camera, focal length, shutter
+speed, aperture, ISO, date and location. Damaged files are marked instead of
+crashing the program. Above the strip sits a format switch (all / RAW only /
+JPEG only) — in a folder with thousands of JPEGs and a handful of RAWs you
+cannot work without it. The choice is remembered.
 
-**Korekta** — balans bieli w kelwinach (suwaki z gradientem barwnym),
-ekspozycja, kontrast, światła, cienie, biele, czernie, jaskrawość, nasycenie.
-Dwuklik na suwaku przywraca wartość domyślną.
+**Adjustments** — white balance in kelvins (sliders with a color gradient),
+exposure, contrast, highlights, shadows, whites, blacks, vibrance, saturation.
+Double-clicking a slider restores its default.
 
-**Automatyczna korekcja** — przycisk *Automatycznie* dobiera parametry tonalne
-z analizy histogramu. Wyniki pokrywają się z przyciskiem *Automatycznie*
-w komercyjnym programie, który służył za punkt odniesienia, z dokładnością do kilku punktów (patrz niżej).
+**Auto correction** — the *Auto* button picks tonal settings from a histogram
+analysis. The results match the *Auto* button of the commercial program used
+as a reference to within a few points (see below).
 
-**Kadrowanie** — przycisk z ikoną kadru (skrót `R`). Ciągnięcie za krawędzie
-i rogi zmienia kadr, `Shift` zachowuje proporcje, ciągnięcie poza kadrem obraca
-zdjęcie. W spoczynku widać trójpodział, podczas przeciągania siatkę 8×8.
-Osobne przyciski obracają o 90° i 180°. `Enter` zatwierdza.
+**Crop** — the button with the crop icon (shortcut `R`). Dragging the edges
+and corners changes the crop, `Shift` keeps the ratio, dragging outside the
+crop rotates the photo. At rest you see the rule of thirds, while dragging an
+8×8 grid. Separate buttons rotate by 90° and 180°. `Enter` confirms.
 
-**Podgląd** — zoom kółkiem, suwakiem (logarytmicznym, od „dopasuj” do 1600 %)
-albo przyciskami *Dopasuj* / *100 %*; dwuklik przełącza dopasowanie ↔ 100 %.
-Nawigator z ramką pokazującą powiększony fragment (klikalny), przytrzymanie
-*Przed / po* pokazuje zdjęcie bez korekt, histogram na żywo.
+**Preview** — zoom with the wheel, the slider (logarithmic, from "fit" to
+1600 %) or the *Fit* / *100 %* buttons; double-click toggles fit ↔ 100 %.
+A navigator with a frame showing the zoomed part (clickable), holding
+*Before / after* shows the photo without edits, a live histogram.
 
-**Wyostrzanie** — ilość, promień, szczegóły, maskowanie; RAW domyślnie 40,
-JPEG 0 (wyostrzył go już aparat).
+**Sharpening** — amount, radius, detail, masking; RAW defaults to 40,
+JPEG to 0 (the camera has already sharpened it).
 
-**Usuwanie szumu** — osobno szum jasności i szum koloru, siła dopasowana do
-szumu zmierzonego na zdjęciu.
+**Noise reduction** — luminance noise and color noise separately, with the
+strength matched to the noise measured in the photo.
 
-**Eksport** — `Ctrl+E` otwiera okno z kompletem opcji: katalog docelowy,
-opcjonalny podfolder, zachowanie wobec istniejących plików, nazwa z numeratorem,
-format, jakość, ograniczenie dłuższego boku i dokładność odszumiania. Na dole
-widać pełną ścieżkę pierwszego pliku, więc skutek wszystkich nastaw naraz jest
-widoczny przed kliknięciem.
+**Export** — `Ctrl+E` opens a window with the full set of options: destination
+folder, optional subfolder, what to do with existing files, a name with a
+sequence number, format, quality, a limit on the long edge and noise reduction
+precision. At the bottom you see the full path of the first file, so the
+effect of all settings together is visible before you click.
 
-Eksport idzie w tle — pasek postępu z licznikiem siedzi w pasku stanu i można
-go przerwać. Błąd pojedynczego pliku nie zatrzymuje reszty; lista problemów
-pokazuje się na końcu.
+Export runs in the background — a progress bar with a counter sits in the
+status bar and can be stopped. An error in one file does not stop the rest;
+the list of problems appears at the end.
 
-Zaznaczenie kilku zdjęć w pasku miniatur (`Ctrl`, `Shift`) eksportuje je razem.
-Program pamięta nastawy **osobno dla każdego zdjęcia**, więc powrót do wcześniej
-poprawionego kadru przywraca suwaki. Zdjęcia, których nigdy nie otwarto, wychodzą
-bez zmian — okno eksportu mówi o tym wprost, zanim zaczniesz.
+Selecting several photos in the strip (`Ctrl`, `Shift`) exports them together.
+The program remembers the settings **separately for each photo**, so returning
+to a photo edited earlier restores its sliders. Photos that were never opened
+are exported unchanged — the export window says so plainly before you start.
 
-## Okno programu
+## The program window
 
-Okno ma dwie zakładki ułożone jak ścieżka pracy: **Edycja** i **Mapa**.
-Kolejne moduły (biblioteka, albumy, pokaz slajdów) mogą w przyszłości
-dochodzić jako następne zakładki. Przycisk *Eksportuj…* stoi w prawym rogu
-belki zakładek, więc jest pod ręką w obu widokach.
+The window has two tabs laid out like the workflow: **Edit** and **Map**.
+Further modules (library, albums, slideshow) may be added later as more tabs.
+The *Export…* button sits in the right corner of the tab bar, so it is at hand
+in both views.
 
-Zakładka Edycja:
+The Edit tab:
 
 ```
 ┌──────────────┬──────────────────────────────────┬─────────────────────┐
-│ nawigator    │                                  │ histogram           │
+│ navigator    │                                  │ histogram           │
 │              │                                  ├─────────────────────┤
-│ ─●────────── │                                  │ KADROWANIE I OBRÓT  │
-│ Dopasuj 100 %│             podgląd              │ [kadr] ↺90 180 90↻  │
-│ [Przed / po] │                                  │ Kąt ──────●───────  │
-│              │                                  │ [  Wyzeruj kadr   ] │
-│ dane zdjęcia │                                  │ [Automat.][Wyzeruj] │
+│ ─●────────── │                                  │ CROP AND ROTATE     │
+│ Fit    100 % │             preview              │ [crop] ↺90 180 90↻  │
+│ [Before/after]                                  │ Angle ─────●──────  │
+│              │                                  │ [    Reset crop   ] │
+│ photo info   │                                  │ [  Auto  ][ Reset ] │
 │   ▾ EXIF     │                                  ├─────────────────────┤
-│              │                                  │ suwaki — przewija   │
-│              │                                  │ się tylko ta część  │
+│              │                                  │ sliders — only this │
+│              │                                  │ part scrolls        │
 ├──────────────┴──────────────────────────────────┴─────────────────────┤
-│ Pokaż: [Wszystkie ▾]   1 RAW • 2 JPEG                                 │
-│ ▢ ▢ ▢ ▢ ▢ ▢ ▢   pasek miniatur                                        │
+│ Show: [All ▾]   1 RAW • 2 JPEG                                        │
+│ ▢ ▢ ▢ ▢ ▢ ▢ ▢   thumbnail strip                                       │
 └───────────────────────────────────────────────────────────────────────┘
 ```
 
-**Lewy panel** odpowiada na pytania „gdzie jestem w zdjęciu" i „co to za
-zdjęcie":
+**The left panel** answers "where am I in the photo" and "what photo is this":
 
-- **nawigator** — całe zdjęcie z ramką widocznego fragmentu; kliknięcie albo
-  przeciągnięcie przenosi tam podgląd. Rośnie razem z szerokością panelu,
-  można go ukryć w ustawieniach,
-- **suwak powiększenia** — logarytmiczny, od „dopasuj do okna" do 1600 %.
-  Skala logarytmiczna, bo między dopasowaniem (np. 12 %) a maksimum jest ponad
-  sto razy: przy liniowej cały zakres poniżej 100 % mieściłby się w kilku
-  pikselach. Suwak, kółko myszy i przyciski *Dopasuj* / *100 %* chodzą
-  razem; pod spodem pojawia się stan dociągania ostrego fragmentu
-  („ostrzenie…", „pełna ostrość"),
-- **Przed / po** — przytrzymanie pokazuje zdjęcie bez korekt. Wiersz ma
-  miejsce na drugi przycisk: podzielony podgląd przed/po jest w planach,
-- **dane zdjęcia** — aparat, ogniskowa, czas, przysłona, ISO, data
-  i lokalizacja. Strzałka w rogu rozwija pełne metadane (patrz niżej); wtedy
-  przewija się wyłącznie ta sekcja, a nawigator i powiększenie zostają na
-  miejscu. Przyciski *Wszystkie tagi*, *Wyczyść zmiany* i *Zapisz do
-  oryginału* są przypięte na dole sekcji.
+- **navigator** — the whole photo with a frame around the visible part;
+  clicking or dragging moves the preview there. It grows with the panel width
+  and can be hidden in the settings,
+- **zoom slider** — logarithmic, from "fit to window" to 1600 %. Logarithmic,
+  because between fit (e.g. 12 %) and the maximum there is more than a factor
+  of a hundred: on a linear scale the whole range below 100 % would fit into
+  a few pixels. The slider, the mouse wheel and the *Fit* / *100 %* buttons
+  move together; below them the state of the sharp detail is shown
+  ("sharpening…", "full sharpness"),
+- **Before / after** — holding it shows the photo without edits. The row has
+  room for a second button: a split before/after view is planned,
+- **photo info** — camera, focal length, shutter speed, aperture, ISO, date
+  and location. The arrow in the corner expands the full metadata (see below);
+  then only this section scrolls, while the navigator and zoom stay in place.
+  The *All tags*, *Discard changes* and *Write to original* buttons are pinned
+  to the bottom of the section.
 
-**Prawy panel** zbiera to, co zmienia zdjęcie. Na górze, zawsze widoczne:
-histogram, kadrowanie i obrót (przycisk kadrowania, obroty o 90° i 180°,
-suwak kąta, *Wyzeruj kadr*) oraz wiersz *Automatycznie* / *Wyzeruj*. Pod
-nimi lista suwaków — balans bieli, odcień, obecność, redukcja szumu —
-przewijana we własnym obszarze.
+**The right panel** collects what changes the photo. At the top, always
+visible: the histogram, crop and rotate (crop button, 90° and 180° rotations,
+angle slider, *Reset crop*) and the *Auto* / *Reset* row. Below them the list
+of sliders — white balance, tone, presence, noise reduction — scrolling in its
+own area.
 
-**Rozmiary.** Szerokość obu paneli i wysokość paska miniatur zmienia się
-przeciąganiem krawędzi (uchwyt podświetla się pod kursorem):
+**Sizes.** The width of both panels and the height of the thumbnail strip are
+changed by dragging the edges (the handle lights up under the cursor):
 
-| Element | Zakres | Domyślnie |
+| Element | Range | Default |
 |---|---|---|
-| lewy panel | 220–420 px | 260 px |
-| prawy panel | 290–480 px | 340 px |
-| pasek miniatur | 90–260 px | 150 px |
+| left panel | 220–420 px | 260 px |
+| right panel | 290–480 px | 340 px |
+| thumbnail strip | 90–260 px | 150 px |
 
-Przy zmianie rozmiaru okna wolne miejsce dostaje podgląd, panele trzymają
-swoją szerokość. Miniatury rosną razem z paskiem (zawsze jeden rząd) i są
-przechowywane w rozdzielczości 300×208, żeby przy wysokim pasku nie były
-rozmyte. Program pamięta wszystkie trzy rozmiary między uruchomieniami.
-Rozwinięcie metadanych nie zmienia szerokości żadnego panelu ani podglądu.
+When the window is resized, the free space goes to the preview and the panels
+keep their width. Thumbnails grow with the strip (always a single row) and are
+stored at 300×208 so that they are not blurry in a tall strip. The program
+remembers all three sizes between runs. Expanding the metadata does not change
+the width of any panel or of the preview.
 
-### Menu i skróty
+### Menus and shortcuts
 
-| Menu | Polecenie | Skrót |
+| Menu | Command | Shortcut |
 |---|---|---|
-| Plik | Otwórz folder… | `Ctrl+O` |
-| | Eksportuj… | `Ctrl+E` |
-| | Ostatnie katalogi | |
-| | Ustawienia… | `Ctrl+,` |
-| | Zakończ | `Alt+F4` |
-| Edycja | Automatyczna korekcja | `Ctrl+U` |
-| | Kadrowanie (włącz / wyłącz) | `R` |
-| Widok | Dopasuj do okna | `Ctrl+0` |
-| | Powiększenie 100 % | `Ctrl+1` |
-| Pomoc | O programie | |
+| File | Open folder… | `Ctrl+O` |
+| | Export… | `Ctrl+E` |
+| | Recent folders | |
+| | Settings… | `Ctrl+,` |
+| | Quit | `Alt+F4` |
+| Edit | Auto correction | `Ctrl+U` |
+| | Crop (on / off) | `R` |
+| View | Fit to window | `Ctrl+0` |
+| | Zoom 100 % | `Ctrl+1` |
+| Help | About | |
 
-W trybie kadrowania `Enter` albo `Esc` kończy kadrowanie. Dwuklik na podglądzie
-przełącza dopasowanie ↔ 100 %, dwuklik na suwaku przywraca jego wartość
-domyślną. *Pomoc ▸ O programie* otwiera okno ustawień od razu na zakładce
-„O programie".
+In crop mode `Enter` or `Esc` ends cropping. Double-clicking the preview
+toggles fit ↔ 100 %, double-clicking a slider restores its default.
+*Help ▸ About* opens the settings window directly on the "About" tab.
 
-## Mapa i geotagowanie
+## Map and geotagging
 
-W zakładce **Mapa** po lewej stoi lista zdjęć z miniaturami i znacznikami
-stanu, pośrodku mapa OpenStreetMap z wyszukiwarką miejsc i czterema warstwami
-(mapa, ciemna, satelita, hybryda), a po prawej panel metadanych.
+The **Map** tab has the list of photos with thumbnails and status markers on
+the left, an OpenStreetMap map with place search and four layers (map, dark,
+satellite, hybrid) in the middle, and the metadata panel on the right.
 
-Nadawanie lokalizacji: zaznacz zdjęcia na liście, włącz *Przypisz zaznaczonym*
-i kliknij miejsce na mapie — wszystkie zaznaczone dostają ten punkt. Pinezki
-pokazują zarówno lokalizacje nadane w programie, jak i te, które zdjęcia miały
-już z aparatu albo telefonu. Dwuklik na liście wraca do edycji tego zdjęcia.
+Assigning a location: select photos in the list, turn on *Assign to selected*
+and click a place on the map — all selected photos get that point. Pins show
+both locations assigned in the program and those the photos already had from
+a camera or phone. Double-clicking the list returns to editing that photo.
 
-**Współrzędne nie trafiają do pliku źródłowego.** Lądują w sidecarze XMP, tak
-jak korekty, a do metadanych wpisujemy je dopiero w pliku wynikowym przy
-eksporcie — do ostatniej chwili można się rozmyślić, a oryginał zostaje
-nietknięty. W samym sidecarze są obie postaci: nasza (liczba ze znakiem)
-i `exif:GPS*` dla innych programów.
+**Coordinates do not go into the source file.** They land in the XMP sidecar,
+like the edits, and are written into the metadata only in the output file on
+export — you can change your mind until the last moment, and the original
+stays untouched. The sidecar holds both forms: ours (a signed number) and
+`exif:GPS*` for other programs.
 
-Mapa to strona Leaflet w silniku przeglądarki, przeniesiona z osobnej
-aplikacji GeoTagger napisanej wcześniej w PyQt6. Dwa wiązania Qt nie mogą
-współistnieć w jednym procesie — każde ładuje własną kopię bibliotek Qt —
-więc strona została przeniesiona, a nie uruchomiona obok. Sama treść (HTML
-i JavaScript) przeniosła się bez zmian; zmienił się sposób rozmowy z Pythonem:
-**QWebChannel** zamiast kolejki komunikatów odpytywanej zegarem co 100 ms.
-Stara aplikacja importowała QWebChannel, ale go nie używała.
+The map is a Leaflet page in the browser engine, moved over from a separate
+GeoTagger application written earlier in PyQt6. Two Qt bindings cannot live
+in one process — each loads its own copy of the Qt libraries — so the page was
+moved rather than run alongside. The content itself (HTML and JavaScript)
+moved unchanged; what changed is how it talks to Python: **QWebChannel**
+instead of a message queue polled by a timer every 100 ms. The old
+application imported QWebChannel but did not use it.
 
-Mapa powstaje przy starcie programu, zanim okno pojawi się na ekranie — i jest
-to decyzja o **migotaniu**, nie o wydajności. Silnik przeglądarki potrzebuje
-okna natywnego zdolnego do kompozycji OpenGL; dołożony do okna, które już stoi
-na ekranie, każe Qt przebudować całe okno najwyższego poziomu. Wygląda to tak,
-jakby program na ułamek sekundy znikał i wracał. Widać to wprost po uchwycie
-okna: przy budowie leniwej zmieniał się przy pierwszym wejściu na zakładkę,
-przy budowie przed pokazaniem okna zostaje ten sam (`tools/diag_zakladki.py`).
-Kosztuje to ok. 260 ms startu (2080 → 2340 ms), ale dzieje się, zanim
-użytkownik cokolwiek zobaczy. Sam widżet OpenGL zamiast mapy nie wystarcza —
-sprawdzone, okno i tak się przebudowuje.
+The map is created at program start, before the window appears on screen —
+and this is a decision about **flicker**, not performance. The browser engine
+needs a native window capable of OpenGL composition; added to a window that is
+already on screen, it makes Qt rebuild the whole top-level window. It looks as
+if the program vanished for a split second and came back. You can see it
+directly in the window handle: with lazy creation it changed on the first
+visit to the tab, with creation before showing the window it stays the same
+(`tools/diag_zakladki.py`). This costs about 260 ms of startup (2080 → 2340 ms),
+but it happens before the user sees anything. A bare OpenGL widget instead of
+the map is not enough — tested, the window is rebuilt anyway.
 
-Bez internetu zakładka mówi wprost, czego brakuje, zamiast pokazywać szary
-prostokąt; lista zdjęć i usuwanie lokalizacji działają dalej.
+Without internet the tab says plainly what is missing instead of showing a grey
+rectangle; the photo list and removing locations keep working.
 
-## Trwałość pracy
+## Keeping your work
 
-Zamknięcie programu nie gubi korekt. Nastawy każdego zdjęcia lądują w osobnym
-pliku XMP obok oryginału i wracają na suwaki przy kolejnym otwarciu katalogu.
-Dzięki temu obróbkę dwóch tysięcy zdjęć można rozłożyć na kilka dni i dopiero
-na końcu wyeksportować całość.
+Closing the program does not lose edits. The settings of each photo land in a
+separate XMP file next to the original and return to the sliders the next time
+the folder is opened. This way editing two thousand photos can be spread over
+several days, with the whole set exported only at the end.
 
-Zasada nieniszcząca dotyczy też zapisu: **plik ze zdjęciem nie jest ruszany**.
+The non-destructive rule applies to saving too: **the photo file is never
+touched**.
 
-Zapis idzie przy każdym przejściu na inne zdjęcie i przy zamknięciu okna, a nie
-dopiero na koniec sesji — zawieszenie programu po trzech godzinach pracy ma
-kosztować jedno zdjęcie, nie trzy godziny. Kosztuje 2 ms, więc nie da się go
-zauważyć.
+Saving happens on every move to another photo and when the window closes, not
+only at the end of the session — a program hang after three hours of work
+should cost one photo, not three hours. It takes 2 ms, so it cannot be
+noticed.
 
-Obie listy zdjęć — pasek miniatur w Edycji i kolumna w Mapie — mówią tym samym
-językiem. Zdjęcie dostaje dwa niezależne znaczniki:
+Both photo lists — the thumbnail strip in Edit and the column in Map — speak
+the same language. A photo gets two independent markers:
 
-| Znacznik | Znaczenie |
+| Marker | Meaning |
 |---|---|
-| kropka | zdjęcie ma zapisaną pracę (nastawy w sidecarze) |
-| pinezka | zdjęcie ma współrzędne — nadane w programie albo z aparatu |
+| dot | the photo has saved work (settings in the sidecar) |
+| pin | the photo has coordinates — assigned in the program or from the camera |
 
-Znaczniki są **rysowane**, a nie wpisywane w nazwę pliku: znak w tekście
-przesuwałby nazwy w każdym wierszu inaczej i lista przestawałaby się czytać
-jedna pod drugą. W pasku miniatur siedzą w rogach kafelka, w kolumnie w Mapie
-w stałym miejscu przed nazwą — tam też miniatury stoją przy prawej krawędzi,
-żeby wszystkie nazwy zaczynały się w tym samym miejscu.
+The markers are **drawn**, not added to the file name: a character in the text
+would shift names differently in each row and the list would stop reading
+as one column. In the strip they sit in the corners of the tile, in the Map
+column in a fixed place before the name — there the thumbnails also stand at
+the right edge, so all names start at the same place.
 
-Pasek stanu podaje, ilu zdjęć dotyczy pierwszy z nich. Bez tego dzielenie
-obróbki na etapy nie miałoby sensu, bo po otwarciu katalogu nie wiadomo by
-było, gdzie się skończyło — a przy geotagowaniu nie widać by było, które kadry
-wciąż czekają na pinezkę.
+The status bar says how many photos have the first marker. Without it,
+splitting the editing into stages would make no sense, because after opening
+a folder you would not know where you had stopped — and when geotagging you
+would not see which shots are still waiting for a pin.
 
-W pliku XMP są dwa komplety wartości. Pola `crs:` to te same nazwy, których
-używa Camera Raw — inny program coś z nich odczyta. Zgodność jest jednak tylko
-częściowa, bo nasze suwaki nie odpowiadają jeden do jednego tamtym, więc
-traktujemy je jako grzeczność, a nie źródło prawdy. Pola `punctum:` to nasze
-dokładne wartości i to z nich czytamy.
+The XMP file holds two sets of values. The `crs:` fields use the same names
+as Camera Raw — another program will read something from them. The match is
+only partial, though, because our sliders do not correspond one-to-one to
+theirs, so we treat them as a courtesy, not as the source of truth. The
+`punctum:` fields are our exact values and are what we read.
 
-Dwie decyzje warte uwagi:
+Two decisions worth noting:
 
-- **Cudzych plików nie nadpisujemy.** Jeśli obok zdjęcia leży XMP napisany
-  w innym programie, nasze nastawy idą do `<nazwa>.punctum.xmp`. Dodatkowy plik
-  jest mniejszym złem niż skasowana cudza praca.
-- **Cudzych nastaw nie podstawiamy pod suwaki.** Wczytanie sidecara
-  z innego programu wyglądałoby jak przeniesienie edycji, a po cichu zmieniałoby
-  zdjęcie — te same liczby znaczą u nas co innego.
+- **We never overwrite other programs' files.** If an XMP written by another
+  program lies next to the photo, our settings go into `<name>.punctum.xmp`.
+  An extra file is a lesser evil than someone else's work deleted.
+- **We never load other programs' settings into the sliders.** Loading a
+  sidecar from another program would look like carrying the edit over, but it
+  would quietly change the photo — the same numbers mean something else here.
 
-Funkcję można wyłączyć w `Plik ▸ Ustawienia… ▸ Eksport ▸ Ogólne`. Menu `Plik`
-pamięta też ostatnio otwierane katalogi.
+The feature can be turned off in `File ▸ Settings… ▸ Export ▸ General`. The
+`File` menu also remembers recently opened folders.
 
-## Metadane (EXIF)
+## Metadata (EXIF)
 
-Panel metadanych stoi w obu zakładkach. W Edycji jest chowanym dnem sekcji
-z danymi zdjęcia w lewym panelu — rozwija go strzałka w jej rogu, więc zwinięty
-nie zajmuje ani jednego wiersza, a rozwinięty zajmuje resztę wysokości panelu
-i przewija się sam, bez ruszania nawigatora i suwaka powiększenia.
-W Mapie jest kolumną po prawej stronie okna. Obie kopie pokazują ten sam stan.
+The metadata panel is present in both tabs. In Edit it is the collapsible
+bottom of the photo info section in the left panel — the arrow in its corner
+expands it, so collapsed it takes no space at all, and expanded it fills the
+rest of the panel height and scrolls by itself, without moving the navigator
+and the zoom slider. In Map it is a column on the right side of the window.
+Both copies show the same state.
 
-Edytowalnych pól jest dziewiętnaście, w sześciu grupach: autorstwo (autor,
-prawa autorskie), opis (tytuł, komentarz, słowa kluczowe, temat), czas (trzy
-daty), sprzęt (producent, model, obiektyw, numer seryjny, oprogramowanie),
-naświetlenie (ISO, przysłona, czas, ogniskowa) i orientacja. Przycisk
-*Wszystkie tagi* pokazuje dodatkowo pełną zawartość pliku, tylko do odczytu —
-czytaną dopiero po kliknięciu, bo przy dwóch tysiącach zdjęć nie ma powodu
-czytać wszystkiego z każdego pliku.
+There are nineteen editable fields in six groups: authorship (author,
+copyright), description (title, comment, keywords, subject), time (three
+dates), equipment (make, model, lens, serial number, software), exposure (ISO,
+aperture, shutter speed, focal length) and orientation. The *All tags* button
+additionally shows the full content of the file, read-only — read only after
+the click, because with two thousand photos there is no reason to read
+everything from every file.
 
-Zmiany idą tą samą drogą, co korekty i współrzędne: **do sidecara**, a do
-metadanych pliku dopiero przy eksporcie. Przycisk *Zapisz do oryginału* robi
-wyjątek na żądanie — wpisuje je wprost w plik ze zdjęciem:
+Changes follow the same path as edits and coordinates: **into the sidecar**,
+and into the file's metadata only on export. The *Write to original* button is
+an exception on request — it writes them straight into the photo file:
 
-- **tylko JPEG.** RW2 to zamknięty format Panasonica i majstrowanie w jego
-  nagłówku skończyłoby się uszkodzonym plikiem. Program mówi to wprost, zamiast
-  po cichu pomijać takie zdjęcia.
-- **bezstratnie** — przepisywany jest sam nagłówek EXIF, piksele zostają
-  nietknięte, a data pliku wraca na swoje miejsce po zapisie.
-- **dotychczasowe metadane zostają.** Wpisujemy tylko pola zmienione w panelu;
-  reszta nagłówka, razem z blokiem GPS, przechodzi bez zmian.
+- **JPEG only.** RW2 is Panasonic's closed format and tinkering with its header
+  would end with a damaged file. The program says so plainly instead of
+  silently skipping such photos.
+- **lossless** — only the EXIF header is rewritten, the pixels stay untouched,
+  and the file date is put back after writing.
+- **existing metadata stays.** Only the fields changed in the panel are
+  written; the rest of the header, including the GPS block, passes unchanged.
 
-Puste pole znaczy „nie zmieniam", a nie „skasuj tag" — kasowanie metadanych
-jest nieodwracalne, więc nie może się zdarzyć przez nieuwagę.
+An empty field means "do not change", not "delete the tag" — deleting metadata
+is irreversible, so it must not happen by accident.
 
-## Pliki JPEG
+## JPEG files
 
-JPEG przechodzi przez dokładnie ten sam tor, co RAW — wraz z automatem,
-kadrowaniem, odszumianiem i podglądem na karcie graficznej. Różnica jest
-jedna i siedzi we wczytywaniu: z JPEG-a zdejmujemy krzywą sRGB, żeby wejść
-w tor liniowy. Poprawność tego kroku sprawdza `tools/test_jpeg.py` — plik
-przepuszczony przez cały tor bez żadnych korekt wychodzi **piksel w piksel
-taki sam**.
+A JPEG goes through exactly the same pipeline as a RAW — with auto correction,
+cropping, noise reduction and the GPU preview. There is one difference, in
+loading: we remove the sRGB curve from the JPEG to enter the linear pipeline.
+`tools/test_jpeg.py` checks this step — a file passed through the whole
+pipeline without edits comes out **pixel for pixel identical**.
 
-Czego z JPEG-a nie da się odzyskać:
+What cannot be recovered from a JPEG:
 
-- **nie ma zapasu w światłach** — w RAW nad białą ścianą zostaje jeszcze
-  materiał do ściągnięcia, w JPEG-u wszystko powyżej punktu bieli zostało
-  ścięte przy zapisie,
-- **w cieniach jest 8 bitów zamiast dwunastu** — mocne podnoszenie pokaże
-  schodki tam, gdzie RAW dałby gładkie przejście,
-- **nie ma mnożników aparatu ani macierzy barw**, więc temperatury „jak na
-  ujęciu" nie da się odtworzyć.
+- **no headroom in the highlights** — in a RAW there is still material above
+  a white wall to pull back, in a JPEG everything above the white point was
+  clipped when saving,
+- **8 bits in the shadows instead of twelve** — strong lifting shows banding
+  where a RAW would give a smooth transition,
+- **no camera multipliers or color matrix**, so the "as shot" temperature
+  cannot be reconstructed.
 
-Dlatego balans bieli działa przy JPEG-u inaczej i program mówi to wprost:
-suwak nazywa się wtedy *Temperatura (wzgl.)*, a pasek stanu pisze „balans
-bieli względny". Przyjmujemy, że plik jest w sRGB o punkcie bieli D65 (6500 K)
-i że taki jest jego stan wyjściowy; suwak przesuwa barwę **względem tego, co
-zapisał aparat**, a nie względem światła sceny. Kelwiny są tu umowne.
+That is why white balance works differently for a JPEG, and the program says
+so: the slider is then called *Temperature (rel.)* and the status bar says
+"relative white balance". We assume the file is sRGB with a D65 white point
+(6500 K) and that this is its starting state; the slider shifts the color
+**relative to what the camera recorded**, not relative to the scene light.
+The kelvins are nominal here.
 
-Eksport pilnuje jednej rzeczy więcej niż przy RAW: plik źródłowy nigdy nie
-jest celem. Przy RAW było to niemożliwe (wynik ma inne rozszerzenie), przy
-JPEG-u eksport do tego samego katalogu trafiałby dokładnie w oryginał —
-dostaje więc nową nazwę niezależnie od wybranej polityki nadpisywania.
+Export guards one more thing than for RAW: the source file is never the
+target. For RAW this was impossible (the output has a different extension);
+for a JPEG, exporting into the same folder would hit exactly the original —
+so it gets a new name regardless of the chosen overwrite policy.
 
-## Ustawienia
+## Settings
 
-`Plik ▸ Ustawienia…` (`Ctrl+,`). Okno ma cztery zakładki:
+`File ▸ Settings…` (`Ctrl+,`). The window has four tabs:
 
-**Wydajność** — wykryty sprzęt (procesor z liczbą rdzeni i pamięcią, karta
-graficzna z pamięcią i wersją OpenGL) oraz wybór silnika podglądu:
+**Performance** — detected hardware (CPU with core count and memory, graphics
+card with memory and OpenGL version) and the choice of preview engine:
 
-| Ustawienie | Zachowanie |
+| Setting | Behavior |
 |---|---|
-| Automatycznie | Karta, jeśli dostępna; w razie problemu zejście na procesor |
-| Karta graficzna | Wymuszone liczenie na GPU |
-| Procesor | Wymuszone liczenie na CPU, tekstura zwalniana z pamięci karty |
+| Auto | The graphics card when available; falls back to the CPU on problems |
+| Graphics card | Always computes on the GPU |
+| CPU | Always computes on the CPU, the texture is released from GPU memory |
 
-Tu też mieszka rozmiar podglądu (dłuższy bok obrazu liczonego dla widoku
-dopasowanego do okna) i liczba wątków wczytujących miniatury.
+This is also where the preview size lives (the long edge of the image computed
+for the fit-to-window view) and the number of threads loading thumbnails.
 
-**Podgląd** — opóźnienie doliczania ostrego fragmentu i redukcji szumu, jakość
-odszumiania podglądu, próg powiększenia, powyżej którego obraz skalowany jest
-najbliższym sąsiadem, widoczność nawigatora, włączanie podpowiedzi (patrz
-niżej), a także zachowanie kółka myszy nad suwakami.
+**Preview** — the delay of the sharp detail and of noise reduction, preview
+noise reduction quality, the zoom above which the image is scaled with nearest
+neighbour, navigator visibility, turning tooltips on (see below), and the
+behavior of the mouse wheel over sliders.
 
-### Kółko myszy nad suwakami
+### Mouse wheel over sliders
 
-Qt kieruje zdarzenie kółka do widżetu pod kursorem, więc przy przewijaniu długiej
-listy suwaki podjeżdżają pod nieruchomy kursor i po drodze łapią zdarzenie —
-użytkownik chciał przewinąć panel, a zmienił ekspozycję.
+Qt sends the wheel event to the widget under the cursor, so while scrolling a
+long list, sliders slide under a still cursor and catch the event on the way —
+the user wanted to scroll the panel and changed the exposure instead.
 
-Suwak przyjmuje kółko dopiero, gdy spełnione są dwa niezależne warunki:
+A slider accepts the wheel only when two independent conditions are met:
 
-- **lista nie była przewijana** przez ostatnie 400 ms (parametr *Blokada po
-  przewinięciu*) — dzięki temu ciągłe przewijanie nigdy nie zahacza o suwak,
-- **kursor stoi nad suwakiem** od co najmniej 220 ms (parametr *Wymagane
-  zatrzymanie*) — to łapie suwak, który dopiero podjechał pod kursor.
+- **the list has not been scrolled** for the last 400 ms (the *Lock after
+  scrolling* setting) — so continuous scrolling never catches a slider,
+- **the cursor has rested over the slider** for at least 220 ms (the
+  *Required hover* setting) — this catches a slider that has just slid under
+  the cursor.
 
-Celowe użycie — najedź i kręć — działa bez zmian. Zero w polu *Blokada po
-przewinięciu* wyłącza zabezpieczenie i przywraca zachowanie Qt.
+Deliberate use — hover and turn — works as before. Zero in *Lock after
+scrolling* turns the guard off and restores Qt's behavior.
 
-Gdy warunki nie są spełnione, suwak wywołuje `event.ignore()` i Qt przekazuje
-zdarzenie wyżej, do obszaru przewijania — panel przewija się normalnie.
+When the conditions are not met, the slider calls `event.ignore()` and Qt
+passes the event up to the scroll area — the panel scrolls normally.
 
-**Eksport** — format, jakość JPEG, dłuższy bok, jakość odszumiania, domyślny
-katalog docelowy.
+**Export** — format, JPEG quality, long edge, noise reduction quality, default
+destination folder, default author and copyright, and general options: the
+program language, reopening the last folder, keeping edits in XMP files.
 
-**O programie** — wersja, pełne dane sprzętu i sterownika, ścieżka pliku
-ustawień, wersje bibliotek.
+**About** — version, full hardware and driver details, the settings file path,
+library versions.
 
-Ustawienia lądują w `%APPDATA%\Punctum\settings.json` (na Linuksie
-`~/.config/Punctum/`). Zapis idzie przez plik tymczasowy, więc przerwanie nie
-zostawia uszkodzonego pliku. Odczyt jest pobłażliwy: nieznane klucze są
-pomijane, brakujące uzupełniane domyślnymi, wartości spoza zakresu przycinane —
-uszkodzony plik nie zablokuje uruchomienia programu.
+Settings are stored in `%APPDATA%\Punctum\settings.json` (on Linux
+`~/.config/Punctum/`). Saving goes through a temporary file, so an interruption
+does not leave a damaged file. Reading is lenient: unknown keys are skipped,
+missing ones filled with defaults, out-of-range values clamped — a damaged file
+will not block the program from starting.
 
-W tym samym pliku program trzyma rzeczy, których nie ustawia się w oknie
-ustawień, tylko przy okazji pracy: filtr formatów w pasku miniatur, historię
-katalogów, ostatnie opcje eksportu oraz rozmiary paneli i paska miniatur
-(`left_panel_width`, `right_panel_width`, `filmstrip_height`). Rozmiary spoza
-dopuszczalnych zakresów są przy odczycie przycinane, więc ręcznie popsuty plik
-nie zostawi panelu, w którym nie mieści się żaden przycisk.
+The same file holds things that are not set in the settings window but in the
+course of work: the format filter of the thumbnail strip, folder history, the
+last export options and the sizes of the panels and the strip
+(`left_panel_width`, `right_panel_width`, `filmstrip_height`). Sizes outside
+the allowed ranges are clamped on reading, so a hand-broken file will not leave
+a panel in which no button fits.
 
-## Podpowiedzi
+## Tooltips
 
-Każdy przycisk, suwak i pole w programie ma dymek: pogrubiony tytuł, opis
-działania z praktyczną radą oraz szarą linię ze skrótem klawiszowym, gestem
-(dwuklik zeruje suwak) albo formatem pola. Dymki wyłącza się w
-`Ustawienia ▸ Podgląd ▸ Pokazuj podpowiedzi` — od razu, bez ponownego
-uruchamiania (to filtr zdarzeń na całej aplikacji, nie kasowanie tekstów).
+Every button, slider and field in the program has a tooltip: a bold title,
+a description with practical advice, and a grey line with the keyboard
+shortcut, gesture (double-click resets a slider) or field format. Tooltips are
+turned off in `Settings ▸ Preview ▸ Show tooltips` — immediately, without
+restarting (it is an event filter on the whole application, not deleting the
+texts).
 
-Kod zna tylko klucze (`suwak.shadows`, `eksport.podfolder`…). Teksty leżą
-w `punctum/lang/podpowiedzi.pl.json` — polski jest bazowy i kompletny. Nowy
-język to kopia tego pliku pod nazwą `podpowiedzi.<kod>.json`, bez zmian
-w kodzie; brakujący wpis albo pole zastępuje polski, więc niepełny przekład
-niczego nie psuje. Wybór języka w ustawieniach pojawi się razem z przekładem
-całego interfejsu.
+The code knows only keys (`suwak.shadows`, `eksport.podfolder`…). The texts
+live in `punctum/lang/podpowiedzi.<code>.json`; Polish is the base and
+complete. A missing entry or field is taken from Polish, so an incomplete
+translation breaks nothing.
 
-## Architektura
+## Languages
 
-### Edycja nieniszcząca
+The program is in English and Polish. The language is chosen in
+`Settings ▸ Export ▸ General ▸ Language`; the change takes effect after a
+restart, because labels are computed when the windows are built. On first
+start the program uses the system language, and English when it does not
+know it.
 
-Plik RAW nigdy nie jest modyfikowany. Komplet nastaw opisuje klasa
-`EditParams`; obraz wyjściowy powstaje dopiero przy eksporcie.
+The code writes labels in Polish and passes them through `t()`: `t("Zapisz")`.
+The Polish text is the key as well, so the code reads as before and Polish
+needs no file of its own. Translations live in
+`punctum/lang/interfejs.<code>.json` (Polish → translation pairs), tooltips in
+`podpowiedzi.<code>.json`. Another language is two files, with no code changes
+— the list in the settings comes from the files on disk.
 
-### Dekodowanie raz, edycja wielokrotnie
+- **Values in a sentence go by name**, not by gluing pieces together:
+  `t("Wczytywanie {plik}…", plik=name)`. In another language the file name or
+  the number often stands elsewhere in the sentence.
+- **Plurals** have their own function:
+  `mnoga(n, "{n} zdjęcie|{n} zdjęcia|{n} zdjęć")`. Polish has three forms,
+  English two; a translation gives as many as its language has.
+- **Numbers** use the language's decimal separator — "2.50" in English,
+  "2,50" in Polish, in number fields too.
+- **Qt's own labels** (the folder picker, the text field menu) use the
+  standard translation shipped with Qt.
 
-`load_raw()` dekoduje plik **jeden raz** do liniowego float32 w przestrzeni
-barw aparatu i trzyma go w pamięci. Każdy ruch suwaka operuje już tylko na tej
-tablicy — bez tego każda zmiana kosztowałaby ~0,9 s na ponowne dekodowanie.
+`tools/test_przeklad.py` scans the sources and catches a label shown on screen
+that bypassed `t()`, a sentence glued from pieces, a missing translation, an
+entry nobody uses, and mismatched `{...}` fields.
 
-Demozaikowanie i rekonstrukcję świateł zostawiamy LibRaw. Przejmujemy kontrolę
-od momentu, gdy mamy liniowe RGB.
+## Architecture
 
-### Kolejność operacji
+### Non-destructive editing
+
+The RAW file is never modified. The full set of settings is described by the
+`EditParams` class; the output image is produced only on export.
+
+### Decode once, edit many times
+
+`load_raw()` decodes the file **once** into linear float32 in the camera color
+space and keeps it in memory. Every slider move works only on this array —
+without it every change would cost ~0.9 s of decoding again.
+
+Demosaicing and highlight reconstruction are left to LibRaw. We take over from
+the moment we have linear RGB.
+
+### Order of operations
 
 ```
-dekodowanie → demozaikowanie → WB aparatu      (LibRaw)
+decoding → demosaicing → camera WB            (LibRaw)
 ─────────────────────────────────────────────────────────
-geometria (obrót 90°, kąt, kadr)
-korekta balansu bieli          ┐
-przestrzeń aparatu → sRGB      │
-ekspozycja                     │ wszystko na danych LINIOWYCH
-światła / cienie               │
-biele / czernie                │
-kontrast                       ┘
-krzywa przenoszenia sRGB       ← dopiero tutaj gamma
-nasycenie / jaskrawość         ← po krzywej, nie na danych liniowych
-redukcja szumu
+geometry (90° rotation, angle, crop)
+white balance correction       ┐
+camera space → sRGB            │
+exposure                       │ all on LINEAR data
+highlights / shadows           │
+whites / blacks                │
+contrast                       ┘
+sRGB transfer curve            ← gamma only here
+saturation / vibrance          ← after the curve, not on linear data
+noise reduction
 ```
 
-Operacje tonalne **muszą** działać na danych liniowych. Nałożenie gammy przed
-ekspozycją daje plastikowe, „cyfrowe" kolory — najczęstszy błąd w amatorskich
-programach do obróbki RAW.
+Tonal operations **must** work on linear data. Applying gamma before exposure
+gives plastic, "digital" colors — the most common mistake in amateur RAW
+processing programs.
 
-### Dwie warstwy podglądu
+### Two preview layers
 
-Spodnia warstwa to obraz z proxy (1600 px) rozciągnięty na całe zdjęcie —
-pojawia się natychmiast, ale przy powiększeniu jest miękki. Wierzchnia to
-widoczny fragment przeliczony z **pełnej rozdzielczości, od razu w
-rozdzielczości ekranu**; dokłada się po ~160 ms i to ona daje ostrość.
+The bottom layer is the proxy image (1600 px) stretched over the whole photo —
+it appears at once, but is soft when zoomed in. The top layer is the visible
+part computed from the **full resolution, directly at screen resolution**; it
+is added after ~160 ms and is what gives the sharpness.
 
-Kluczowa sztuczka: obrót, przesunięcie kadru i powiększenie składamy w jedną
-macierz przekształcenia i każemy `warpAffine` policzyć wyłącznie widoczny
-prostokąt. Koszt zależy więc od rozmiaru okna, a nie od stopnia powiększenia
-ani wielkości pliku. Zmierzony zysk ostrości względem rozciągniętego proxy:
-**18×** (wariancja laplasjanu 47,4 wobec 2,6).
+The key trick: rotation, crop offset and zoom are combined into one
+transformation matrix and `warpAffine` computes only the visible rectangle.
+The cost therefore depends on the window size, not on the zoom level or the
+file size. Measured sharpness gain over the stretched proxy: **18×** (variance
+of the Laplacian 47.4 against 2.6).
 
-### Balans bieli w kelwinach
+### White balance in kelvins
 
-Aparat zapisuje wyłącznie mnożniki kanałów, nie temperaturę barwową. Żeby
-pokazać „7110 K", `estimate_temp_tint()` przeszukuje krzywą Plancka i znajduje
-temperaturę dającą najbardziej zbliżone mnożniki. Program odniesienia dla tego samego
-pliku pokazuje 7100 K.
+The camera records only channel multipliers, not a color temperature. To show
+"7110 K", `estimate_temp_tint()` searches the Planckian locus for the
+temperature giving the closest multipliers. The reference program shows
+7100 K for the same file.
 
-Poprawność macierzy potwierdza `tools/verify_color.py` — mnożniki policzone
-dla D65 muszą zgadzać się z `daylight_whitebalance` z pliku. Różnica: 0,006 %.
+`tools/verify_color.py` confirms the matrices — multipliers computed for D65
+must agree with `daylight_whitebalance` from the file. Difference: 0.006 %.
 
-### Wyostrzanie
+### Sharpening
 
-Maska wyostrzająca na samej luminancji (`core/sharpen.py`) — wyostrzanie
-kanałów barwnych dawałoby kolorowe obwódki. *Szczegóły* miękko ograniczają
-amplitudę maski (`tanh`): mocna krawędź, która daje aureolę, zostaje ścięta,
-a drobna faktura przechodzi. *Maskowanie* ogranicza wyostrzanie do krawędzi,
-zostawiając gładkie powierzchnie. Domyślne 40 / 1,0 / 25 / 0 dla RAW
-dobrane pomiarem wobec eksportu z Lightrooma przy jego domyślnym
-wyostrzaniu (stosunek energii pasm 0,7–1,5 px i 1,5–4 px, `tools/ostrosc_lab.py`):
-nasze 40 daje 106 % wzorca — celowo odrobinę więcej detalu.
+An unsharp mask on luminance only (`core/sharpen.py`) — sharpening the color
+channels would give colored fringes. *Detail* softly limits the mask amplitude
+(`tanh`): a strong edge that would produce a halo is clipped, while fine
+texture passes. *Masking* limits sharpening to edges, leaving smooth surfaces
+alone. The RAW defaults 40 / 1.0 / 25 / 0 were chosen by measurement against a
+Lightroom export at its default sharpening (band energy ratio 0.7–1.5 px and
+1.5–4 px, `tools/ostrosc_lab.py`): our 40 gives 106 % of the reference —
+deliberately a little more detail.
 
-Shader nie wyostrza: tak jak odszumianie, liczy to procesor w przebiegu po
-podglądzie i w ostrym fragmencie przy powiększeniu. Promień podawany jest
-w pikselach zdjęcia; na podglądzie pomniejszonym tak, że promień spada
-poniżej 0,5 piksela, wyostrzanie jest pomijane.
+The shader does not sharpen: like noise reduction, it is computed on the CPU in
+a pass after the preview and in the sharp detail when zoomed in. The radius is
+given in photo pixels; on a preview downsized so much that the radius drops
+below 0.5 px, sharpening is skipped.
 
-### Usuwanie szumu
+### Noise reduction
 
-Suwaki *Szum jasności* i *Szum koloru* nie ustawiają bezwzględnej siły
-filtra, tylko siłę **względem szumu zmierzonego na samym zdjęciu**
-(`core/denoise.py`). Dzięki temu „50" działa podobnie przy ISO 400 i ISO 6400,
-w cieniach i w światłach, dla RAW-a i JPEG-a.
+The *Luminance noise* and *Color noise* sliders do not set an absolute filter
+strength, but a strength **relative to the noise measured in the photo itself**
+(`core/denoise.py`). This way "50" behaves similarly at ISO 400 and ISO 6400,
+in shadows and highlights, for RAW and JPEG.
 
-1. **Pomiar.** Filtr Immerkaera (zerowa odpowiedź na płaskie tło i gradienty)
-   daje sigma szumu w przedziałach jasności co 8 poziomów.
-2. **Wyrównanie szumu (VST).** Tablica `f(v) = ∫ 1/σ(v)` sprowadza szum do tej
-   samej wielkości w każdej tonacji. Bez tego filtr dobrany do cieni rozmywał
-   światła, a dobrany do świateł zostawiał szum w cieniach.
-3. **Jasność.** Non-local means na danych po VST z `h` wyrażonym
-   w wielokrotnościach zmierzonej sigmy (50 → 2σ). Szum jest **tłumiony,
-   nie wygładzany**: część oryginału wraca jako drobne ziarno (30 → ok. 30 %,
-   50 → 15 %). Lightroom przy 30–40 zostawia wyraźne ziarno i tak wygląda
-   to lepiej niż gładki „wosk”; kontur odzyskuje wyostrzanie.
-4. **Kolor.** Falki à trous na pięciu skalach, w połowie rozdzielczości
-   (tak jak JPEG 4:2:0 i tak zapisuje chrominancję). Szum koloru siedzi
-   zarówno w drobnych iskrach, jak i w większych plamach, więc tłumimy
-   wszystkie skale.
+1. **Measurement.** The Immerkaer filter (zero response to flat backgrounds and
+   gradients) gives the noise sigma in brightness bins of 8 levels.
+2. **Variance stabilization (VST).** The table `f(v) = ∫ 1/σ(v)` brings the
+   noise to the same size in every tone. Without it a filter tuned to the
+   shadows blurred the highlights, and one tuned to the highlights left noise
+   in the shadows.
+3. **Luminance.** Non-local means on the VST data with `h` expressed in
+   multiples of the measured sigma (50 → 2σ). Noise is **suppressed, not
+   smoothed**: part of the original returns as fine grain (30 → about 30 %,
+   50 → 15 %). Lightroom at 30–40 leaves visible grain and that looks better
+   than a smooth "wax"; sharpening recovers the contour.
+4. **Color.** À trous wavelets on five scales, at half resolution (as JPEG 4:2:0
+   stores chrominance). Color noise sits both in fine sparks and in larger
+   blotches, so all scales are suppressed.
 
-Kalibracja na zdjęciu ISO 6400 wobec eksportów Lightrooma: jasność 50 daje
-szum resztkowy zbliżony do jego 50, kolor 25 usuwa barwne iskry podobnie jak
-jego domyślne 25. Dawny tor (NLM na obrazie po krzywej tonalnej, stałe `h`)
-usuwał przy 50 ok. 20 % szumu, a Lightroom już przy 30 ok. 85 %.
+Calibration on an ISO 6400 photo against Lightroom exports: luminance 50 gives
+residual noise close to its 50, color 25 removes colored sparks much like its
+default 25. The old pipeline (NLM on the image after the tone curve, fixed `h`)
+removed about 20 % of the noise at 50, while Lightroom removed about 85 % at 30.
 
-Koszt przy eksporcie zdjęcia 20 MP: 3,6 s przy 50/25 (dawniej 5,1 s),
-0,8 s przy samym kolorze. Podgląd dopasowany do okna: 0,2 s.
+Cost when exporting a 20 MP photo: 3.6 s at 50/25 (formerly 5.1 s), 0.8 s for
+color alone. Fit-to-window preview: 0.2 s.
 
-Znana granica: szum zależy nie tylko od jasności, ale i od barwy — w mocno
-nasyconym niebieskim (kanał niebieski ma największe wzmocnienie) zostaje
-więcej ziarna niż w szarościach, bo pomiar dzieli piksele tylko według
-jasności.
+A known limit: noise depends not only on brightness but also on hue — in
+strongly saturated blue (the blue channel has the largest gain) more grain
+remains than in greys, because the measurement groups pixels by brightness
+only.
 
-**Odszumianie musi działać na pikselach natywnych, przed powiększeniem.**
-Wcześniej tor liczył je po przeskalowaniu, więc przy 400 % ziarno było
-czterokrotnie większe niż zasięg filtra i suwak nie robił nic widocznego.
-Przy okazji poprawna kolejność jest tańsza — im większe powiększenie, tym
-mniej natywnych pikseli trzeba przeliczyć. Na obrazie pomniejszonym pomiar
-sam wykrywa mniejszy szum i filtr słabnie.
+**Noise reduction must work on native pixels, before zooming.** Earlier the
+pipeline computed it after scaling, so at 400 % the grain was four times larger
+than the filter's reach and the slider did nothing visible. The correct order
+is also cheaper — the larger the zoom, the fewer native pixels need computing.
+On a downsized image the measurement itself detects less noise and the filter
+weakens.
 
-Narzędzia: `tools/szum_lab.py` (krzywe szumu na dwóch skalach, czasy
-i mozaika wycinków 1:1 wobec wzorców z innego programu),
-`tools/szum_demozaik.py` (wpływ algorytmu demozaikowania LibRaw — żaden
-z siedmiu wariantów nie zmniejszał szumu, zostajemy przy AHD).
+Tools: `tools/szum_lab.py` (noise curves on two scales, timings and a mosaic of
+1:1 crops against references from another program), `tools/szum_demozaik.py`
+(influence of the LibRaw demosaicing algorithm — none of the seven variants
+reduced noise, we stay with AHD).
 
-### Automatyczna korekcja
+### Auto correction
 
-Automat nie zgaduje, CO jest na zdjęciu — opiera się na zasadach, które
-w fotografii obowiązują niezależnie od tematu. Decyzje zapadają w przestrzeni
-percepcyjnej L\*, gdzie „o pięć jednostek jaśniej" znaczy to samo w cieniach
-i w światłach, więc progi ustawia się raz i działają na każdym kadrze.
+The auto correction does not guess WHAT is in the photo — it relies on rules
+that hold in photography regardless of the subject. Decisions are made in the
+perceptual L\* space, where "five units brighter" means the same in shadows and
+highlights, so thresholds are set once and work on every frame.
 
-Punkt wyjścia: **nie ma jednego dobrego histogramu**. Poprawnie naświetlona noc
-jest zbita przy lewej krawędzi i to jest prawidłowe. Automat sprowadzający każdy
-histogram do dzwonu pośrodku powtarza błąd światłomierza, który zamienia śnieg
-w szarość.
+The starting point: **there is no single good histogram**. A correctly exposed
+night shot is packed against the left edge, and that is right. An automat that
+turns every histogram into a bell in the middle repeats the mistake of a light
+meter that turns snow grey.
 
-Ekspozycja ma dwa warunki i decyduje ostrożniejszy:
+Exposure has two conditions and the more cautious one decides:
 
-- **treść** — mediana jasności ma trafić w strefę właściwą dla klucza sceny,
-- **światła** — biel rozproszona nie może wyjść poza zakres; refleks wolno
-  przepalić, biel z fakturą nie, bo tego się już nie odzyska.
+- **content** — the median brightness should land in the zone appropriate for
+  the key of the scene,
+- **highlights** — diffuse white must not leave the range; a specular highlight
+  may burn out, textured white may not, because it cannot be recovered.
 
-Cel dla mediany przesuwa **klucz sceny** (udział kadru leżącego ponad 2,5 działki
-poniżej *własnej* bieli zdjęcia — miara opisuje układ sceny, a nie błąd
-naświetlenia) oraz **rozpiętość** (im dłuższa skala, tym niżej musi leżeć środek,
-żeby światła zmieściły się pod ramieniem krzywej). Scena bez rozpiętości — karta
-szarości, jednolita ściana, mgła — nie ma klucza, więc oba przesunięcia gasną
-proporcjonalnie do pewności oceny.
+The target for the median is shifted by the **scene key** (the share of the
+frame lying more than 2.5 stops below the photo's *own* white — a measure of
+the scene layout, not of an exposure error) and by the **range** (the longer
+the scale, the lower the middle has to sit so the highlights fit under the
+shoulder of the curve). A scene without range — a grey card, a plain wall, fog
+— has no key, so both shifts fade in proportion to the confidence of the
+estimate.
 
-Biel rozproszoną wyznaczamy z pominięciem refleksów: gdy szczyt histogramu
-odstaje od 99. percentyla o ponad 1,5 działki, punkt bieli bierzemy niżej.
-Inaczej jedna latarnia w kadrze zaciemniałaby całe zdjęcie.
+Diffuse white is determined ignoring specular highlights: when the histogram
+peak stands more than 1.5 stops away from the 99th percentile, the white point
+is taken lower. Otherwise one street lamp in the frame would darken the whole
+photo.
 
-Sprawdzian to `tools/test_auto_zasady.py` — 21 przypadków na obrazach o znanych
-właściwościach: karta szarości i jej wersje prze- i niedoświetlone, klin
-stopniowy 8 EV i 2 EV, syntetyczna noc i śnieg, odporność na refleks.
-Najważniejszy jest ostatni: scena nocna zestawiona ze zwykłym zdjęciem
-niedoświetlonym o 4 EV. Mediany różnią się o niecałą jednostkę L\*, a korekty
-o dwie działki — bo o decyzji nie stanowi jasność mediany, tylko układ sceny.
+The check is `tools/test_auto_zasady.py` — 21 cases on images with known
+properties: a grey card and its over- and underexposed versions, an 8 EV and a
+2 EV step wedge, a synthetic night and snow, robustness to a specular
+highlight. The most important is the last: a night scene set against an
+ordinary photo underexposed by 4 EV. The medians differ by less than one L\*
+unit and the corrections by two stops — because the decision is made by the
+scene layout, not the median brightness.
 
-Porównanie z komercyjnym punktem odniesienia na pliku referencyjnym
-(kalibracja metody, nie cel do naśladowania):
+Comparison with the commercial reference on the reference file (a calibration
+of the method, not a goal to imitate):
 
-| parametr | Punctum | odniesienie |
+| parameter | Punctum | reference |
 |---|---:|---:|
-| ekspozycja | +1,22 | +1,00 |
-| kontrast | +7 | +6 |
-| podświetlenia | −48 | −47 |
-| cienie | +57 | +57 |
-| biele | 0 | +9 |
-| czernie | −3 | −8 |
+| exposure | +1.22 | +1.00 |
+| contrast | +7 | +6 |
+| highlights | −48 | −47 |
+| shadows | +57 | +57 |
+| whites | 0 | +9 |
+| blacks | −3 | −8 |
 
-Balansu bieli automat celowo nie rusza — aparat zna warunki oświetlenia lepiej
-niż histogram, a „poprawiony" zachód słońca traci sens.
+The auto correction deliberately leaves white balance alone — the camera knows
+the lighting conditions better than the histogram, and a "corrected" sunset
+loses its point.
 
-Przy okazji tych prac wyszła wada suwaka **bieli**: był zwykłym mnożnikiem
-całego obrazu, czyli drugą ekspozycją pod inną nazwą, i nie potrafił zrobić
-tego, po co istnieje — postawić punktu bieli bez rozjaśniania całości. Teraz
-działa od ok. 1,4 działki ponad szarością, wyżej niż maska świateł, więc oba
-suwaki nie powielają swojej roli.
+This work exposed a flaw in the **whites** slider: it was a plain multiplier of
+the whole image, i.e. a second exposure under another name, and could not do
+what it exists for — set the white point without brightening everything. It
+now acts from about 1.4 stops above middle grey, higher than the highlights
+mask, so the two sliders do not duplicate each other.
 
-### Tor tonalny na karcie graficznej
+### Tonal pipeline on the graphics card
 
-Podgląd liczy fragment shader GLSL w kontekście OpenGL 3.3 poza ekranem. Dane
-RAW w pełnej rozdzielczości trafiają do pamięci karty **raz**, przy otwarciu
-zdjęcia (244 MB, ~20 ms). Każdy ruch suwaka to potem podmiana kilkunastu
-uniformów i ponowne narysowanie prostokąta.
+The preview is computed by a GLSL fragment shader in an offscreen OpenGL 3.3
+context. The full-resolution RAW data go to the GPU memory **once**, when the
+photo is opened (244 MB, ~20 ms). Every slider move is then a swap of a dozen
+uniforms and a redraw of a rectangle.
 
-Z jednej tekstury powstaje zarówno podgląd dopasowany do okna, jak i ostry
-fragment przy powiększeniu — mipmapy załatwiają poprawne pomniejszanie.
-Geometria (obrót o 90°, kąt, kadr, powiększenie) siedzi w jednej macierzy
-przekształcającej współrzędne tekstury, więc kadrowanie i obracanie są równie
-tanie co suwaki.
+One texture yields both the fit-to-window preview and the sharp detail when
+zoomed in — mipmaps take care of correct downscaling. Geometry (90° rotation,
+angle, crop, zoom) sits in one matrix transforming the texture coordinates, so
+cropping and rotating are as cheap as the sliders.
 
-Macierz pochodzi z modułu `core/geometry.py`, z którego korzysta również tor
-numpy — dzięki temu obie implementacje nie mogą się rozjechać. Zgodność
-sprawdza `tools/test_gpu.py`: na ośmiu zestawach parametrów (z geometrią
-włącznie) średnia różnica wynosi **0,04 poziomu jasności**, maksymalna 1.
+The matrix comes from `core/geometry.py`, which the numpy pipeline also uses —
+so the two implementations cannot drift apart. `tools/test_gpu.py` checks
+agreement: on eight parameter sets (geometry included) the mean difference is
+**0.04 brightness levels**, the maximum 1.
 
-Odszumianie zostaje na procesorze — non-local means nie ma sensownego
-odpowiednika w shaderze. Jest osobnym, opóźnionym krokiem: podgląd pojawia się
-natychmiast, a szum znika chwilę później, gdy suwak stanie.
+Noise reduction stays on the CPU — non-local means has no sensible shader
+counterpart. It is a separate, delayed step: the preview appears at once and
+the noise disappears a moment later, when the slider stops.
 
-### Układ okna
+### Window layout
 
-Kilka decyzji, które nie wynikają z samego wyglądu:
+A few decisions that do not follow from appearance alone:
 
-- **Panele stoją na splitterach z jawnymi granicami szerokości.** Jawne
-  minimum i maksimum mają w Qt pierwszeństwo przed tym, o co prosi zawartość.
-  Bez tego rozwinięcie metadanych poszerzało kolumnę, bo formularz chciał
-  więcej miejsca niż suwaki, a razem z kolumną przeskakiwał podgląd zdjęcia.
-- **Zapamiętane rozmiary nakładamy dopiero po pokazaniu okna.** Przed
-  pokazaniem splitter nie zna swojej prawdziwej szerokości i przy pierwszym
-  ułożeniu rozdzieliłby różnicę po swojemu; okno otwierane jako
-  zmaksymalizowane dostaje ostateczny rozmiar chwilę po `showEvent`.
-- **Suwak powiększenia niczego nie liczy sam.** Widok zgłasza każdą zmianę
-  (kółko, przycisk, dopasowanie po zmianie rozmiaru okna), a panel tylko ją
-  pokazuje — jeden tor synchronizacji zamiast trzech. Ruch suwaka skaluje
-  obraz względem bieżącego stanu, więc środek widoku zostaje na miejscu.
-- **Kafelki miniatur liczone są z wysokości całego paska**, nie z obszaru
-  widoku. Obszar widoku zmienia się, gdy pojawia się poziomy pasek
-  przewijania, a zmiana kafelków potrafi ten pasek schować — i tak w kółko.
-- **Mapa nadal powstaje przed pokazaniem okna** (patrz wyżej) — przebudowa
-  układu Edycji tego nie zmienia.
+- **Panels sit on splitters with explicit width limits.** Explicit minimum and
+  maximum take precedence in Qt over what the content asks for. Without them,
+  expanding the metadata widened the column, because the form wanted more room
+  than the sliders, and the photo preview jumped along with it.
+- **Remembered sizes are applied only after the window is shown.** Before
+  being shown the splitter does not know its real width and would split the
+  difference its own way on the first layout; a window opened maximized gets
+  its final size a moment after `showEvent`.
+- **The zoom slider computes nothing by itself.** The view reports every change
+  (wheel, button, fit after a window resize) and the panel only displays it —
+  one synchronization path instead of three. A slider move scales the image
+  relative to the current state, so the center of the view stays in place.
+- **Thumbnail tiles are computed from the height of the whole strip**, not the
+  viewport. The viewport changes when a horizontal scrollbar appears, and
+  a tile change can hide that scrollbar — and round it goes.
+- **The map is still created before the window is shown** (see above) — the
+  Edit layout rework does not change that.
 
-## Zmierzona wydajność
+## Measured performance
 
 Panasonic DC-G91, 20 Mpix (5200 × 3904), NVIDIA GTX 1660.
 
-Opóźnienie od ruchu suwaka do odświeżonego podglądu (`tools/test_lag.py`),
-mierzone przez pełną drogę zdarzenia — próg dostrzegalności to ok. 16 ms:
+Delay from a slider move to a refreshed preview (`tools/test_lag.py`), measured
+along the full event path — the threshold of perception is about 16 ms:
 
-| Operacja | Mediana | Najgorzej |
+| Operation | Median | Worst |
 |---|---:|---:|
-| Suwak ekspozycji | 11,5 ms | 18,9 ms |
-| Suwak cieni (maski EV) | 12,4 ms | — |
-| Suwak temperatury barwowej | 12,5 ms | 19,6 ms |
-| Suwak kąta obrotu | 11,4 ms | 17,6 ms |
-| Ciągnięcie narożnika kadru | 3,2 ms | 6,1 ms |
-| Obrót ciągnięciem poza kadrem | 12,7 ms | 16,3 ms |
-| Doliczanie ostrego fragmentu | 16,3 ms | 21,2 ms |
+| Exposure slider | 11.5 ms | 18.9 ms |
+| Shadows slider (EV masks) | 12.4 ms | — |
+| Color temperature slider | 12.5 ms | 19.6 ms |
+| Rotation angle slider | 11.4 ms | 17.6 ms |
+| Dragging a crop corner | 3.2 ms | 6.1 ms |
+| Rotating by dragging outside the crop | 12.7 ms | 16.3 ms |
+| Adding the sharp detail | 16.3 ms | 21.2 ms |
 
-Sam shader liczy podgląd w **5,9 ms** (169 klatek na sekundę); reszta to
-konwersja obrazu i odświeżenie widżetów.
+The shader alone computes the preview in **5.9 ms** (169 frames per second);
+the rest is image conversion and widget refresh.
 
-Pozostałe operacje:
+Other operations:
 
-| Operacja | Czas |
+| Operation | Time |
 |---|---|
-| Miniatura z pliku RAW | 102 ms |
-| Pełne dekodowanie | 894 ms |
-| Wgranie tekstury do karty | 20 ms |
-| Analiza do automatu | 90 ms |
-| Obróbka pełna na procesorze (eksport) | 4562 ms |
+| Thumbnail from a RAW file | 102 ms |
+| Full decoding | 894 ms |
+| Texture upload to the GPU | 20 ms |
+| Analysis for auto correction | 90 ms |
+| Full processing on the CPU (export) | 4562 ms |
 
-Tor numpy pozostaje jako ścieżka referencyjna i eksportowa oraz jako
-zabezpieczenie: gdy kontekst OpenGL nie wstanie, aplikacja wraca na procesor
-i pisze o tym na pasku stanu.
+The numpy pipeline remains as the reference and export path and as a safety
+net: when the OpenGL context does not come up, the application falls back to
+the CPU and says so in the status bar.
 
-## Struktura
+## Structure
 
 ```
 punctum/core/
-    params.py        komplet nastaw edycji (EditParams)
-    whitebalance.py  krzywa Plancka, kelwiny ↔ mnożniki, macierze barw
-    raw_loader.py    dekodowanie RAW, proxy, miniatury, orientacja
-    jpeg_loader.py   dekodowanie JPEG, zdjęcie krzywej sRGB
-    loader.py        wspólne wejście dla obu formatów, filtr formatów
-    pipeline.py      tor tonalny, geometria
-    denoise.py       usuwanie szumu dopasowane do zmierzonego szumu
-    sharpen.py       wyostrzanie (maska wyostrzająca na luminancji)
-    auto.py          automatyczny dobór parametrów
-    metadata.py      odczyt EXIF (z obsługą pól własnych Panasonica)
-    exif_edit.py     podgląd wszystkich tagów i zapis edytowalnych pól
-    sidecar.py       zapis i odczyt korekt obok zdjęcia (XMP)
-    export.py        zapis JPEG / PNG / TIFF
-    settings.py      ustawienia programu: odczyt, zapis, walidacja
-    hardware.py      wykrywanie procesora i karty graficznej
+    params.py        full set of edit settings (EditParams)
+    whitebalance.py  Planckian locus, kelvins ↔ multipliers, color matrices
+    raw_loader.py    RAW decoding, proxy, thumbnails, orientation
+    jpeg_loader.py   JPEG decoding, removing the sRGB curve
+    loader.py        common entry for both formats, format filter
+    pipeline.py      tonal pipeline, geometry
+    denoise.py       noise reduction matched to the measured noise
+    sharpen.py       sharpening (unsharp mask on luminance)
+    auto.py          automatic choice of settings
+    metadata.py      EXIF reading (with Panasonic's own fields)
+    exif_edit.py     view of all tags and writing of editable fields
+    sidecar.py       saving and loading edits next to the photo (XMP)
+    export.py        JPEG / PNG / TIFF output
+    settings.py      program settings: reading, saving, validation
+    hardware.py      CPU and graphics card detection
 punctum/app/
-    main_window.py   złożenie całości
-    image_view.py    płótno, zoom, warstwa detalu, kadrowanie
-    edit_panel.py    histogram, dane zdjęcia, kadrowanie, suwaki
-    sliders.py       suwaki, w tym te z gradientem barwnym
-    navigator.py     miniatura z ramką powiększenia
-    zoom_panel.py    suwak i przyciski powiększenia w lewym panelu
-    filmstrip.py     pasek miniatur
-    markers.py       znaczniki przy nazwach zdjęć, wspólne dla obu list
-    exif_panel.py    panel metadanych: formularz, podgląd tagów, zapis
-    map_view.py      zakładka mapy: lista zdjęć, most do strony, przypisywanie
-    map_page.py      strona mapy (Leaflet) jako HTML i JavaScript
-    workers.py       zadania w tle
-    podpowiedzi.py   dymki: klucze, składanie tekstu, języki, wyłącznik
-punctum/lang/        teksty podpowiedzi, jeden plik na język
-tools/               narzędzia diagnostyczne, testy i CLI
+    main_window.py   putting it all together
+    image_view.py    canvas, zoom, detail layer, cropping
+    edit_panel.py    histogram, photo info, cropping, sliders
+    sliders.py       sliders, including those with a color gradient
+    navigator.py     thumbnail with the zoom frame
+    zoom_panel.py    zoom slider and buttons in the left panel
+    filmstrip.py     thumbnail strip
+    markers.py       markers next to photo names, shared by both lists
+    exif_panel.py    metadata panel: form, tag view, writing
+    map_view.py      map tab: photo list, bridge to the page, assigning
+    map_page.py      the map page (Leaflet) as HTML and JavaScript
+    workers.py       background tasks
+    podpowiedzi.py   tooltips: keys, text assembly, languages, switch
+    jezyk.py         switching the language for the whole application at start
+punctum/przeklad.py  t(), mnoga(), liczba(), list of languages
+punctum/lang/        interface translations and tooltip texts, one file per language
+tools/               diagnostic tools, tests and CLI
 ```
 
-## Testy
+Module names, comments and developer notes are in Polish; the interface and
+this README are available in English.
+
+## Tests
 
 ```powershell
-tools\testy.bat --szybkie                 # same testy bez interfejsu, ~5 s
-tools\testy.bat "C:\Zdjęcia\Wycieczka"    # cała seria, ~300 sprawdzeń, ~60 s
-tools\testy.bat "C:\Zdjęcia\Wycieczka" --pelny   # z pełnymi tabelami wyników
+tools\testy.bat --szybkie                 # tests without the UI only, ~5 s
+tools\testy.bat "C:\Photos\Trip"          # the whole series, ~300 checks, ~60 s
+tools\testy.bat "C:\Photos\Trip" --pelny  # with full result tables
 ```
 
-Domyślnie każdy test wypisuje tylko to, co nie przeszło, i jedną linię
-podsumowania — kod wyjścia równa się liczbie błędów, więc seria przerywa po
-pierwszym nieudanym teście zamiast mielić resztę.
+By default each test prints only what failed and one summary line — the exit
+code equals the number of errors, so the series stops at the first failed test
+instead of grinding through the rest.
 
-Testy bez interfejsu (tor tonalny, automat, JPEG, sidecary, metadane) idą zawsze
-i nie potrzebują niczego poza repozytorium. Testy z interfejsem otwierają
-prawdziwe okno, więc potrzebują katalogu ze zdjęciami — wystarczy jeden plik RAW
-i dwa JPEG-i, a które to będą, program dobiera sam. Katalog można podać raz na
-stałe zmienną `PUNCTUM_TESTY`; bez niego seria po prostu pomija tę część.
+Tests without the UI (tonal pipeline, auto correction, JPEG, sidecars,
+metadata, translations) always run and need nothing beyond the repository.
+Tests with the UI open a real window, so they need a folder with photos — one
+RAW file and two JPEGs are enough, and the program picks which ones by itself.
+The folder can be set once and for all with the `PUNCTUM_TESTY` variable;
+without it the series simply skips that part.
 
-| Test | Co pilnuje |
+| Test | What it guards |
 |---|---|
-| `test_geo.py` | współrzędne w sidecarze bez straty dokładności, GPS w eksporcie |
-| `test_sidecar.py` | komplet suwaków zapisany i wczytany daje dokładnie te same wartości |
-| `test_auto_zasady.py` | automat tonalny na scenach o z góry znanych cechach |
-| `test_jpeg.py` | JPEG przepuszczony przez tor liniowy bez korekt wychodzi taki sam |
-| `test_exif.py` | zapis do oryginału nie niszczy obrazu, reszty metadanych ani daty pliku |
-| `test_podpowiedzi.py` | każdy klucz z kodu ma tekst, brak tekstów nieużywanych, język z niepełnym przekładem uzupełniany polskim, jakość odszumiania podglądu z ustawień |
-| `test_trwalosc_gui.py` | poprawki przeżywają przejście dalej i ponowne uruchomienie |
-| `test_mapa_gui.py` | przypisanie punktu na mapie i jego trwałość |
-| `test_jpeg_gui.py` | mieszany katalog: filtr formatów, opis balansu bieli |
-| `test_znaczniki_gui.py` | znaczniki na listach i panel metadanych w obu zakładkach |
-| `test_uklad_gui.py` | układ okna: widoczność elementów przy maksymalizacji, szerokości przy rozwinięciu metadanych, suwak powiększenia, przeciąganie i zapamiętywanie rozmiarów |
-| `test_podpowiedzi_gui.py` | żaden przycisk, suwak ani pole w oknie głównym, Ustawieniach i eksporcie bez podpowiedzi; wyłącznik dymków |
+| `test_geo.py` | coordinates in the sidecar without loss of precision, GPS in the export |
+| `test_sidecar.py` | the full set of sliders saved and loaded gives exactly the same values |
+| `test_auto_zasady.py` | the auto correction on scenes with known properties |
+| `test_jpeg.py` | a JPEG passed through the linear pipeline without edits comes out the same |
+| `test_exif.py` | writing to the original does not damage the image, the rest of the metadata or the file date |
+| `test_przeklad.py` | every on-screen label goes through translation, complete English interface and tooltips, matching `{...}` fields, plurals, decimal separator |
+| `test_podpowiedzi.py` | every key in the code has a text, no unused texts, a language with an incomplete translation falls back to Polish, preview noise reduction quality from the settings |
+| `test_trwalosc_gui.py` | edits survive moving on and restarting |
+| `test_mapa_gui.py` | assigning a point on the map and keeping it |
+| `test_jpeg_gui.py` | a mixed folder: format filter, white balance description |
+| `test_znaczniki_gui.py` | markers on the lists and the metadata panel in both tabs |
+| `test_uklad_gui.py` | window layout: element visibility when maximized, widths when the metadata expands, the zoom slider, dragging and remembering sizes |
+| `test_podpowiedzi_gui.py` | no button, slider or field in the main window, Settings and export without a tooltip; the tooltip switch |
 
-Test układu zapisuje też zrzut okna (`punctum-uklad.png` w katalogu
-tymczasowym) — tak sprawdzamy wygląd po zmianach bez proszenia o zrzuty.
+The layout test also saves a screenshot of the window (`punctum-uklad.png` in
+the temporary folder) — this is how we check the appearance after changes
+without asking for screenshots.
 
-Testy z interfejsem czekają na **warunek**, nie na ustalony czas — obciążona
-maszyna potrafiła kiedyś nie zdążyć wczytać zdjęcia w wyznaczonych sekundach
-i seria wywracała się przy poprawnym kodzie. Z tego samego powodu etapy testu
-idą łańcuchem: kolejny rusza, gdy poprzedni wróci, a nie o wyznaczonej
-sekundzie. Sama ta zmiana skróciła serię ze 105 do 37 sekund.
+Tests with the UI wait for a **condition**, not a fixed time — a loaded machine
+once failed to load a photo within the set seconds and the series fell over on
+correct code. For the same reason the test stages run in a chain: the next one
+starts when the previous one returns, not at a set second. This change alone
+cut the series from 105 to 37 seconds.
 
-## Czego jeszcze nie ma
+## Not there yet
 
-- Dopasowania lokalizacji do śladu GPS (pliki GPX) i grupowania po dniach —
-  na razie współrzędne nadaje się zaznaczeniu zdjęć.
-- Presetów i kopiowania ustawień między zdjęciami.
-- Szybkiego eksportu wsadowego — działa, ale liczy sekwencyjnie na procesorze.
-- Integracji z Google Photos.
-- Podzielonego podglądu przed/po (linia podziału albo dwa widoki obok siebie) —
-  na razie *Przed / po* działa przez przytrzymanie przycisku.
-- Ikon narzędzi w jednym stylu — przyciski obrotu to na razie znaki; ikonę ma
-  tylko kadrowanie.
+- Matching locations to a GPS track (GPX files) and grouping by day — for now
+  coordinates are assigned to a selection of photos.
+- Presets and copying settings between photos.
+- Fast batch export — it works, but computes sequentially on the CPU.
+- Google Photos integration.
+- A split before/after view (a dividing line or two views side by side) — for
+  now *Before / after* works by holding the button.
+- Tool icons in one style — the rotate buttons are characters for now; only
+  cropping has an icon.

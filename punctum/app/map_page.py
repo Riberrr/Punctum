@@ -18,6 +18,10 @@ zostaje szare tlo - widok mowi o tym wprost, zamiast udawac, ze sie laduje.
 
 from __future__ import annotations
 
+import html
+
+from ..przeklad import N_, t
+
 MAP_HTML = """<!DOCTYPE html>
 <html>
 <head>
@@ -306,3 +310,34 @@ new QWebChannel(qt.webChannelTransport, function(channel) {
 </body>
 </html>
 """
+
+# Napisy strony w kolejnosci od najdluzszych, zeby krotszy nie wszedl w srodek
+# dluzszego. Strona nie pyta Pythona o teksty - podmieniamy je w HTML-u przed
+# wczytaniem, bo jezyk i tak zmienia sie dopiero po ponownym starcie.
+NAPISY = (
+    N_("kafelki i biblioteka mapy pobierane są z sieci."),
+    N_("Mapa potrzebuje połączenia z internetem —"),
+    N_("Wyszukaj miasto, ulicę, miejsce…"),
+    N_("Kliknij mapę, aby przypisać"),
+    N_("Błąd połączenia"),
+    N_("Przeglądanie"),
+    N_("Brak wyników"),
+    N_("Szukaj"),
+)
+
+
+# Nazwy warstw podmieniane razem z otaczajacymi znacznikami - samo "Mapa"
+# trafiloby tez w srodek innych zdan.
+WARSTWY = (N_("Mapa"), N_("Ciemna"), N_("Satelita"), N_("Hybryda"))
+
+
+def strona() -> str:
+    """HTML mapy z napisami w biezacym jezyku."""
+    tekst = MAP_HTML
+    for warstwa in WARSTWY:
+        tekst = tekst.replace(f"</div>{warstwa}</div>", f"</div>{html.escape(t(warstwa))}</div>")
+    for napis in NAPISY:
+        # Apostrof zamieniony na typograficzny: czesc napisow stoi w JS
+        # w pojedynczych cudzyslowach i zwykly apostrof zamknalby napis.
+        tekst = tekst.replace(napis, html.escape(t(napis), quote=False).replace("'", "’"))
+    return tekst

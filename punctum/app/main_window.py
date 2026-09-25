@@ -76,6 +76,7 @@ from .workers import (
     ThumbnailTask,
 )
 from .zoom_panel import ZoomPanel
+from ..przeklad import N_, mnoga, t
 
 # Reszta parametrow mieszka w `core/settings.py` i jest edytowalna przez
 # uzytkownika; te dwa zaleza od wybranego toru liczenia, nie od preferencji.
@@ -83,7 +84,7 @@ DEBOUNCE_CPU_MS = 90  # tor numpy: nie liczymy obrazu na kazdy piksel ruchu suwa
 DEBOUNCE_GPU_MS = 0  # tor GPU: tylko scalenie zdarzen z jednego obiegu petli
 FULL_CROP = (0.0, 0.0, 1.0, 1.0)
 # "O programie" nie ma osobnego okna - to zakladka w ustawieniach.
-ABOUT_TAB = "O programie"
+ABOUT_TAB = N_("O programie")
 
 
 class MainWindow(QMainWindow):
@@ -219,7 +220,7 @@ class MainWindow(QMainWindow):
         self.zoom_panel.actual_requested.connect(self.view.zoom_actual)
         self.detail_label = self.zoom_panel.detail_label
 
-        self.before_button = QPushButton("Przed / po")
+        self.before_button = QPushButton(t("Przed / po"))
         podpowiedz(self.before_button, "podglad.przed_po")
         self.before_button.pressed.connect(self._show_before)
         self.before_button.released.connect(self._show_after)
@@ -273,7 +274,7 @@ class MainWindow(QMainWindow):
         # Przycisk eksportu stoi w rogu belki zakladek: gorny pasek narzedzi
         # zajmowal caly wiersz na kilka przyciskow, ktore teraz maja swoje
         # miejsca w panelach.
-        self.export_button = QPushButton("Eksportuj…")
+        self.export_button = QPushButton(t("Eksportuj…"))
         podpowiedz(self.export_button, "okno.eksportuj")
         self.export_button.clicked.connect(self.export_current)
 
@@ -289,7 +290,7 @@ class MainWindow(QMainWindow):
         self.format_combo = QComboBox()
         podpowiedz(self.format_combo, "okno.filtr")
         for key in (FORMAT_ALL, FORMAT_RAW, FORMAT_JPEG):
-            self.format_combo.addItem(FORMAT_LABELS[key], key)
+            self.format_combo.addItem(t(FORMAT_LABELS[key]), key)
         index = self.format_combo.findData(self.settings.format_filter)
         self.format_combo.setCurrentIndex(max(0, index))
         self.format_combo.currentIndexChanged.connect(self._on_format_changed)
@@ -300,7 +301,7 @@ class MainWindow(QMainWindow):
         header_layout = QHBoxLayout(strip_header)
         header_layout.setContentsMargins(8, 3, 8, 3)
         header_layout.setSpacing(8)
-        header_layout.addWidget(QLabel("Pokaż:"))
+        header_layout.addWidget(QLabel(t("Pokaż:")))
         header_layout.addWidget(self.format_combo)
         header_layout.addWidget(self.format_count)
         header_layout.addStretch(1)
@@ -356,8 +357,8 @@ class MainWindow(QMainWindow):
         map_layout.setContentsMargins(0, 0, 0, 0)
 
         self.tabs = QTabWidget()
-        self.tabs.addTab(splitter, "Edycja")
-        self.tabs.addTab(self.map_tab, "Mapa")
+        self.tabs.addTab(splitter, t("Edycja"))
+        self.tabs.addTab(self.map_tab, t("Mapa"))
         self.tabs.currentChanged.connect(self._on_tab_changed)
         corner = QWidget()
         corner_layout = QHBoxLayout(corner)
@@ -367,7 +368,7 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.tabs)
         self.status = self.statusBar()
-        self.status.showMessage("Otwórz folder ze zdjęciami:  Ctrl+O")
+        self.status.showMessage(t("Otwórz folder ze zdjęciami:  Ctrl+O"))
 
         # pasek postepu eksportu - siedzi po prawej stronie paska stanu
         # i pojawia sie tylko na czas pracy
@@ -380,7 +381,7 @@ class MainWindow(QMainWindow):
         self.progress_bar = QProgressBar()
         self.progress_bar.setFixedWidth(180)
         self.progress_bar.setTextVisible(False)
-        self.cancel_export_button = QPushButton("Przerwij")
+        self.cancel_export_button = QPushButton(t("Przerwij"))
         podpowiedz(self.cancel_export_button, "okno.przerwij")
         self.cancel_export_button.clicked.connect(self._cancel_export)
         progress_layout.addWidget(self.progress_label)
@@ -390,57 +391,57 @@ class MainWindow(QMainWindow):
         self.status.addPermanentWidget(self.progress_widget)
 
     def _build_menu(self) -> None:
-        file_menu = self.menuBar().addMenu("&Plik")
+        file_menu = self.menuBar().addMenu(t("&Plik"))
         for text, shortcut, slot in (
-            ("&Otwórz folder…", QKeySequence.Open, self.open_folder),
-            ("&Eksportuj…", QKeySequence("Ctrl+E"), self.export_current),
+            (t("&Otwórz folder…"), QKeySequence.Open, self.open_folder),
+            (t("&Eksportuj…"), QKeySequence("Ctrl+E"), self.export_current),
         ):
             action = QAction(text, self)
             action.setShortcut(shortcut)
             action.triggered.connect(slot)
             file_menu.addAction(action)
 
-        self.recent_menu = file_menu.addMenu("Ostatnie katalogi")
+        self.recent_menu = file_menu.addMenu(t("Ostatnie katalogi"))
         self._build_recent_menu()
         file_menu.addSeparator()
-        settings_action = QAction("&Ustawienia…", self)
+        settings_action = QAction(t("&Ustawienia…"), self)
         settings_action.setShortcut(QKeySequence("Ctrl+,"))
         settings_action.triggered.connect(lambda: self.open_settings())
         file_menu.addAction(settings_action)
 
         file_menu.addSeparator()
-        quit_action = QAction("Zakończ", self)
+        quit_action = QAction(t("Zakończ"), self)
         quit_action.setShortcut(QKeySequence.Quit)
         quit_action.triggered.connect(self.close)
         file_menu.addAction(quit_action)
 
         # Korekta i kadrowanie zmieniaja zdjecie, wiec naleza do Edycji,
         # a nie do Widoku. Skroty zostaja te same.
-        edit_menu = self.menuBar().addMenu("&Edycja")
-        auto_action = QAction("Automatyczna korekcja", self)
+        edit_menu = self.menuBar().addMenu(t("&Edycja"))
+        auto_action = QAction(t("Automatyczna korekcja"), self)
         auto_action.setShortcut(QKeySequence("Ctrl+U"))
         auto_action.triggered.connect(self._run_auto)
         edit_menu.addAction(auto_action)
-        crop_action = QAction("Kadrowanie", self)
+        crop_action = QAction(t("Kadrowanie"), self)
         crop_action.setShortcut(QKeySequence("R"))
         crop_action.triggered.connect(
             lambda: self.edit_panel.crop_button.setChecked(not self.crop_mode)
         )
         edit_menu.addAction(crop_action)
 
-        view_menu = self.menuBar().addMenu("&Widok")
+        view_menu = self.menuBar().addMenu(t("&Widok"))
         for text, shortcut, slot in (
-            ("Dopasuj do okna", "Ctrl+0", self.view.fit_to_window),
-            ("Powiększenie 100 %", "Ctrl+1", self.view.zoom_actual),
+            (t("Dopasuj do okna"), "Ctrl+0", self.view.fit_to_window),
+            (t("Powiększenie 100 %"), "Ctrl+1", self.view.zoom_actual),
         ):
             action = QAction(text, self)
             action.setShortcut(QKeySequence(shortcut))
             action.triggered.connect(slot)
             view_menu.addAction(action)
 
-        help_menu = self.menuBar().addMenu("Pomo&c")
-        about_action = QAction("O programie", self)
-        about_action.triggered.connect(lambda: self.open_settings(ABOUT_TAB))
+        help_menu = self.menuBar().addMenu(t("Pomo&c"))
+        about_action = QAction(t("O programie"), self)
+        about_action.triggered.connect(lambda: self.open_settings(t(ABOUT_TAB)))
         help_menu.addAction(about_action)
 
     # ------------------------------------------------------------ uklad okna
@@ -485,7 +486,7 @@ class MainWindow(QMainWindow):
         self.recent_menu.clear()
         existing = [f for f in self.settings.recent_folders if os.path.isdir(f)]
         if not existing:
-            empty = QAction("(pusto)", self)
+            empty = QAction(t("(pusto)"), self)
             empty.setEnabled(False)
             self.recent_menu.addAction(empty)
             return
@@ -494,7 +495,7 @@ class MainWindow(QMainWindow):
             action.triggered.connect(lambda checked=False, f=folder: self.load_folder(f))
             self.recent_menu.addAction(action)
         self.recent_menu.addSeparator()
-        clear = QAction("Wyczyść listę", self)
+        clear = QAction(t("Wyczyść listę"), self)
         clear.triggered.connect(self._clear_recent)
         self.recent_menu.addAction(clear)
 
@@ -562,21 +563,21 @@ class MainWindow(QMainWindow):
             self.proxy = self.full_raw.proxy(self.settings.preview_size)
             self.before_image = develop(self.proxy, EditParams(), denoise=False)
         self._render_preview()
-        self.status.showMessage(f"Zapisano ustawienia  •  podgląd: {self._engine_name()}")
+        self.status.showMessage(t("Zapisano ustawienia  •  podgląd: {silnik}", silnik=self._engine_name()))
 
     def _engine_name(self) -> str:
         if not self.gpu.available:
-            return "procesor (brak OpenGL)"
+            return t("procesor (brak OpenGL)")
         if self.settings.render_engine == ENGINE_CPU:
-            return "procesor (wymuszony)"
+            return t("procesor (wymuszony)")
         if self.settings.render_engine == ENGINE_GPU:
-            return "karta graficzna (wymuszona)"
-        return "karta graficzna" if self.gpu_source_ready else "procesor"
+            return t("karta graficzna (wymuszona)")
+        return t("karta graficzna") if self.gpu_source_ready else t("procesor")
 
     # --------------------------------------------------------------- folder
 
     def open_folder(self) -> None:
-        folder = QFileDialog.getExistingDirectory(self, "Wybierz folder ze zdjęciami")
+        folder = QFileDialog.getExistingDirectory(self, t("Wybierz folder ze zdjęciami"))
         if folder:
             self.load_folder(folder)
 
@@ -584,7 +585,7 @@ class MainWindow(QMainWindow):
         try:
             self.folder_paths = folder_photos(folder)
         except OSError as exc:
-            QMessageBox.warning(self, "Punctum", f"Nie udało się otworzyć folderu:\n{exc}")
+            QMessageBox.warning(self, "Punctum", t("Nie udało się otworzyć folderu:\n{blad}", blad=exc))
             return
 
         self.metadata.clear()
@@ -601,7 +602,7 @@ class MainWindow(QMainWindow):
         if not self.folder_paths:
             self.paths = []
             self.filmstrip.set_paths([])
-            self.status.showMessage(f"{folder} — nie znaleziono zdjęć")
+            self.status.showMessage(t("{katalog} — nie znaleziono zdjęć", katalog=folder))
             return
 
         self.setWindowTitle(f"Punctum — {os.path.basename(folder)}")
@@ -642,14 +643,16 @@ class MainWindow(QMainWindow):
 
         if not self.paths:
             self.status.showMessage(
-                f"{FORMAT_LABELS[chosen]}: w tym folderze nie ma takich plików"
+                t("{filtr}: w tym folderze nie ma takich plików", filtr=t(FORMAT_LABELS[chosen]))
             )
             return
 
         done = self.filmstrip.edited_count()
-        progress = f"  •  poprawionych: {done} z {len(self.paths)}" if done else ""
+        progress = t("  •  poprawionych: {e} z {n}", e=done, n=len(self.paths)) if done else ""
         self.status.showMessage(
-            f"Wczytywanie miniatur… ({len(self.paths)} zdjęć){progress}"
+            mnoga(len(self.paths), "Wczytywanie miniatur… ({n} zdjęcie){postep}|"
+                  "Wczytywanie miniatur… ({n} zdjęcia){postep}|"
+                  "Wczytywanie miniatur… ({n} zdjęć){postep}", postep=progress)
         )
         for index, path in enumerate(self.paths):
             task = ThumbnailTask(index, path)
@@ -674,8 +677,9 @@ class MainWindow(QMainWindow):
             self.info_panel.set_metadata(meta, self._own_location(path))
         if self.thumb_pool.activeThreadCount() <= 1:
             done = self.filmstrip.edited_count()
-            progress = f"  •  poprawionych: {done} z {len(self.paths)}" if done else ""
-            self.status.showMessage(f"{len(self.paths)} zdjęć{progress}")
+            progress = t("  •  poprawionych: {e} z {n}", e=done, n=len(self.paths)) if done else ""
+            self.status.showMessage(mnoga(len(self.paths), "{n} zdjęcie{postep}|{n} zdjęcia{postep}|{n} zdjęć{postep}",
+                      postep=progress))
 
     # ---------------------------------------------------------------- zdjecie
 
@@ -720,7 +724,7 @@ class MainWindow(QMainWindow):
         w samych plikach - zeby zobaczyl je inny program. RAW-ow nie ruszamy
         i mowimy o tym wprost, zamiast po cichu ich pomijac.
         """
-        from ..core.exif_edit import write_into_file
+        from ..core.exif_edit import is_writable_format, write_into_file
 
         chosen = self.filmstrip.selected_paths() or (
             [self.current_path] if self.current_path else []
@@ -740,19 +744,20 @@ class MainWindow(QMainWindow):
             problem = write_into_file(path, params.metadata, location)
             if problem is None:
                 written += 1
-            elif "nie da się zapisać" in problem:
+            # po formacie, nie po tresci komunikatu - ta zalezy od jezyka
+            elif not is_writable_format(path):
                 skipped.append(os.path.basename(path))
             else:
                 errors.append(problem)
 
-        parts = [f"Zapisano do {written} plików"]
+        parts = [mnoga(written, "Zapisano do {n} pliku|Zapisano do {n} plików|Zapisano do {n} plików")]
         if skipped:
             parts.append(
-                f"pominięto {len(skipped)} (format bez zapisu EXIF: "
-                f"{', '.join(skipped[:3])}{'…' if len(skipped) > 3 else ''})"
+                t("pominięto {n} (format bez zapisu EXIF: {pliki})", n=len(skipped),
+                  pliki=", ".join(skipped[:3]) + ("…" if len(skipped) > 3 else ""))
             )
         if errors:
-            parts.append(f"błędy: {len(errors)}")
+            parts.append(t("błędy: {n}", n=len(errors)))
         self.status.showMessage("  •  ".join(parts))
         if errors:
             QMessageBox.warning(self, "Punctum", "\n".join(errors[:10]))
@@ -822,7 +827,7 @@ class MainWindow(QMainWindow):
         """
         if self.map_view is None:
             if self.isVisible():
-                self.status.showMessage("Uruchamianie mapy…")
+                self.status.showMessage(t("Uruchamianie mapy…"))
             QApplication.setOverrideCursor(Qt.WaitCursor)
             try:
                 self.map_view = MapView()
@@ -877,12 +882,18 @@ class MainWindow(QMainWindow):
                 self._own_location(self.current_path),
             )
         if latitude is None:
-            self.status.showMessage(f"Usunięto lokalizację z {len(paths)} zdjęć")
+            self.status.showMessage(mnoga(len(paths), "Usunięto lokalizację z {n} zdjęcia|"
+                      "Usunięto lokalizację z {n} zdjęć|Usunięto lokalizację z {n} zdjęć"))
         else:
             self.status.showMessage(
-                f"Nadano lokalizację {latitude:.5f}, {longitude:.5f} — "
-                f"{len(paths)} zdjęć. Zapis w plikach XMP obok zdjęć; "
-                "do metadanych trafi przy eksporcie."
+                mnoga(len(paths),
+                      "Nadano lokalizację {wsp} — {n} zdjęcie. Zapis w plikach XMP obok "
+                      "zdjęć; do metadanych trafi przy eksporcie.|"
+                      "Nadano lokalizację {wsp} — {n} zdjęcia. Zapis w plikach XMP obok "
+                      "zdjęć; do metadanych trafi przy eksporcie.|"
+                      "Nadano lokalizację {wsp} — {n} zdjęć. Zapis w plikach XMP obok "
+                      "zdjęć; do metadanych trafi przy eksporcie.",
+                      wsp=f"{latitude:.5f}, {longitude:.5f}")
             )
 
     def _open_from_map(self, path: str) -> None:
@@ -934,8 +945,8 @@ class MainWindow(QMainWindow):
         if written is None and not params.is_default(is_jpeg(path)) and not self._sidecar_warned:
             self._sidecar_warned = True
             self.status.showMessage(
-                "Nie udało się zapisać korekt obok zdjęcia — katalog jest tylko "
-                "do odczytu albo brakuje miejsca. Praca zostaje tylko w pamięci."
+                t("Nie udało się zapisać korekt obok zdjęcia — katalog jest tylko "
+                "do odczytu albo brakuje miejsca. Praca zostaje tylko w pamięci.")
             )
 
     def open_photo(self, path: str) -> None:
@@ -956,7 +967,7 @@ class MainWindow(QMainWindow):
         # czyta sie w kilka milisekund, a panel czekajacy sekunde na tresc
         # wygladalby na zepsuty.
         self._show_metadata(path)
-        self.status.showMessage(f"Wczytywanie {os.path.basename(path)}…")
+        self.status.showMessage(t("Wczytywanie {plik}…", plik=os.path.basename(path)))
         self.export_button.setEnabled(False)
 
         task = LoadRawTask(path)
@@ -1004,20 +1015,20 @@ class MainWindow(QMainWindow):
         self.gpu_source_ready = self.gpu_allowed() and self.gpu.set_source(raw.camera_linear)
 
         white_balance = (
-            "balans bieli względny (JPEG)" if is_jpeg
-            else f"balans bieli {raw.as_shot_temp:.0f} K"
+            t("balans bieli względny (JPEG)") if is_jpeg
+            else t("balans bieli {k} K", k=f"{raw.as_shot_temp:.0f}")
         )
         if damaged:
             self.status.showMessage(
-                f"{os.path.basename(path)} — obok leżał plik z korektami, ale nie da "
-                "się go odczytać. Suwaki startują czyste."
+                t("{plik} — obok leżał plik z korektami, ale nie da się go odczytać. "
+                  "Suwaki startują czyste.", plik=os.path.basename(path))
             )
         else:
-            restored = "  •  wczytano zapisane korekty" if saved is not None else ""
+            restored = t("  •  wczytano zapisane korekty") if saved is not None else ""
             self.status.showMessage(
                 f"{os.path.basename(path)}  •  {'JPEG' if is_jpeg else 'RAW'}  •  "
                 f"{raw.raw_width}×{raw.raw_height}  •  {white_balance}  •  "
-                f"podgląd: {self._engine_name()}{restored}"
+                + t("podgląd: {silnik}", silnik=self._engine_name()) + restored
             )
         self._render_preview()
 
@@ -1027,7 +1038,7 @@ class MainWindow(QMainWindow):
         self.view.clear_image()
         self.navigator.set_image(None)
         self.histogram_widget.set_histogram(None)
-        self.status.showMessage(f"Nie udało się wczytać {os.path.basename(path)} — {message}")
+        self.status.showMessage(t("Nie udało się wczytać {plik} — {blad}", plik=os.path.basename(path), blad=message))
 
     # ----------------------------------------------------------- parametry
 
@@ -1160,7 +1171,7 @@ class MainWindow(QMainWindow):
             )
             if rgb8 is not None:
                 self.view.set_detail(rgb8, rect, scale)
-                self.detail_label.setText("pełna ostrość")
+                self.detail_label.setText(t("pełna ostrość"))
                 return
 
         self._job_counter += 1
@@ -1169,13 +1180,13 @@ class MainWindow(QMainWindow):
                                 quality=self.settings.preview_noise_quality)
         task.signals.detail_ready.connect(self._on_detail_ready)
         self.pool.start(task)
-        self.detail_label.setText("ostrzenie…")
+        self.detail_label.setText(t("ostrzenie…"))
 
     def _on_detail_ready(self, job_id: int, rgb8, rect: QRect, scale: float) -> None:
         if job_id != self._latest_detail:
             return
         self.view.set_detail(rgb8, rect, scale)
-        self.detail_label.setText("pełna ostrość")
+        self.detail_label.setText(t("pełna ostrość"))
 
     def _on_view_rect(self, rect: QRectF) -> None:
         self.navigator.set_view_rect(None if rect.isNull() else rect)
@@ -1218,10 +1229,10 @@ class MainWindow(QMainWindow):
         self.view.set_rotation(self.edit_panel.sliders["rotation"].value())
         self._render_preview()
         self.status.showMessage(
-            "Kadrowanie: ciągnij za krawędzie (Shift zachowuje proporcje), "
-            "poza kadrem obracasz zdjęcie. Enter zatwierdza."
+            t("Kadrowanie: ciągnij za krawędzie (Shift zachowuje proporcje), "
+            "poza kadrem obracasz zdjęcie. Enter zatwierdza.")
             if enabled
-            else f"{len(self.paths)} zdjęć"
+            else mnoga(len(self.paths), "{n} zdjęcie|{n} zdjęcia|{n} zdjęć")
         )
 
     def _on_crop_changed(self, crop: tuple) -> None:
@@ -1258,7 +1269,7 @@ class MainWindow(QMainWindow):
         if self.full_raw is None:
             return
         self.edit_panel.auto_button.setEnabled(False)
-        self.status.showMessage("Dobieranie parametrów…")
+        self.status.showMessage(t("Dobieranie parametrów…"))
         task = AutoToneTask(self.current_path, self.full_raw, self.display_params())
         task.signals.auto_ready.connect(self._on_auto_ready)
         self.pool.start(task)
@@ -1269,7 +1280,7 @@ class MainWindow(QMainWindow):
             return
         self.edit_panel.apply_values(values)
         summary = "  ".join(f"{k} {v:+g}" for k, v in values.items() if v)
-        self.status.showMessage(f"Korekcja automatyczna:  {summary}")
+        self.status.showMessage(t("Korekcja automatyczna:  {opis}", opis=summary))
 
     # ---------------------------------------------------------------- eksport
 
@@ -1315,19 +1326,19 @@ class MainWindow(QMainWindow):
         """Jedno pytanie o wszystkie kolizje naraz, zadane przed startem."""
         count = len(plan.conflicts)
         box = QMessageBox(self)
-        box.setWindowTitle("Pliki już istnieją")
+        box.setWindowTitle(t("Pliki już istnieją"))
         box.setIcon(QMessageBox.Question)
         box.setText(
-            f"W katalogu docelowym jest już {count} "
-            + ("plik" if count == 1 else "pliki" if 2 <= count <= 4 else "plików")
-            + " o takich nazwach."
+            mnoga(count, "W katalogu docelowym jest już {n} plik o takich nazwach.|"
+                  "W katalogu docelowym jest już {n} pliki o takich nazwach.|"
+                  "W katalogu docelowym jest już {n} plików o takich nazwach.")
         )
         box.setInformativeText("\n".join(os.path.basename(p) for p in plan.conflicts[:6])
                                + ("\n…" if count > 6 else ""))
-        overwrite = box.addButton("Zastąp", QMessageBox.DestructiveRole)
-        skip = box.addButton("Pomiń istniejące", QMessageBox.AcceptRole)
-        unique = box.addButton("Nowe nazwy", QMessageBox.AcceptRole)
-        box.addButton("Anuluj", QMessageBox.RejectRole)
+        overwrite = box.addButton(t("Zastąp"), QMessageBox.DestructiveRole)
+        skip = box.addButton(t("Pomiń istniejące"), QMessageBox.AcceptRole)
+        unique = box.addButton(t("Nowe nazwy"), QMessageBox.AcceptRole)
+        box.addButton(t("Anuluj"), QMessageBox.RejectRole)
         box.setDefaultButton(unique)
         box.exec()
 
@@ -1345,7 +1356,7 @@ class MainWindow(QMainWindow):
             return
         if self.export_task is not None:
             QMessageBox.information(
-                self, "Punctum", "Eksport już trwa. Poczekaj albo go przerwij."
+                self, "Punctum", t("Eksport już trwa. Poczekaj albo go przerwij.")
             )
             return
 
@@ -1370,13 +1381,13 @@ class MainWindow(QMainWindow):
         pairs, skipped = resolve_conflicts(plan, policy)
 
         if not pairs:
-            self.status.showMessage("Nie zapisano nic — wszystkie pliki pominięto.")
+            self.status.showMessage(t("Nie zapisano nic — wszystkie pliki pominięto."))
             return
 
         try:
             os.makedirs(options.target_folder(), exist_ok=True)
         except OSError as exc:
-            QMessageBox.warning(self, "Punctum", f"Nie udało się utworzyć katalogu:\n{exc}")
+            QMessageBox.warning(self, "Punctum", t("Nie udało się utworzyć katalogu:\n{blad}", blad=exc))
             return
 
         params = {
@@ -1390,7 +1401,7 @@ class MainWindow(QMainWindow):
 
         self.progress_bar.setRange(0, len(pairs))
         self.progress_bar.setValue(0)
-        self.progress_label.setText(f"Eksport 0 / {len(pairs)}")
+        self.progress_label.setText(t("Eksport {i} / {n}", i=0, n=len(pairs)))
         self.progress_widget.show()
         self.cancel_export_button.setEnabled(True)
         self.export_button.setEnabled(False)
@@ -1400,7 +1411,7 @@ class MainWindow(QMainWindow):
         self.progress_bar.setRange(0, total)
         self.progress_bar.setValue(done)
         self.progress_label.setText(
-            f"Eksport {done} / {total}" + (f"  •  {name}" if name else "")
+            t("Eksport {i} / {n}", i=done, n=total) + (f"  •  {name}" if name else "")
         )
 
     def _on_export_finished(self, saved: int, failed: int, errors: list) -> None:
@@ -1409,25 +1420,26 @@ class MainWindow(QMainWindow):
         self.progress_widget.hide()
         self.export_button.setEnabled(True)
 
-        parts = [f"Zapisano {saved}"]
+        parts = [t("Zapisano {n}", n=saved)]
         if getattr(self, "_skipped_in_export", 0):
-            parts.append(f"pominięto {self._skipped_in_export}")
+            parts.append(t("pominięto {n}", n=self._skipped_in_export))
         if failed:
-            parts.append(f"błędów: {failed}")
+            parts.append(t("błędów: {n}", n=failed))
         if cancelled:
-            parts.append("przerwano")
-        self.status.showMessage("Eksport zakończony  •  " + ", ".join(parts))
+            parts.append(t("przerwano"))
+        self.status.showMessage(t("Eksport zakończony  •  {wynik}", wynik=", ".join(parts)))
 
         if errors:
             box = QMessageBox(self)
-            box.setWindowTitle("Eksport — problemy")
+            box.setWindowTitle(t("Eksport — problemy"))
             box.setIcon(QMessageBox.Warning)
-            box.setText(f"{failed} zdjęć nie udało się zapisać.")
+            box.setText(mnoga(failed, "{n} zdjęcia nie udało się zapisać.|{n} zdjęć nie udało się zapisać.|"
+                        "{n} zdjęć nie udało się zapisać."))
             box.setDetailedText("\n".join(errors))
             box.exec()
 
     def _cancel_export(self) -> None:
         if self.export_task is not None:
             self.export_task.cancel()
-            self.progress_label.setText("Przerywanie…")
+            self.progress_label.setText(t("Przerywanie…"))
             self.cancel_export_button.setEnabled(False)

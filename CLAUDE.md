@@ -1,7 +1,7 @@
 # Punctum — zasady pracy nad tym repozytorium
 
 Nieniszczący edytor zdjęć RAW i JPEG. Python 3.14 + PySide6, venv w `.venv`.
-Pełny opis programu jest w `README.md`; poniżej tylko to, czego trzeba się
+Pełny opis programu jest w `README.pl.md` (po angielsku `README.md`); poniżej tylko to, czego trzeba się
 trzymać przy zmianach w kodzie.
 
 ## Tryb pracy: najpierw ustalenia, potem kod
@@ -130,6 +130,12 @@ Pisząc test z interfejsem:
    `tools/test_gpu.py`.
 5. **Przetwarzanie pikseli przed powiększeniem, nigdy po** — inaczej filtry
    nie robią nic widocznego przy dużym zoomie.
+6. **Każdy napis na ekranie idzie przez przekład** (`punctum/przeklad.py`):
+   `t("Zapisz")`, pola po nazwie `t("Wczytywanie {plik}…", plik=...)`, liczba
+   mnoga `mnoga(n, "…|…|…")`, stała modułu `N_("…")` i `t(stała)` przy użyciu.
+   Nowy napis = wpis w `punctum/lang/interfejs.en.json`; brak wyłapie
+   `tools/test_przeklad.py`. Decyzji w kodzie nie opierać na treści
+   przetłumaczonego komunikatu.
 
 ## Git
 

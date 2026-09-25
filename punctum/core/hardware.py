@@ -15,6 +15,7 @@ import os
 import platform
 import subprocess
 from dataclasses import dataclass, field
+from ..przeklad import N_, t
 
 
 @dataclass
@@ -28,9 +29,9 @@ class CpuInfo:
     def summary(self) -> str:
         parts = [self.name]
         if self.cores_physical and self.cores_logical:
-            parts.append(f"{self.cores_physical} rdzeni / {self.cores_logical} wątków")
+            parts.append(t("{f} rdzeni / {l} wątków", f=self.cores_physical, l=self.cores_logical))
         elif self.cores_logical:
-            parts.append(f"{self.cores_logical} wątków")
+            parts.append(t("{l} wątków", l=self.cores_logical))
         if self.memory_gb:
             parts.append(f"{self.memory_gb:.0f} GB RAM")
         return "  •  ".join(parts)
@@ -38,7 +39,7 @@ class CpuInfo:
 
 @dataclass
 class GpuInfo:
-    name: str = "niedostępna"
+    name: str = N_("niedostępna")
     vendor: str = ""
     driver: str = ""
     glsl: str = ""
@@ -49,10 +50,10 @@ class GpuInfo:
     @property
     def summary(self) -> str:
         if not self.available:
-            return self.problem or "brak dostępnego kontekstu OpenGL"
-        parts = [self.name]
+            return self.problem or t("brak dostępnego kontekstu OpenGL")
+        parts = [t(self.name)]
         if self.memory_mb:
-            parts.append(f"{self.memory_mb / 1024:.0f} GB pamięci")
+            parts.append(t("{n} GB pamięci", n=f"{self.memory_mb / 1024:.0f}"))
         if self.driver:
             parts.append(f"OpenGL {self.driver.split(' ')[0]}")
         return "  •  ".join(parts)

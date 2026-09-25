@@ -21,6 +21,7 @@ import os
 from dataclasses import dataclass
 
 import exifread
+from ..przeklad import N_, t
 
 
 @dataclass(frozen=True)
@@ -37,35 +38,35 @@ class Field:
 
 # Kolejnosc ma znaczenie - w takiej pojawia sie w panelu.
 FIELDS: tuple[Field, ...] = (
-    Field("Artist", "Autor", "Autorstwo",
-          hint="Kto zrobił zdjęcie. Trafia do pola Artist."),
-    Field("Copyright", "Prawa autorskie", "Autorstwo",
-          hint="np. © 2026 Imię Nazwisko"),
-    Field("ImageDescription", "Tytuł / opis", "Opis", kind="multiline"),
-    Field("UserComment", "Komentarz", "Opis", kind="multiline"),
-    Field("XPKeywords", "Słowa kluczowe", "Opis",
-          hint="Oddzielone średnikiem — tak czyta je Windows."),
-    Field("XPSubject", "Temat", "Opis"),
-    Field("DateTimeOriginal", "Data wykonania", "Czas", kind="datetime",
-          hint="RRRR-MM-DD GG:MM:SS"),
-    Field("DateTimeDigitized", "Data digitalizacji", "Czas", kind="datetime"),
-    Field("DateTime", "Data modyfikacji", "Czas", kind="datetime"),
-    Field("Make", "Producent", "Sprzęt"),
-    Field("Model", "Model aparatu", "Sprzęt"),
-    Field("LensModel", "Obiektyw", "Sprzęt"),
-    Field("BodySerialNumber", "Numer seryjny", "Sprzęt"),
-    Field("Software", "Oprogramowanie", "Sprzęt"),
-    Field("ISOSpeedRatings", "ISO", "Naświetlenie", kind="number"),
-    Field("FNumber", "Przysłona", "Naświetlenie", kind="number",
-          hint="Sama liczba, np. 5.6"),
-    Field("ExposureTime", "Czas naświetlania", "Naświetlenie",
-          hint="Ułamek albo sekundy, np. 1/250 lub 2"),
-    Field("FocalLength", "Ogniskowa", "Naświetlenie", kind="number", hint="w mm"),
-    Field("Orientation", "Orientacja", "Obraz", kind="choice", choices=(
-        ("1", "Normalna"),
-        ("3", "Obrócone o 180°"),
-        ("6", "Obrócone w prawo (90° CW)"),
-        ("8", "Obrócone w lewo (90° CCW)"),
+    Field("Artist", N_("Autor"), N_("Autorstwo"),
+          hint=N_("Kto zrobił zdjęcie. Trafia do pola Artist.")),
+    Field("Copyright", N_("Prawa autorskie"), N_("Autorstwo"),
+          hint=N_("np. © 2026 Imię Nazwisko")),
+    Field("ImageDescription", N_("Tytuł / opis"), N_("Opis"), kind="multiline"),
+    Field("UserComment", N_("Komentarz"), N_("Opis"), kind="multiline"),
+    Field("XPKeywords", N_("Słowa kluczowe"), N_("Opis"),
+          hint=N_("Oddzielone średnikiem — tak czyta je Windows.")),
+    Field("XPSubject", N_("Temat"), N_("Opis")),
+    Field("DateTimeOriginal", N_("Data wykonania"), N_("Czas"), kind="datetime",
+          hint=N_("RRRR-MM-DD GG:MM:SS")),
+    Field("DateTimeDigitized", N_("Data digitalizacji"), N_("Czas"), kind="datetime"),
+    Field("DateTime", N_("Data modyfikacji"), N_("Czas"), kind="datetime"),
+    Field("Make", N_("Producent"), N_("Sprzęt")),
+    Field("Model", N_("Model aparatu"), N_("Sprzęt")),
+    Field("LensModel", N_("Obiektyw"), N_("Sprzęt")),
+    Field("BodySerialNumber", N_("Numer seryjny"), N_("Sprzęt")),
+    Field("Software", N_("Oprogramowanie"), N_("Sprzęt")),
+    Field("ISOSpeedRatings", N_("ISO"), N_("Naświetlenie"), kind="number"),
+    Field("FNumber", N_("Przysłona"), N_("Naświetlenie"), kind="number",
+          hint=N_("Sama liczba, np. 5.6")),
+    Field("ExposureTime", N_("Czas naświetlania"), N_("Naświetlenie"),
+          hint=N_("Ułamek albo sekundy, np. 1/250 lub 2")),
+    Field("FocalLength", N_("Ogniskowa"), N_("Naświetlenie"), kind="number", hint=N_("w mm")),
+    Field("Orientation", N_("Orientacja"), N_("Obraz"), kind="choice", choices=(
+        ("1", N_("Normalna")),
+        ("3", N_("Obrócone o 180°")),
+        ("6", N_("Obrócone w prawo (90° CW)")),
+        ("8", N_("Obrócone w lewo (90° CCW)")),
     )),
 )
 
@@ -339,13 +340,13 @@ def validate(key: str, text: str) -> str | None:
     if field is None or not text.strip():
         return None
     if field.kind == "datetime" and normalise_datetime(text) is None:
-        return "Data ma mieć postać RRRR-MM-DD GG:MM:SS"
+        return t("Data ma mieć postać RRRR-MM-DD GG:MM:SS")
     if field.kind == "number" and _rational(text) is None:
-        return "To pole przyjmuje liczbę"
+        return t("To pole przyjmuje liczbę")
     if key == "ExposureTime" and _rational(text) is None:
-        return "Czas podaj jako ułamek (1/250) albo liczbę sekund"
+        return t("Czas podaj jako ułamek (1/250) albo liczbę sekund")
     if key == "Orientation" and text.strip() not in dict(field.choices):
-        return "Nieznana wartość orientacji"
+        return t("Nieznana wartość orientacji")
     return None
 
 
@@ -478,14 +479,14 @@ def write_into_file(path: str, metadata: dict[str, str] | None,
        porzadek chronologiczny w kazdym menedzerze plikow.
     """
     if not is_writable_format(path):
-        return f"{os.path.basename(path)}: tego formatu nie da się zapisać"
+        return t("{plik}: tego formatu nie da się zapisać", plik=os.path.basename(path))
     if not metadata and location is None:
         return None
 
     try:
         import piexif
     except ImportError:
-        return "Brak biblioteki piexif"
+        return t("Brak biblioteki piexif")
 
     try:
         existing = piexif.load(path)

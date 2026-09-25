@@ -8,6 +8,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QSlider, QVBoxLayout, QWidget
 
 from .podpowiedzi import podpowiedz
+from ..przeklad import t
 
 STEPS = 1000
 
@@ -39,7 +40,7 @@ class ZoomPanel(QWidget):
         podpowiedz(self.slider, "podglad.powiekszenie")
         self.slider.valueChanged.connect(self._on_slider)
 
-        self.fit_button = QPushButton("Dopasuj")
+        self.fit_button = QPushButton(t("Dopasuj"))
         podpowiedz(self.fit_button, "podglad.dopasuj")
         self.fit_button.clicked.connect(self.fit_requested.emit)
         self.actual_button = QPushButton("100 %")

@@ -8,6 +8,7 @@ from PySide6.QtGui import QColor, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import QFrame, QSizePolicy
 
 from .image_view import numpy_to_pixmap
+from ..przeklad import t
 
 
 class Navigator(QFrame):
@@ -85,7 +86,7 @@ class Navigator(QFrame):
         target = self._image_rect()
         if target is None:
             painter.setPen(QColor(110, 110, 116))
-            painter.drawText(self.rect(), Qt.AlignCenter, "nawigator")
+            painter.drawText(self.rect(), Qt.AlignCenter, t("nawigator"))
             return
 
         painter.drawPixmap(target, self._pixmap, QRectF(self._pixmap.rect()))
