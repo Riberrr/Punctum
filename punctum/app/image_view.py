@@ -12,6 +12,8 @@ ekranu; doklada sie z opoznieniem ulamka sekundy i to ona daje ostrosc.
 
 from __future__ import annotations
 
+import os
+
 import numpy as np
 from PySide6.QtCore import QPointF, QRect, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import (
@@ -25,6 +27,8 @@ from PySide6.QtGui import (
     QWheelEvent,
 )
 from PySide6.QtWidgets import QGraphicsPixmapItem, QGraphicsScene, QGraphicsView
+
+from .style import ASSETS_DIRECTORY
 
 HANDLE_GRAB_PX = 11  # promien chwytania uchwytu, w pikselach ekranu
 ROTATE_BAND_PX = 70  # jak daleko poza kadrem lapie kursor obrotu
@@ -375,6 +379,23 @@ class ImageView(QGraphicsView):
         "l": Qt.SizeHorCursor, "r": Qt.SizeHorCursor,
     }
 
+    _rotate_cursor_cache: QCursor | None = None
+
+    def _rotate_cursor(self) -> QCursor:
+        # Wariant @2x wybieramy sami: QPixmap z pliku, inaczej niz QIcon,
+        # nie siega po niego automatycznie, a na ekranie 150 % kursor 32 px
+        # bylby rozmyty. Goracy punkt w srodku luku, w pikselach logicznych.
+        if ImageView._rotate_cursor_cache is None:
+            hidpi = self.devicePixelRatioF() > 1.25
+            name = "rotate-cursor@2x.png" if hidpi else "rotate-cursor.png"
+            pixmap = QPixmap(os.path.join(ASSETS_DIRECTORY, name))
+            if pixmap.isNull():
+                return QCursor(Qt.CrossCursor)
+            if hidpi:
+                pixmap.setDevicePixelRatio(2.0)
+            ImageView._rotate_cursor_cache = QCursor(pixmap, 16, 16)
+        return ImageView._rotate_cursor_cache
+
     def mousePressEvent(self, event) -> None:
         if not self._crop_mode or event.button() != Qt.LeftButton:
             super().mousePressEvent(event)
@@ -409,7 +430,9 @@ class ImageView(QGraphicsView):
             elif self._crop.contains(self.mapToScene(event.position().toPoint())):
                 self.setCursor(Qt.SizeAllCursor)
             else:
-                self.setCursor(Qt.CrossCursor)
+                # poza kadrem przeciaganie obraca - kursor ma to powiedziec
+                # jeszcze przed kliknieciem (punkt 24 planu)
+                self.setCursor(self._rotate_cursor())
 
         if self._drag_kind is None:
             super().mouseMoveEvent(event)
@@ -487,7 +510,10 @@ class ImageView(QGraphicsView):
         )
         delta = angle - self._angle_at_press
         delta = (delta + 180.0) % 360.0 - 180.0
-        self._rotation = float(np.clip(self._rotation_at_press + delta, -45.0, 45.0))
+        # Na ekranie os y idzie w dol, wiec rosnacy kat atan2 to ruch reki
+        # zgodnie z zegarem; dodatni kat obrotu (konwencja cv2) obraca zdjecie
+        # przeciwnie. Stad minus - obraz ma isc za reka.
+        self._rotation = float(np.clip(self._rotation_at_press - delta, -45.0, 45.0))
         self.rotation_changed.emit(self._rotation)
 
     # --- rysowanie nakladki ----------------------------------------------

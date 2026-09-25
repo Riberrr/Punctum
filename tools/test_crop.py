@@ -120,8 +120,17 @@ def stage_handles() -> None:
     send("press", scene_to_view(width * 1.10, height * 0.5))
     send("move", scene_to_view(width * 1.10, height * 0.62))
     send("release", scene_to_view(width * 1.10, height * 0.62))
+    # z prawej strony w dol = reka zgodnie z zegarem; zdjecie ma pojsc tak samo,
+    # czyli kat w konwencji cv2 maleje (punkt 24 planu: bylo odwrotnie)
+    check("obrót idzie za ręką", view._rotation < rotation_before - 0.5,
+          f"{rotation_before:.2f}° -> {view._rotation:.2f}°")
     check("ciągnięcie poza kadrem obraca", abs(view._rotation - rotation_before) > 0.5,
           f"{rotation_before:.2f}° -> {view._rotation:.2f}°")
+
+    # kursor obrotu ma sie pojawic juz przy samym najechaniu, bez przycisku
+    send("move", scene_to_view(width * 0.95, height * 0.5), buttons=Qt.NoButton)
+    check("kursor obrotu poza kadrem", view.cursor().shape() == Qt.BitmapCursor,
+          f"kształt {view.cursor().shape()}")
 
     window.grab().save(os.path.join(out_dir, "kadrowanie.png"))
 

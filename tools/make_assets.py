@@ -10,6 +10,7 @@ Uruchamiac po zmianie kolorow motywu; wynik trafia do repozytorium.
 
 from __future__ import annotations
 
+import math
 import os
 
 from PIL import Image, ImageDraw
@@ -65,5 +66,58 @@ for suffix, color in CHECK_VARIANTS.items():
         path = os.path.join(ASSETS, f"check{suffix}{tag}.png")
         image.save(path)
         print(f"  {os.path.basename(path):<28} {size}x{size}")
+
+# Kursor obrotu przy kadrowaniu. Qt nie ma takiego wbudowanego, a krzyzyk
+# nie mowil, ze poza kadrem sie obraca. Luk z grotami na obu koncach, bialy
+# z czarna obwodka - widoczny na jasnym i ciemnym zdjeciu. Goracy punkt
+# w srodku obrazka (podawany w image_view.py).
+
+CURSOR = 32
+ARC_FROM, ARC_TO = 205.0, 335.0  # stopnie, os y w dol: gorny luk
+
+
+def rotate_cursor_shapes(size: float) -> tuple[list, list]:
+    centre, radius = size / 2, size * 0.30
+    arc = [
+        (centre + radius * math.cos(math.radians(a)), centre + radius * math.sin(math.radians(a)))
+        for a in [ARC_FROM + (ARC_TO - ARC_FROM) * i / 40 for i in range(41)]
+    ]
+    heads = []
+    for angle, sign in ((ARC_TO, 1.0), (ARC_FROM, -1.0)):
+        t = math.radians(angle)
+        px, py = centre + radius * math.cos(t), centre + radius * math.sin(t)
+        tx, ty = -math.sin(t) * sign, math.cos(t) * sign  # styczna na zewnatrz luku
+        nx, ny = math.cos(t), math.sin(t)
+        length, half = size * 0.17, size * 0.13
+        heads.append([
+            (px + tx * length, py + ty * length),
+            (px + nx * half, py + ny * half),
+            (px - nx * half, py - ny * half),
+        ])
+    return arc, heads
+
+
+for scale, tag in ((1, ""), (2, "@2x")):
+    size = CURSOR * scale
+    oversample = 8
+    big_size = size * oversample
+    arc, heads = rotate_cursor_shapes(big_size)
+    big = Image.new("RGBA", (big_size, big_size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(big)
+    stroke = big_size * 0.075
+    outline = big_size * 0.045
+    for color, extra in (((0, 0, 0, 255), outline), ((255, 255, 255, 255), 0)):
+        draw.line(arc, fill=color, width=round(stroke + 2 * extra), joint="curve")
+        for head in heads:
+            # obwodka grotu: trojkat powiekszony wokol srodka ciezkosci o tyle,
+            # zeby odsunal sie o grubosc obwodki (promien wpisany ~0.064 rozmiaru)
+            grow = 1.0 + extra / (big_size * 0.064)
+            cx = sum(x for x, _ in head) / 3
+            cy = sum(y for _, y in head) / 3
+            draw.polygon([(cx + (x - cx) * grow, cy + (y - cy) * grow) for x, y in head], fill=color)
+    image = big.resize((size, size), Image.LANCZOS)
+    path = os.path.join(ASSETS, f"rotate-cursor{tag}.png")
+    image.save(path)
+    print(f"  {os.path.basename(path):<28} {size}x{size}")
 
 print(f"\nzapisano w {ASSETS}")
