@@ -33,6 +33,37 @@ TINT_STOPS = [
     (1.00, QColor(208, 64, 192)),
 ]
 
+# Tonalne: rowek pokazuje, co dzieje sie z obrazem po przesunieciu w prawo -
+# ekspozycja rozjasnia (ciemnoszary -> bialy), kontrast poglebia czern
+# (szary -> czarny). Barwy stonowane, zeby pod ciemnym motywem nie krzyczaly.
+EXPOSURE_STOPS = [
+    (0.00, QColor(42, 42, 46)),
+    (1.00, QColor(242, 242, 242)),
+]
+
+CONTRAST_STOPS = [
+    (0.00, QColor(164, 164, 170)),
+    (1.00, QColor(5, 5, 6)),
+]
+
+# Jaskrawosc podbija glownie kolory przygaszone, wiec jej rowek jest cichszy
+# niz rowek nasycenia, ktory dochodzi do pelnej teczy.
+VIBRANCE_STOPS = [
+    (0.00, QColor(138, 138, 138)),
+    (0.30, QColor(141, 122, 106)),
+    (0.60, QColor(111, 138, 143)),
+    (1.00, QColor(160, 122, 168)),
+]
+
+SATURATION_STOPS = [
+    (0.00, QColor(138, 138, 138)),
+    (0.25, QColor(210, 74, 74)),
+    (0.45, QColor(210, 192, 74)),
+    (0.65, QColor(74, 192, 112)),
+    (0.85, QColor(74, 122, 210)),
+    (1.00, QColor(176, 74, 210)),
+]
+
 
 class WheelGuard:
     """Rozstrzyga, czy kolko myszy nalezy do suwaka, czy do listy suwakow.

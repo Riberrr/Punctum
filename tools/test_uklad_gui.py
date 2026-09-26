@@ -117,7 +117,7 @@ def stage_widocznosc() -> None:
     ):
         check(f"prawy panel: {name} widoczny", fully_visible(widget, right))
     check("suwaki przewijaja sie osobno",
-          not panel.scroll_area.widget().isAncestorOf(panel.auto_button))
+          not right.scroll.widget().isAncestorOf(panel.auto_button))
 
     path = os.path.join(tempfile.gettempdir(), "punctum-uklad.png")
     window.grab().save(path)

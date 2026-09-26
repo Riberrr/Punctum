@@ -73,7 +73,6 @@ class Settings:
     noise_delay_ms: int = 260
     preview_noise_quality: str = "balanced"
     pixel_peek_zoom: float = 2.5  # powyzej tego skalujemy najblizszym sasiadem
-    show_navigator: bool = True
     # Dymki z objasnieniami. Wylaczalne, bo komus, kto zna program na
     # pamiec, wyskakujace okienka zaslaniaja suwaki.
     show_tooltips: bool = True
@@ -131,6 +130,9 @@ class Settings:
     left_panel_width: int = 260
     right_panel_width: int = 340
     filmstrip_height: int = 150
+    # Uklad sekcji w panelach (punkt 23): miejsca, kolejnosc, zwiniete,
+    # ukryte, blokada. Sprawdza go app/panele.py - tu tylko pilnujemy typu.
+    panel_layout: dict = field(default_factory=dict)
 
     # ---------------------------------------------------------- walidacja
 
@@ -177,6 +179,8 @@ class Settings:
         clean.recent_folders = unique[: clean.recent_folders_limit]
         clean.export_start_number = max(0, min(999999, int(clean.export_start_number)))
         clean.export_number_digits = max(1, min(8, int(clean.export_number_digits)))
+        if not isinstance(clean.panel_layout, dict):
+            clean.panel_layout = {}
         for name, (low, high) in LAYOUT_LIMITS.items():
             setattr(clean, name, max(low, min(high, int(getattr(clean, name)))))
         return clean

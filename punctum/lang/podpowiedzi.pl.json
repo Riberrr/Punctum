@@ -77,7 +77,6 @@
   "ustawienia.opoznienie_szumu": {"tytul": "Opóźnienie odszumiania", "opis": "Ile czekać po ruchu suwaka, zanim ruszy odszumianie podglądu. Liczy je procesor, więc na słabszym komputerze zbyt krótki czas spowalnia suwaki."},
   "ustawienia.odszumianie_podgladu": {"tytul": "Odszumianie podglądu", "opis": "Dokładność odszumiania w podglądzie i w ostrym fragmencie przy powiększeniu. Do ustawiania suwaków wystarcza wariant szybki, a eksport ma osobne ustawienie."},
   "ustawienia.podglad_pikseli": {"tytul": "Podgląd pikseli", "opis": "Powyżej tego powiększenia widać prawdziwe piksele, bez wygładzania. Przydaje się przy ocenie szumu i ostrości."},
-  "ustawienia.nawigator": {"tytul": "Nawigator", "opis": "Pokazuje w lewym panelu miniaturę całego zdjęcia z ramką widocznego fragmentu. Kliknij albo przeciągnij, żeby przejść w inne miejsce."},
   "ustawienia.podpowiedzi": {"tytul": "Podpowiedzi", "opis": "Pokazuje takie dymki jak ten po najechaniu na przycisk albo suwak. Wyłącz, gdy znasz już program na pamięć."},
   "ustawienia.opoznienie_podpowiedzi": {"tytul": "Opóźnienie podpowiedzi", "opis": "Jak długo kursor musi stać nad przyciskiem albo suwakiem, zanim pojawi się dymek. Krócej — dymki szybciej, ale częściej wyskakują przy zwykłym przesuwaniu myszy.", "uwaga": "Domyślnie 700 ms"},
   "ustawienia.blokada_kolka": {"tytul": "Blokada kółka", "opis": "Po przewinięciu listy suwaki przez ten czas nie reagują na kółko, więc przewijanie panelu nie zmienia przypadkiem wartości.", "uwaga": "0 = bez blokady"},
@@ -118,5 +117,12 @@
   "eksport.prawa": {"tytul": "Prawa autorskie", "opis": "Zaznacz, żeby wpisać prawa autorskie do plików. Wartość pochodzi z Ustawień ▸ Eksport; zmiana w tym oknie dotyczy tylko tego eksportu i ma pierwszeństwo przed polem zapisanym przy zdjęciu.", "uwaga": "np. © 2026 Imię Nazwisko"},
   "eksport.slowa": {"tytul": "Słowa kluczowe", "opis": "Dopisywane do każdego pliku, obok słów zapisanych przy zdjęciu.", "uwaga": "Oddzielaj średnikiem"},
   "eksport.temat": {"tytul": "Temat", "opis": "Wpisywany do wszystkich plików z tego eksportu; ma pierwszeństwo przed tematem zapisanym przy zdjęciu. Między eksportami nie jest pamiętany."},
-  "eksport.komentarz": {"tytul": "Komentarz", "opis": "Wpisywany do wszystkich plików z tego eksportu; ma pierwszeństwo przed komentarzem zapisanym przy zdjęciu. Między eksportami nie jest pamiętany."}
+  "eksport.komentarz": {"tytul": "Komentarz", "opis": "Wpisywany do wszystkich plików z tego eksportu; ma pierwszeństwo przed komentarzem zapisanym przy zdjęciu. Między eksportami nie jest pamiętany."},
+
+  "panele.sekcja": {"tytul": "Zwiń / rozwiń", "opis": "Zwija sekcję do samego nagłówka albo ją rozwija. To samo robi kliknięcie w nagłówek.", "uwaga": "Prawy przycisk na nagłówku: pokaż i ukryj sekcje, dostosuj układ"},
+  "panele.klodka": {"tytul": "Przesuwanie sekcji", "opis": "Odblokowana kłódka pozwala przeciągać sekcje za nagłówki: w górę i w dół panelu albo do drugiego panelu. Zablokuj, gdy układ jest gotowy, żeby niczego nie przestawić przypadkiem."},
+  "panele.okno_schowek": {"tytul": "Nieużywane", "opis": "Sekcje, których nie ma w żadnym panelu. Przeciągnij sekcję tutaj, żeby ją odłożyć, albo stąd do panelu, żeby ją przywrócić."},
+  "panele.okno_lewy": {"tytul": "Panel lewy", "opis": "Sekcje lewego panelu w kolejności od góry. Przeciągaj, żeby zmienić kolejność; pole wyboru pokazuje lub ukrywa sekcję bez zmiany jej miejsca."},
+  "panele.okno_prawy": {"tytul": "Panel prawy", "opis": "Sekcje prawego panelu w kolejności od góry. Przeciągaj, żeby zmienić kolejność; pole wyboru pokazuje lub ukrywa sekcję bez zmiany jej miejsca."},
+  "panele.okno_domyslny": {"tytul": "Przywróć układ domyślny", "opis": "Ustawia sekcje tak jak przy pierwszym uruchomieniu i pokazuje wszystkie ukryte. Zmiana wchodzi po OK."}
 }

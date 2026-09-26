@@ -58,6 +58,21 @@ QMainWindow::separator { background: #131315; width: 1px; height: 1px; }
 #sectionChevron:hover { color: #e0e0e4; }
 #sectionChevron:checked { color: #c8c8cc; }
 
+/* Sekcje paneli (punkt 23). Naglowek jak dawne etykiety sekcji; kreska
+   pod sekcja oddziela je po zwinieciu, kiedy zostaja same naglowki. */
+#panelSection { border: none; border-bottom: 1px solid #26262a; }
+#sectionTitle {
+    color: #7a7a82; font-size: 10px; font-weight: 600; letter-spacing: 1px;
+}
+#sectionGrip { color: #5a5a62; font-size: 11px; }
+#dropLine { background: #6c63ff; }
+#panelLock {
+    background: transparent; border: 1px solid transparent;
+    border-radius: 4px; padding: 3px;
+}
+#panelLock:hover { background: #2b2b30; border-color: #3c3c42; }
+#panelLock:checked { background: #34304f; border-color: #6c63ff; }
+
 QSlider::groove:horizontal {
     height: 3px; background: #3a3a40; border-radius: 1px;
 }

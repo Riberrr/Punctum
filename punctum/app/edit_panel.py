@@ -5,14 +5,13 @@ from __future__ import annotations
 import os
 
 import numpy as np
-from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtCore import QObject, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QPainter, QPainterPath
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QScrollArea,
     QSizePolicy,
     QToolButton,
     QVBoxLayout,
@@ -22,7 +21,16 @@ from PySide6.QtWidgets import (
 from ..core import EditParams
 from ..core.metadata import PhotoMetadata
 from .podpowiedzi import podpowiedz
-from .sliders import TEMPERATURE_STOPS, TINT_STOPS, ParamSlider, WheelGuard
+from .sliders import (
+    CONTRAST_STOPS,
+    EXPOSURE_STOPS,
+    SATURATION_STOPS,
+    TEMPERATURE_STOPS,
+    TINT_STOPS,
+    VIBRANCE_STOPS,
+    ParamSlider,
+    WheelGuard,
+)
 from .style import ikona
 from ..przeklad import t
 
@@ -182,7 +190,7 @@ class InfoPanel(QFrame):
             self.gps_label.setText(t("brak lokalizacji"))
 
 
-class EditPanel(QWidget):
+class EditPanel(QObject):
     """Komplet suwakow. Emituje sygnal po kazdej zmianie."""
 
     params_changed = Signal()
@@ -200,15 +208,11 @@ class EditPanel(QWidget):
         # wspolny arbiter kolka myszy dla wszystkich suwakow w panelu
         self.wheel_guard = WheelGuard()
 
-        # Gorna czesc panelu stoi w miejscu, przewija sie tylko lista
-        # suwakow. Kadrowanie i automat to czynnosci, po ktore siega sie
-        # odruchowo - przy 1080p lezaly pod krawedzia ekranu i trzeba bylo
-        # ich szukac przewijaniem.
-        fixed = QVBoxLayout()
-        fixed.setContentsMargins(0, 0, 0, 0)
-        fixed.setSpacing(4)
+        # Tresci sekcji. Same sekcje (naglowek, zwijanie, miejsce w panelu)
+        # sklada UkladPaneli - tu powstaje wylacznie to, co pod naglowkiem.
+        self.sekcje: dict[str, QWidget] = {}
 
-        fixed.addWidget(self._section(t("Kadrowanie i obrót")))
+        crop = self._tresc("kadrowanie")
         self.crop_button = QPushButton()
         self.crop_button.setIcon(ikona("crop"))
         self.crop_button.setIconSize(QSize(18, 18))
@@ -225,84 +229,63 @@ class EditPanel(QWidget):
             ("rotate-180", 180, "edycja.obrot_180"),
             ("rotate-right", 90, "edycja.obrot_prawo"),
         ):
-            # Same ikony, bez napisow: kierunek widac na strzalce, a wiersz
-            # pomiesci pozniej przycisk kadrowania i "Wyzeruj kadr" (punkt 25).
+            # Same ikony, bez napisow: kierunek widac na strzalce.
             button = QPushButton()
             button.setIcon(ikona(nazwa))
             button.setIconSize(QSize(18, 18))
             podpowiedz(button, tip)
             button.clicked.connect(lambda _=False, s=step: self.orientation_step.emit(s))
             rotate_row.addWidget(button, 1)
-        fixed.addLayout(rotate_row)
+        crop.addLayout(rotate_row)
 
-        self._add(fixed, "rotation", t("Kąt"), -45, 45, 0, 1, "°")
+        self._add(crop, "rotation", t("Kąt"), -45, 45, 0, 1, "°")
 
         self.crop_reset_button = QPushButton(t("Wyzeruj kadr"))
         podpowiedz(self.crop_reset_button, "edycja.wyzeruj_kadr")
         self.crop_reset_button.clicked.connect(self.crop_reset_requested.emit)
-        fixed.addWidget(self.crop_reset_button)
+        crop.addWidget(self.crop_reset_button)
 
+        # Automat i zerowanie dzialaja na cale zdjecie, nie na jedna sekcje,
+        # dlatego stoja na stale u gory panelu, poza przewijana lista.
         self.auto_button = QPushButton(t("Automatycznie"))
         podpowiedz(self.auto_button, "edycja.automatycznie")
         self.auto_button.clicked.connect(self.auto_requested.emit)
         self.reset_button = QPushButton(t("Wyzeruj"))
         podpowiedz(self.reset_button, "edycja.wyzeruj")
         self.reset_button.clicked.connect(self.reset_requested.emit)
-        action_row = QHBoxLayout()
+        self.pasek_akcji = QWidget()
+        action_row = QHBoxLayout(self.pasek_akcji)
+        action_row.setContentsMargins(0, 0, 0, 0)
         action_row.setSpacing(4)
         action_row.addWidget(self.auto_button, 1)
         action_row.addWidget(self.reset_button, 1)
-        fixed.addSpacing(6)
-        fixed.addLayout(action_row)
 
-        inner = QWidget()
-        layout = QVBoxLayout(inner)
-        layout.setContentsMargins(0, 0, 8, 8)
-        layout.setSpacing(4)
-
-        layout.addWidget(self._section(t("Balans bieli")))
+        layout = self._tresc("balans")
         self._add(layout, "temperature", t("Temperatura"), 2000, 15000, 5500, 0, " K",
                   gradient=TEMPERATURE_STOPS)
         self._add(layout, "tint", t("Tinta"), -100, 100, 0, gradient=TINT_STOPS)
 
-        layout.addWidget(self._section(t("Odcień")))
-        self._add(layout, "exposure", t("Ekspozycja"), -5, 5, 0, 2)
-        self._add(layout, "contrast", t("Kontrast"), -100, 100, 0)
+        layout = self._tresc("ton")
+        self._add(layout, "exposure", t("Ekspozycja"), -5, 5, 0, 2, gradient=EXPOSURE_STOPS)
+        self._add(layout, "contrast", t("Kontrast"), -100, 100, 0, gradient=CONTRAST_STOPS)
         self._add(layout, "highlights", t("Podświetlenia"), -100, 100, 0)
         self._add(layout, "shadows", t("Cienie"), -100, 100, 0)
         self._add(layout, "whites", t("Biele"), -100, 100, 0)
         self._add(layout, "blacks", t("Czernie"), -100, 100, 0)
 
-        layout.addWidget(self._section(t("Obecność")))
-        self._add(layout, "vibrance", t("Jaskrawość"), -100, 100, 0)
-        self._add(layout, "saturation", t("Nasycenie"), -100, 100, 0)
+        layout = self._tresc("obecnosc")
+        self._add(layout, "vibrance", t("Jaskrawość"), -100, 100, 0, gradient=VIBRANCE_STOPS)
+        self._add(layout, "saturation", t("Nasycenie"), -100, 100, 0, gradient=SATURATION_STOPS)
 
-        layout.addWidget(self._section(t("Wyostrzanie")))
+        layout = self._tresc("wyostrzanie")
         self._add(layout, "sharpen_amount", t("Ilość"), 0, 150, 40)
         self._add(layout, "sharpen_radius", t("Promień"), 0.5, 3.0, 1.0, decimals=1)
         self._add(layout, "sharpen_detail", t("Szczegóły"), 0, 100, 25)
         self._add(layout, "sharpen_masking", t("Maskowanie"), 0, 100, 0)
 
-        layout.addWidget(self._section(t("Usuwanie szumu")))
+        layout = self._tresc("szum")
         self._add(layout, "noise_luminance", t("Szum jasności"), 0, 100, 0)
         self._add(layout, "noise_color", t("Szum koloru"), 0, 100, 25)
-        layout.addStretch(1)
-
-        scroll = QScrollArea()
-        scroll.setWidget(inner)
-        scroll.setWidgetResizable(True)
-        scroll.setFrameShape(QFrame.NoFrame)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        # Kazde przewiniecie listy zglaszamy arbitrowi. To ono uruchamia
-        # blokade, dzieki ktorej suwaki nie lapia kolka w trakcie przewijania.
-        scroll.verticalScrollBar().valueChanged.connect(self.wheel_guard.note_panel_scroll)
-        self.scroll_area = scroll
-
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)
-        outer.setSpacing(6)
-        outer.addLayout(fixed)
-        outer.addWidget(scroll, 1)
 
     def set_wheel_protection(self, lockout_ms: int, dwell_ms: int = 220) -> None:
         self.wheel_guard.lockout_ms = max(0, int(lockout_ms))
@@ -310,10 +293,13 @@ class EditPanel(QWidget):
 
     # --- budowanie ------------------------------------------------------
 
-    def _section(self, title: str) -> QLabel:
-        label = QLabel(title.upper())
-        label.setObjectName("sectionLabel")
-        return label
+    def _tresc(self, klucz: str) -> QVBoxLayout:
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
+        self.sekcje[klucz] = widget
+        return layout
 
     def _add(self, layout, key, label, lo, hi, default=0.0, decimals=0, suffix="",
              gradient=None) -> None:

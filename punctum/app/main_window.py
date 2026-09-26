@@ -63,6 +63,7 @@ from .gpu_renderer import GpuRenderer
 from .image_view import ImageView
 from .map_view import MapView
 from .navigator import Navigator
+from .panele import LEWY, PRAWY, UkladPaneli
 from .podpowiedzi import StylPodpowiedzi, WylacznikPodpowiedzi, podpowiedz
 # "O programie" nie ma osobnego okna - to strona w ustawieniach.
 from .settings_dialog import PAGE_ABOUT, SettingsDialog
@@ -210,7 +211,11 @@ class MainWindow(QMainWindow):
         self.exif_panel = ExifPanel()
         self.exif_panel.changed.connect(self._on_metadata_changed)
         self.exif_panel.write_requested.connect(self._write_metadata_to_originals)
-        self.exif_panel.setMinimumHeight(240)
+        # 170, nie 240: od punktu 23 kazda sekcja lewego panelu ma naglowek
+        # (razem ~120 px). Przy 1080p i szerszym panelu przyciski rozwinietych
+        # metadanych wypadaly pod krawedz; lista pol ma wlasne przewijanie,
+        # a przy wolnym miejscu sekcja i tak sie rozciaga.
+        self.exif_panel.setMinimumHeight(170)
         self.info_panel.set_details(self.exif_panel)
 
         self.zoom_panel = ZoomPanel(ImageView.MAX_ZOOM)
@@ -231,37 +236,40 @@ class MainWindow(QMainWindow):
         compare_row.addWidget(self.before_button, 1)
         compare_row.addStretch(1)
 
-        # Lewy panel: gdzie jestem w zdjeciu i co to za zdjecie. Przewija sie
-        # w nim tylko rozwiniety EXIF (ma wlasne przewijanie), dlatego sekcja
-        # danych dostaje rozciaganie dopiero po rozwinieciu - zwinieta nie
-        # moze rozdmuchac ramki na pol okna.
-        left = QWidget()
+        compare = QWidget()
+        compare.setLayout(compare_row)
+
+        # Panele sa zbudowane z sekcji, ktore uzytkownik zwija, ukrywa
+        # i przestawia (punkt 23). Uklad trzyma UkladPaneli pod stalymi
+        # kluczami; tu tylko podajemy mu tresci.
+        self.panele = UkladPaneli(self)
+        for klucz, tresc in (
+            ("nawigator", self.navigator),
+            ("powiekszenie", self.zoom_panel),
+            ("przed_po", compare),
+            ("dane", self.info_panel),
+            ("histogram", self.histogram_widget),
+            *self.edit_panel.sekcje.items(),
+        ):
+            self.panele.dodaj_sekcje(klucz, tresc)
+        # Rozwiniete metadane maja wlasne przewijanie, wiec sekcja danych
+        # bierze wolne miejsce panelu dopiero po rozwinieciu.
+        self.info_panel.details_toggled.connect(self.panele.sekcje["dane"].ustaw_rozciaganie)
+
+        left = self.panele.utworz_panel(LEWY)
         left.setObjectName("leftPanel")
-        left_layout = QVBoxLayout(left)
-        left_layout.setContentsMargins(10, 10, 10, 10)
-        left_layout.setSpacing(8)
-        left_layout.addWidget(self.navigator)
-        left_layout.addWidget(self.zoom_panel)
-        left_layout.addLayout(compare_row)
-        left_layout.addWidget(self.info_panel)
-        left_layout.addStretch(1)
-        info_index = left_layout.indexOf(self.info_panel)
-
-        def give_space_to_details(on: bool) -> None:
-            left_layout.setStretch(info_index, 1 if on else 0)
-            left_layout.setStretch(info_index + 1, 0 if on else 1)
-
-        self.info_panel.details_toggled.connect(give_space_to_details)
         self.left_panel = left
-
-        right = QWidget()
+        right = self.panele.utworz_panel(PRAWY, self.edit_panel.pasek_akcji)
         right.setObjectName("rightPanel")
-        right_layout = QVBoxLayout(right)
-        right_layout.setContentsMargins(10, 10, 10, 0)
-        right_layout.setSpacing(8)
-        right_layout.addWidget(self.histogram_widget)
-        right_layout.addWidget(self.edit_panel, 1)
         self.right_panel = right
+        # Sekcje z suwakami mozna przeniesc do dowolnego panelu, wiec arbiter
+        # kolka musi wiedziec o przewijaniu obu.
+        for panel in (left, right):
+            panel.scroll.verticalScrollBar().valueChanged.connect(
+                self.edit_panel.wheel_guard.note_panel_scroll
+            )
+        self.panele.zastosuj(self.settings.panel_layout)
+        self.panele.zmieniony.connect(self._remember_panels)
 
         # Szerokosci ustawia uzytkownik, ale tylko w granicach. Jawne minimum
         # ma pierwszenstwo przed tym, o co prosi zawartosc - bez tego
@@ -439,6 +447,13 @@ class MainWindow(QMainWindow):
             action.setShortcut(QKeySequence(shortcut))
             action.triggered.connect(slot)
             view_menu.addAction(action)
+        view_menu.addSeparator()
+        # Menu budowane przy kazdym otwarciu: pokazuje biezacy uklad,
+        # takze po zmianach zrobionych przeciaganiem albo w oknie ukladu.
+        self.panels_menu = view_menu.addMenu(t("Panele"))
+        self.panels_menu.aboutToShow.connect(
+            lambda: self.panele.wypelnij_menu(self.panels_menu, self)
+        )
 
         help_menu = self.menuBar().addMenu(t("Pomo&c"))
         about_action = QAction(t("O programie"), self)
@@ -476,6 +491,10 @@ class MainWindow(QMainWindow):
             self.settings.right_panel_width = right
         if self.filmstrip.height() > 0:
             self.settings.filmstrip_height = self.filmstrip.height()
+
+    def _remember_panels(self) -> None:
+        """Uklad sekcji do ustawien; na dysk idzie przy zamknieciu okna."""
+        self.settings.panel_layout = self.panele.do_zapisu()
 
     def _build_recent_menu(self) -> None:
         """Lista ostatnich katalogow. Nieistniejace pomijamy, ale nie kasujemy.
@@ -535,7 +554,6 @@ class MainWindow(QMainWindow):
         self.debounce.setInterval(DEBOUNCE_GPU_MS if self.gpu_allowed() else DEBOUNCE_CPU_MS)
         self.noise_timer.setInterval(s.noise_delay_ms)
         self.view.set_detail_delay(s.detail_delay_ms)
-        self.navigator.setVisible(s.show_navigator)
         self.tooltip_switch.wlaczone = s.show_tooltips
         self.tooltip_style.opoznienie_ms = s.tooltip_delay_ms
         self.edit_panel.set_wheel_protection(s.wheel_lockout_ms, s.wheel_dwell_ms)

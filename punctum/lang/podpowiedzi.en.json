@@ -78,7 +78,6 @@
   "ustawienia.opoznienie_szumu": {"tytul": "Noise reduction delay", "opis": "How long to wait after a slider move before preview noise reduction starts. It runs on the CPU, so on a slower computer too short a time slows the sliders down."},
   "ustawienia.odszumianie_podgladu": {"tytul": "Preview noise reduction", "opis": "Precision of noise reduction in the preview and in the sharp detail when zoomed in. The fast variant is enough for setting sliders; export has its own setting."},
   "ustawienia.podglad_pikseli": {"tytul": "Pixel view", "opis": "Above this zoom you see real pixels, without smoothing. Useful for judging noise and sharpness."},
-  "ustawienia.nawigator": {"tytul": "Navigator", "opis": "Shows a thumbnail of the whole photo in the left panel, with a frame around the visible part. Click or drag to move elsewhere."},
   "ustawienia.podpowiedzi": {"tytul": "Tooltips", "opis": "Shows bubbles like this one when you hover over a button or slider. Turn them off once you know the program by heart."},
   "ustawienia.opoznienie_podpowiedzi": {"tytul": "Tooltip delay", "opis": "How long the cursor has to rest over a button or slider before the bubble appears. Shorter means faster bubbles, but they pop up more often during ordinary mouse moves.", "uwaga": "Default 700 ms"},
   "ustawienia.blokada_kolka": {"tytul": "Wheel lock", "opis": "After scrolling the list, sliders ignore the wheel for this long, so scrolling the panel does not change values by accident.", "uwaga": "0 = no lock"},
@@ -119,5 +118,12 @@
   "eksport.prawa": {"tytul": "Copyright", "opis": "Check to write the copyright into the files. The value comes from Settings ▸ Export; a change in this window applies to this export only and takes precedence over the field saved with the photo.", "uwaga": "e.g. © 2026 First Last"},
   "eksport.slowa": {"tytul": "Keywords", "opis": "Added to every file, next to the keywords saved with the photo.", "uwaga": "Separate with semicolons"},
   "eksport.temat": {"tytul": "Subject", "opis": "Written into all files from this export; takes precedence over the subject saved with the photo. Not remembered between exports."},
-  "eksport.komentarz": {"tytul": "Comment", "opis": "Written into all files from this export; takes precedence over the comment saved with the photo. Not remembered between exports."}
+  "eksport.komentarz": {"tytul": "Comment", "opis": "Written into all files from this export; takes precedence over the comment saved with the photo. Not remembered between exports."},
+
+  "panele.sekcja": {"tytul": "Collapse / expand", "opis": "Collapses the section to its header or expands it. Clicking the header does the same.", "uwaga": "Right-click a header: show and hide sections, customize layout"},
+  "panele.klodka": {"tytul": "Moving sections", "opis": "With the lock open you can drag sections by their headers: up and down the panel or into the other panel. Lock it when the layout is ready so nothing moves by accident."},
+  "panele.okno_schowek": {"tytul": "Unused", "opis": "Sections that are in neither panel. Drag a section here to put it away, or from here into a panel to bring it back."},
+  "panele.okno_lewy": {"tytul": "Left panel", "opis": "Sections of the left panel, top to bottom. Drag to reorder; the checkbox shows or hides a section without moving it."},
+  "panele.okno_prawy": {"tytul": "Right panel", "opis": "Sections of the right panel, top to bottom. Drag to reorder; the checkbox shows or hides a section without moving it."},
+  "panele.okno_domyslny": {"tytul": "Restore default layout", "opis": "Arranges the sections as on first start and shows all hidden ones. Takes effect after OK."}
 }

@@ -186,7 +186,9 @@ def stage_metadane() -> None:
              "wczytanie JPEG-a")
 
     # Strzalka w sekcji z danymi zdjecia rozwija metadane w dol.
-    column = window.info_panel.parentWidget()
+    # Kolumna to caly lewy panel: dane zdjecia leza w nim w sekcji (punkt 23),
+    # a pasek przewijania panelu moze zwezic sama sekcje o swoja szerokosc.
+    column = window.left_panel
     before_width = column.width()
     before_view = window.view.width()
     window.info_panel.details_button.click()

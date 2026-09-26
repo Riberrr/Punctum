@@ -154,13 +154,11 @@ def stage_engines() -> None:
           f"proxy {window.proxy.shape[1]}×{window.proxy.shape[0]} px, "
           f"oryginał {window.full_raw.shape[1]}×{window.full_raw.shape[0]} px")
 
-    # --- ukrycie nawigatora ------------------------------------------
-    window.settings.show_navigator = False
-    window._apply_settings()
+    # --- ukrycie nawigatora (teraz przez uklad paneli, punkt 23) --------
+    window.panele.przelacz_ukrycie("nawigator")
     app.processEvents()
     check("nawigator daje się ukryć", not window.navigator.isVisible())
-    window.settings.show_navigator = True
-    window._apply_settings()
+    window.panele.przelacz_ukrycie("nawigator")
 
 
 def stage_dialog() -> None:
