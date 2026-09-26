@@ -150,7 +150,7 @@ Wersje wyszarzone tworzy Qt. W kodzie: <code>style.ikona("nazwa")</code>.</p>
 <li>Tło nie ma tekstu. Nazwę, hasło, wersję i stan ładowania rysuje program w języku interfejsu.</li>
 <li>Znak 64 px w lewym dolnym rogu, pod nim hasło; na samym dole stan i pasek postępu 3 px w fiolecie marki.</li>
 <li>Ekran schodzi, gdy okno jest gotowe do pracy: pierwsze zdjęcie pokazane i widoczne miniatury wczytane
-(nie krócej niż 1,2 s, nie dłużej niż 30 s).</li></ul>
+— i zostaje jeszcze 2,5 s, żeby start nie kończył się szarpnięciem (limit 30 s).</li></ul>
 
 <h2 id="pliki"><small>10</small>Pliki</h2>
 <table><tr><th>Plik</th><th>Do czego</th></tr>
@@ -162,7 +162,7 @@ Wersje wyszarzone tworzy Qt. W kodzie: <code>style.ikona("nazwa")</code>.</p>
 <tr><td><code>punctum/assets/ekran-startowy*.png</code></td><td>tło ekranu startowego</td></tr>
 <tr><td><code>tools/make_assets.py</code></td><td>generuje wszystkie powyższe</td></tr>
 <tr><td><code>tools/make_brandbook.py</code></td><td>generuje tę stronę i zrzuty ekranu startowego</td></tr>
-<tr><td><code>tools/utworz_skroty.py</code></td><td>skróty z ikoną na pulpicie i w menu Start</td></tr></table>
+<tr><td><code>tools/utworz_skroty.py</code></td><td>skrót z ikoną w katalogu programu (opcjonalnie pulpit i menu Start)</td></tr></table>
 
 <footer>Punctum. — brandbook generowany z plików programu. Zmiana znaku, kolorów albo ikon: najpierw
 <code>tools/make_assets.py</code>, potem <code>tools/make_brandbook.py</code>.</footer>

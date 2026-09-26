@@ -12,8 +12,8 @@ with a preview computed on the graphics card and geotagging on a map.
 
 ## Running
 
-**Shortcuts with the program icon** (desktop and Start menu, no console window;
-pin the Start menu one to the taskbar):
+**A shortcut with the program icon** (`Punctum.lnk` in the program folder, no console
+window; add `--pulpit` / `--menu-start` for copies on the desktop and in the Start menu):
 
 ```powershell
 .venv\Scripts\python.exe tools\utworz_skroty.py

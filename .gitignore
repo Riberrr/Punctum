@@ -24,6 +24,9 @@ out/
 /*.tiff
 /*.dng
 
+# skrot z tools/utworz_skroty.py - ma w sobie sciezki tego komputera
+/Punctum.lnk
+
 # lokalne ustawienia edytorów
 .vscode/
 .idea/

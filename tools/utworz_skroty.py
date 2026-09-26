@@ -1,6 +1,11 @@
-"""Skroty uruchamiajace Punctum: na pulpicie i w menu Start (Windows).
+"""Skrot uruchamiajacy Punctum w katalogu programu (Windows).
 
-Uzycie:  .venv\\Scripts\\python.exe tools\\utworz_skroty.py [--bez-pulpitu]
+Uzycie:  .venv\\Scripts\\python.exe tools\\utworz_skroty.py [--pulpit] [--menu-start]
+
+Domyslnie powstaje Punctum.lnk obok Punctum.bat. Skrot ma w sobie sciezki
+bezwzgledne tego komputera, dlatego nie trafia do repozytorium (.gitignore)
+- kazdy tworzy go u siebie tym skryptem. --pulpit i --menu-start dokladaja
+kopie w tamtych miejscach.
 
 Skrot uruchamia pythonw.exe z `-m punctum` - bez okna konsoli, z ikona
 programu. Przeciagniety na skrot folder ze zdjeciami otwiera sie od razu
@@ -127,8 +132,10 @@ def main() -> int:
     if not os.path.isfile(PYTHONW):
         print(f"Brak {PYTHONW} - najpierw utworz srodowisko .venv (README).")
         return 1
-    cele = [os.path.join(folder_specjalny("Programs"), "Punctum.lnk")]
-    if "--bez-pulpitu" not in sys.argv:
+    cele = [os.path.join(KATALOG, "Punctum.lnk")]
+    if "--menu-start" in sys.argv:
+        cele.append(os.path.join(folder_specjalny("Programs"), "Punctum.lnk"))
+    if "--pulpit" in sys.argv:
         cele.append(os.path.join(folder_specjalny("Desktop"), "Punctum.lnk"))
     for cel in cele:
         utworz_skrot(cel)
@@ -138,8 +145,7 @@ def main() -> int:
         except OSError as blad:  # skrot i tak dziala, gorzej tylko z przypinaniem
             dopisek = f"  (bez identyfikatora programu: {blad})"
         print(f"skrot: {cel}{dopisek}")
-    print("Gotowe. Punctum uruchomisz z pulpitu albo z menu Start; "
-          "skrot z menu Start mozna przypiac do paska zadan.")
+    print("Gotowe. Skrot mozna skopiowac w dowolne miejsce albo przypiac do paska zadan.")
     return 0
 
 

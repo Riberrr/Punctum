@@ -44,6 +44,9 @@ HASLA = (
 # i tak jest dluzszy, wiec to ograniczenie przestanie byc odczuwalne.
 MINIMUM_MS = 1200
 MAKSIMUM_MS = 30000
+# Po gotowosci okna ekran zostaje jeszcze chwile - zyczenie uzytkownika:
+# zejscie w tej samej chwili, gdy pojawia sie zdjecie, bylo zbyt nagle.
+PO_GOTOWOSCI_MS = 2500
 OKNO_GOTOWE = 0.6  # czesc paska przypadajaca na etapy do zbudowania okna
 
 FIOLET, FIOLET_JASNY = QColor("#6c63ff"), QColor("#7b73ff")
@@ -113,7 +116,7 @@ class EkranStartowy(QSplashScreen):
                 zegar.stop()
                 self.stan, self.postep = t("Gotowe"), 1.0
                 self.update()
-                self.zakoncz(okno)
+                QTimer.singleShot(PO_GOTOWOSCI_MS, lambda: self.zakoncz(okno))
                 return
             napis, ulamek = teraz
             # etapy sprzed zbudowania okna zajely pasek do OKNO_GOTOWE

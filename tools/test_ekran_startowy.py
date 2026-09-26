@@ -60,6 +60,7 @@ check("krok: postep przyciety do 1", ekran.postep == 1.0)
 okno = QWidget()
 okno.show()
 es.MINIMUM_MS = 0
+es.PO_GOTOWOSCI_MS = 300
 ekran.zakoncz(okno)
 app.processEvents()
 check("zakoncz: ekran schowany", not ekran.isVisible())
@@ -72,11 +73,16 @@ ekran = es.EkranStartowy()
 ekran.show()
 kolejne = iter([("zdjecie", 0.0), ("miniatury", 0.5), ("miniatury", 0.2)])
 postepy = []
+gotowe_o = None
 
 
 def stan():
+    global gotowe_o
     postepy.append(ekran.postep)
-    return next(kolejne, None)
+    wynik = next(kolejne, None)
+    if wynik is None and gotowe_o is None:
+        gotowe_o = time.monotonic()
+    return wynik
 
 
 ekran.czekaj_na(okno, stan)
@@ -86,6 +92,8 @@ while ekran.isVisible() and time.monotonic() < koniec:
     app.processEvents()
     time.sleep(0.02)
 check("czekaj_na: schodzi po gotowosci", not ekran.isVisible())
+check("czekaj_na: zostaje chwile po gotowosci", time.monotonic() - gotowe_o >= 0.28,
+      f"{time.monotonic() - gotowe_o:.2f} s")
 check("czekaj_na: pasek nie cofa sie", postepy == sorted(postepy), str(postepy))
 check("czekaj_na: na koniec Gotowe i pelny pasek", ekran.stan == "Gotowe" and ekran.postep == 1.0)
 okno.close()

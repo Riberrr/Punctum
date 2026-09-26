@@ -12,8 +12,8 @@ z podglądem liczonym na karcie graficznej i geotagowaniem na mapie.
 
 ## Uruchomienie
 
-**Skróty z ikoną programu** (pulpit i menu Start, bez okna konsoli; skrót
-z menu Start można przypiąć do paska zadań):
+**Skrót z ikoną programu** (`Punctum.lnk` w katalogu programu, bez okna konsoli;
+`--pulpit` / `--menu-start` dokładają kopie na pulpicie i w menu Start):
 
 ```powershell
 .venv\Scripts\python.exe tools\utworz_skroty.py
