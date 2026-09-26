@@ -47,6 +47,7 @@ def main() -> int:
     ekran.krok(t("Przygotowanie okna…"), 0.4)
     window = MainWindow()
     window.show()
+    ekran.raise_()  # na wypadek, gdyby system zignorowal "na wierzchu" przy aktywacji okna
 
     folder = sys.argv[1] if len(sys.argv) > 1 else ""
     if not folder and window.settings.reopen_last_folder:

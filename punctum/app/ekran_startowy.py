@@ -79,7 +79,9 @@ def _tlo() -> QPixmap:
 
 class EkranStartowy(QSplashScreen):
     def __init__(self, haslo: str | None = None):
-        super().__init__(_tlo())
+        # Zawsze na wierzchu: ekran zostaje po pokazaniu glownego okna (czeka na
+        # zdjecie i miniatury), a okno przy show() przejmuje fokus i przykrywalo go.
+        super().__init__(_tlo(), Qt.WindowType.WindowStaysOnTopHint)
         self.haslo = haslo or random.choice(HASLA)
         self.stan = t("Uruchamianie…")
         self.postep = 0.0
@@ -119,6 +121,7 @@ class EkranStartowy(QSplashScreen):
                 QTimer.singleShot(PO_GOTOWOSCI_MS, lambda: self.zakoncz(okno))
                 return
             napis, ulamek = teraz
+            self.raise_()  # okno bywa aktywowane pozniej (np. po wczytaniu zdjecia)
             # etapy sprzed zbudowania okna zajely pasek do OKNO_GOTOWE
             self.stan = napis
             self.postep = max(self.postep, OKNO_GOTOWE + (1.0 - OKNO_GOTOWE) * ulamek)

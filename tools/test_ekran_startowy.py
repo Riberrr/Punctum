@@ -43,6 +43,10 @@ bez = [h for h in es.HASLA if przeklad.t(h) == h]
 check("en: kazde haslo przetlumaczone", not bez, "; ".join(bez))
 check("en: wersja", przeklad.t("wersja {numer}", numer="1.0") == "version 1.0")
 ekran = es.EkranStartowy()
+from PySide6.QtCore import Qt  # noqa: E402
+
+check("okno: zawsze na wierzchu (glowne okno go nie przykryje)",
+      bool(ekran.windowFlags() & Qt.WindowType.WindowStaysOnTopHint))
 check("en: stan poczatkowy po angielsku", ekran.stan == "Starting…", ekran.stan)
 obraz = ekran.grab()
 check("en: rysuje sie w rozmiarze tla", obraz.width() == es.SZEROKOSC and obraz.height() == es.WYSOKOSC,
