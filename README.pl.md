@@ -1,4 +1,8 @@
+<img src="punctum/assets/logo-512.png" alt="" width="72" align="left">
+
 # Punctum
+
+*Dla tego jednego szczegółu.*
 
 Nieniszczący edytor zdjęć — RAW (RW2, CR2/CR3, NEF, ARW, DNG) oraz JPEG,
 z podglądem liczonym na karcie graficznej i geotagowaniem na mapie.

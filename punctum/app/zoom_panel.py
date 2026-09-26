@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import math
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QSlider, QVBoxLayout, QWidget
 
+from .style import ikona
 from .podpowiedzi import podpowiedz
 from ..przeklad import t
 
@@ -40,10 +41,14 @@ class ZoomPanel(QWidget):
         podpowiedz(self.slider, "podglad.powiekszenie")
         self.slider.valueChanged.connect(self._on_slider)
 
-        self.fit_button = QPushButton(t("Dopasuj"))
+        self.fit_button = QPushButton()
+        self.fit_button.setIcon(ikona("fit"))
+        self.fit_button.setIconSize(QSize(18, 18))
         podpowiedz(self.fit_button, "podglad.dopasuj")
         self.fit_button.clicked.connect(self.fit_requested.emit)
-        self.actual_button = QPushButton("100 %")
+        self.actual_button = QPushButton()
+        self.actual_button.setIcon(ikona("actual-size"))
+        self.actual_button.setIconSize(QSize(18, 18))
         podpowiedz(self.actual_button, "podglad.sto")
         self.actual_button.clicked.connect(self.actual_requested.emit)
         self.zoom_label = QLabel("—")

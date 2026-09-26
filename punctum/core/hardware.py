@@ -103,10 +103,43 @@ def _cpu_name_macos() -> str:
         return ""
 
 
+def _physical_cores_windows() -> int:
+    """Rdzenie fizyczne wprost z Windows API, w mikrosekundach.
+
+    Wczesniej pytalismy PowerShell (Get-CimInstance), co przy kazdym starcie
+    kosztowalo 1,3 s - najdluzszy pojedynczy krok budowy glownego okna.
+    """
+    import ctypes
+    from ctypes import wintypes
+
+    # SYSTEM_LOGICAL_PROCESSOR_INFORMATION: maska (ULONG_PTR), rodzaj powiazania
+    # (enum), unia 16 bajtow. Czytamy tylko rodzaj; 0 = RelationProcessorCore.
+    class Info(ctypes.Structure):
+        _fields_ = [("mask", ctypes.c_size_t), ("relationship", ctypes.c_int),
+                    ("unia", ctypes.c_ulonglong * 2)]
+
+    kernel = ctypes.windll.kernel32
+    size = wintypes.DWORD(0)
+    kernel.GetLogicalProcessorInformation(None, ctypes.byref(size))
+    count = size.value // ctypes.sizeof(Info)
+    if count == 0:
+        return 0
+    buffer = (Info * count)()
+    if not kernel.GetLogicalProcessorInformation(buffer, ctypes.byref(size)):
+        return 0
+    return sum(1 for entry in buffer if entry.relationship == 0)
+
+
 def _physical_cores() -> int:
     """Rdzenie fizyczne - istotne, bo watki logiczne nie daja pelnej wydajnosci."""
     if platform.system() == "Windows":
         try:
+            cores = _physical_cores_windows()
+            if cores:
+                return cores
+        except Exception:
+            pass
+        try:  # zapasowo stara droga, gdyby API zawiodlo
             output = subprocess.run(
                 ["powershell", "-NoProfile", "-Command",
                  "(Get-CimInstance Win32_Processor | "

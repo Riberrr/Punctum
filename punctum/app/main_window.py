@@ -66,7 +66,7 @@ from .navigator import Navigator
 from .podpowiedzi import StylPodpowiedzi, WylacznikPodpowiedzi, podpowiedz
 # "O programie" nie ma osobnego okna - to strona w ustawieniach.
 from .settings_dialog import PAGE_ABOUT, SettingsDialog
-from .style import stylesheet
+from .style import ikona, stylesheet
 from .workers import (
     AutoToneTask,
     DetailRenderTask,
@@ -220,6 +220,7 @@ class MainWindow(QMainWindow):
         self.detail_label = self.zoom_panel.detail_label
 
         self.before_button = QPushButton(t("Przed / po"))
+        self.before_button.setIcon(ikona("before-after"))
         podpowiedz(self.before_button, "podglad.przed_po")
         self.before_button.pressed.connect(self._show_before)
         self.before_button.released.connect(self._show_after)
@@ -274,6 +275,7 @@ class MainWindow(QMainWindow):
         # zajmowal caly wiersz na kilka przyciskow, ktore teraz maja swoje
         # miejsca w panelach.
         self.export_button = QPushButton(t("Eksportuj…"))
+        self.export_button.setIcon(ikona("export"))
         podpowiedz(self.export_button, "okno.eksportuj")
         self.export_button.clicked.connect(self.export_current)
 

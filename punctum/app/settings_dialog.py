@@ -462,10 +462,27 @@ class SettingsDialog(QDialog):
         layout = QVBoxLayout(page)
         layout.setSpacing(8)
 
+        import os
+
+        from PySide6.QtGui import QIcon
+
+        from .style import ASSETS_DIRECTORY
+
+        logo = QLabel()
+        logo.setPixmap(QIcon(os.path.join(ASSETS_DIRECTORY, "logo.svg")).pixmap(56, 56))
         title = QLabel("Punctum")
         title.setObjectName("cameraLabel")
-        layout.addWidget(title)
-        layout.addWidget(_hint(t("Wersja {wersja} — edytor zdjęć RAW i JPEG", wersja=__version__)))
+        naglowek = QVBoxLayout()
+        naglowek.setSpacing(2)
+        naglowek.addStretch(1)
+        naglowek.addWidget(title)
+        naglowek.addWidget(_hint(t("Wersja {wersja} — edytor zdjęć RAW i JPEG", wersja=__version__)))
+        naglowek.addStretch(1)
+        wiersz = QHBoxLayout()
+        wiersz.setSpacing(12)
+        wiersz.addWidget(logo)
+        wiersz.addLayout(naglowek, 1)
+        layout.addLayout(wiersz)
 
         line = QFrame()
         line.setFrameShape(QFrame.HLine)

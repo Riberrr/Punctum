@@ -6,7 +6,7 @@ import os
 
 import numpy as np
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QColor, QIcon, QPainter, QPainterPath
+from PySide6.QtGui import QColor, QPainter, QPainterPath
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -23,7 +23,7 @@ from ..core import EditParams
 from ..core.metadata import PhotoMetadata
 from .podpowiedzi import podpowiedz
 from .sliders import TEMPERATURE_STOPS, TINT_STOPS, ParamSlider, WheelGuard
-from .style import ASSETS_DIRECTORY
+from .style import ikona
 from ..przeklad import t
 
 
@@ -210,7 +210,7 @@ class EditPanel(QWidget):
 
         fixed.addWidget(self._section(t("Kadrowanie i obrót")))
         self.crop_button = QPushButton()
-        self.crop_button.setIcon(QIcon(os.path.join(ASSETS_DIRECTORY, "crop.svg")))
+        self.crop_button.setIcon(ikona("crop"))
         self.crop_button.setIconSize(QSize(18, 18))
         self.crop_button.setCheckable(True)
         podpowiedz(self.crop_button, "edycja.kadrowanie")
@@ -220,12 +220,16 @@ class EditPanel(QWidget):
         rotate_row.setSpacing(4)
         rotate_row.addWidget(self.crop_button)
         rotate_row.addSpacing(6)
-        for label, step, tip in (
-            ("↺ 90°", -90, "edycja.obrot_lewo"),
-            ("180°", 180, "edycja.obrot_180"),
-            ("90° ↻", 90, "edycja.obrot_prawo"),
+        for nazwa, step, tip in (
+            ("rotate-left", -90, "edycja.obrot_lewo"),
+            ("rotate-180", 180, "edycja.obrot_180"),
+            ("rotate-right", 90, "edycja.obrot_prawo"),
         ):
-            button = QPushButton(label)
+            # Same ikony, bez napisow: kierunek widac na strzalce, a wiersz
+            # pomiesci pozniej przycisk kadrowania i "Wyzeruj kadr" (punkt 25).
+            button = QPushButton()
+            button.setIcon(ikona(nazwa))
+            button.setIconSize(QSize(18, 18))
             podpowiedz(button, tip)
             button.clicked.connect(lambda _=False, s=step: self.orientation_step.emit(s))
             rotate_row.addWidget(button, 1)

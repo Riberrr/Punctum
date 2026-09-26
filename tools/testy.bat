@@ -30,7 +30,7 @@ goto argumenty
 if not defined FOTO set FOTO=%PUNCTUM_TESTY%
 
 echo === bez interfejsu ===
-for %%T in (test_geo test_sidecar test_auto_zasady test_jpeg test_exif test_podpowiedzi test_przeklad) do (
+for %%T in (test_geo test_sidecar test_auto_zasady test_jpeg test_exif test_podpowiedzi test_przeklad test_ekran_startowy) do (
     %PY% tools\%%T.py %FLAGI% || goto porazka
 )
 

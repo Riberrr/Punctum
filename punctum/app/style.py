@@ -13,6 +13,13 @@ import os
 ASSETS_DIRECTORY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
 
 
+def ikona(nazwa: str):
+    """Ikona narzedzia z assets/icons (rysuje je tools/make_assets.py)."""
+    from PySide6.QtGui import QIcon  # modul bywa importowany przed QApplication
+
+    return QIcon(os.path.join(ASSETS_DIRECTORY, "icons", f"{nazwa}.svg"))
+
+
 def stylesheet() -> str:
     """Gotowy arkusz stylow z podstawiona sciezka do grafik."""
     # Qt oczekuje w url() ukosnikow w przod, takze na Windowsie

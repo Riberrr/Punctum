@@ -1,4 +1,8 @@
+<img src="punctum/assets/logo-512.png" alt="" width="72" align="left">
+
 # Punctum
+
+*For that one detail.*
 
 A non-destructive photo editor for RAW (RW2, CR2/CR3, NEF, ARW, DNG) and JPEG,
 with a preview computed on the graphics card and geotagging on a map.
