@@ -321,5 +321,7 @@
  "Każdy kadr kryje swój szczegół.": "Every frame hides its detail.",
  "Tam, gdzie zatrzymuje się spojrzenie.": "Where the eye comes to rest.",
  "Pokaż to, co zobaczyłeś.": "Show what you saw.",
- "Jedno spojrzenie, jeden punkt.": "One glance, one point."
+ "Jedno spojrzenie, jeden punkt.": "One glance, one point.",
+ "Wczytywanie zdjęcia {plik}…": "Loading photo {plik}…",
+ "Wczytywanie miniatur… {n} z {m}": "Loading thumbnails… {n} of {m}"
 }

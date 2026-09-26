@@ -620,6 +620,34 @@ class MainWindow(QMainWindow):
         )
         self._refresh_filmstrip()
 
+    # Ile miniatur musi dojechac, zanim ekran startowy odda okno: mniej wiecej
+    # to, co widac w pasku. Na reszte (w duzym katalogu minuty) nie czekamy -
+    # doczytuja sie w tle, a okno juz reaguje.
+    MINIATURY_NA_START = 16
+    _failed_path: str | None = None
+
+    def stan_startu(self) -> tuple[str, float] | None:
+        """Co jeszcze sie laduje po otwarciu katalogu - dla ekranu startowego.
+
+        Zwraca (napis, ulamek 0..1) albo None, gdy okno jest gotowe do pracy:
+        pierwsze zdjecie pokazane (albo jego wczytanie sie nie udalo)
+        i widoczne miniatury na miejscu. Wczesniej ekran znikal zaraz po
+        zbudowaniu okna, a zdjecie i pasek doczytywaly sie jeszcze kilka sekund.
+        """
+        if not self.paths:
+            return None
+        path = self.current_path
+        if path and getattr(self, "current_image", None) is None and path != self._failed_path:
+            return t("Wczytywanie zdjęcia {plik}…", plik=os.path.basename(path)), 0.0
+        potrzebne = self.paths[: self.MINIATURY_NA_START]
+        gotowe = sum(1 for p in potrzebne if p in self.metadata)
+        if gotowe < len(potrzebne):
+            return (
+                t("Wczytywanie miniatur… {n} z {m}", n=gotowe, m=len(potrzebne)),
+                0.5 + 0.5 * gotowe / len(potrzebne),
+            )
+        return None
+
     def _on_format_changed(self) -> None:
         chosen = self.format_combo.currentData() or FORMAT_ALL
         if self.settings.format_filter != chosen:
@@ -1036,6 +1064,7 @@ class MainWindow(QMainWindow):
     def _on_raw_failed(self, path: str, message: str) -> None:
         if path != self.current_path:
             return
+        self._failed_path = path  # ekran startowy nie czeka na zdjecie, ktore nie wstanie
         self.view.clear_image()
         self.navigator.set_image(None)
         self.histogram_widget.set_histogram(None)

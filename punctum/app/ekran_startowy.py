@@ -43,6 +43,8 @@ HASLA = (
 # Krotszy start mignalby tylko ekranem; po skompilowaniu (punkt 18) start
 # i tak jest dluzszy, wiec to ograniczenie przestanie byc odczuwalne.
 MINIMUM_MS = 1200
+MAKSIMUM_MS = 30000
+OKNO_GOTOWE = 0.6  # czesc paska przypadajaca na etapy do zbudowania okna
 
 FIOLET, FIOLET_JASNY = QColor("#6c63ff"), QColor("#7b73ff")
 
@@ -51,7 +53,7 @@ def _czcionka(piksele: float, gruba: bool = False) -> QFont:
     font = QFont("Segoe UI")
     font.setPixelSize(round(piksele))
     if gruba:
-        # Na Windows polgruby krój to osobna rodzina; sama waga DemiBold
+        # Na Windows polgruby kroj to osobna rodzina; sama waga DemiBold
         # dawala zwykly Segoe UI i nazwa wygladala blado.
         font.setFamilies(["Segoe UI Semibold", "Segoe UI"])
         font.setWeight(QFont.Weight.DemiBold)
@@ -91,6 +93,37 @@ class EkranStartowy(QSplashScreen):
         self.stan, self.postep = stan, max(0.0, min(1.0, postep))
         self.repaint()
         QApplication.processEvents()
+
+    def czekaj_na(self, okno, stan) -> None:
+        """Zostaje na ekranie, dopoki okno nie jest gotowe do pracy.
+
+        `stan()` zwraca (napis, ulamek 0..1) albo None, gdy wszystko gotowe.
+        Po zbudowaniu okna petla zdarzen juz chodzi (zdjecie i miniatury
+        laduja sie w watkach), wiec pytamy co 100 ms zamiast blokowac.
+        Gorny limit, bo ekran zawsze na wierzchu nie moze wisiec bez konca,
+        gdy cos utknie.
+        """
+        start = time.monotonic()
+        zegar = QTimer(self)
+        zegar.setInterval(100)
+
+        def sprawdz() -> None:
+            teraz = stan()
+            if teraz is None or (time.monotonic() - start) * 1000 > MAKSIMUM_MS:
+                zegar.stop()
+                self.stan, self.postep = t("Gotowe"), 1.0
+                self.update()
+                self.zakoncz(okno)
+                return
+            napis, ulamek = teraz
+            # etapy sprzed zbudowania okna zajely pasek do OKNO_GOTOWE
+            self.stan = napis
+            self.postep = max(self.postep, OKNO_GOTOWE + (1.0 - OKNO_GOTOWE) * ulamek)
+            self.update()
+
+        zegar.timeout.connect(sprawdz)
+        zegar.start()
+        sprawdz()
 
     def zakoncz(self, okno) -> None:
         """Chowa ekran po minimalnym czasie, zeby start nie byl tylko mignieciem."""

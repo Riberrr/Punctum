@@ -12,7 +12,14 @@ with a preview computed on the graphics card and geotagging on a map.
 
 ## Running
 
-Double-click `Punctum.bat` (you can drag it to the desktop or drop a photo
+**Shortcuts with the program icon** (desktop and Start menu, no console window;
+pin the Start menu one to the taskbar):
+
+```powershell
+.venv\Scripts\python.exe tools\utworz_skroty.py
+```
+
+Or double-click `Punctum.bat` (you can drag it to the desktop or drop a photo
 folder onto it), or from the command line:
 
 ```powershell

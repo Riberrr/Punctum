@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QApplication
 from .app.ekran_startowy import ASSETS, EkranStartowy
 from .app.jezyk import zastosuj_jezyk
 from .core.settings import Settings
+from . import APP_ID
 from .przeklad import t
 
 
@@ -24,7 +25,7 @@ def _ikona_programu(app: QApplication) -> None:
         try:
             import ctypes
 
-            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Punctum.Punctum")
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(APP_ID)
         except Exception:
             pass
 
@@ -51,11 +52,12 @@ def main() -> int:
     if not folder and window.settings.reopen_last_folder:
         folder = window.settings.last_folder
     if folder and os.path.isdir(folder):
-        ekran.krok(t("Otwieranie katalogu {nazwa}…", nazwa=os.path.basename(folder)), 0.8)
+        ekran.krok(t("Otwieranie katalogu {nazwa}…", nazwa=os.path.basename(folder)), 0.6)
         window.load_folder(folder)
 
-    ekran.krok(t("Gotowe"), 1.0)
-    ekran.zakoncz(window)
+    # Ekran schodzi dopiero, gdy pierwsze zdjecie i widoczne miniatury sa na
+    # miejscu - samo zbudowanie okna to jeszcze nie gotowosc do pracy.
+    ekran.czekaj_na(window, window.stan_startu)
     return app.exec()
 
 

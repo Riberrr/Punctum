@@ -63,6 +63,31 @@ es.MINIMUM_MS = 0
 ekran.zakoncz(okno)
 app.processEvents()
 check("zakoncz: ekran schowany", not ekran.isVisible())
+
+# Ekran ma czekac na gotowosc okna (pierwsze zdjecie, miniatury), a nie
+# znikac zaraz po jego zbudowaniu.
+import time  # noqa: E402
+
+ekran = es.EkranStartowy()
+ekran.show()
+kolejne = iter([("zdjecie", 0.0), ("miniatury", 0.5), ("miniatury", 0.2)])
+postepy = []
+
+
+def stan():
+    postepy.append(ekran.postep)
+    return next(kolejne, None)
+
+
+ekran.czekaj_na(okno, stan)
+check("czekaj_na: zostaje, dopoki trwa ladowanie", ekran.isVisible() and ekran.stan == "zdjecie", ekran.stan)
+koniec = time.monotonic() + 3
+while ekran.isVisible() and time.monotonic() < koniec:
+    app.processEvents()
+    time.sleep(0.02)
+check("czekaj_na: schodzi po gotowosci", not ekran.isVisible())
+check("czekaj_na: pasek nie cofa sie", postepy == sorted(postepy), str(postepy))
+check("czekaj_na: na koniec Gotowe i pelny pasek", ekran.stan == "Gotowe" and ekran.postep == 1.0)
 okno.close()
 
 sys.exit(wypisz(results))

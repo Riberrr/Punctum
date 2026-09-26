@@ -12,7 +12,14 @@ z podglądem liczonym na karcie graficznej i geotagowaniem na mapie.
 
 ## Uruchomienie
 
-Dwuklik na `Punctum.bat` (można przeciągnąć na pulpit albo upuścić na niego
+**Skróty z ikoną programu** (pulpit i menu Start, bez okna konsoli; skrót
+z menu Start można przypiąć do paska zadań):
+
+```powershell
+.venv\Scripts\python.exe tools\utworz_skroty.py
+```
+
+Albo dwuklik na `Punctum.bat` (można przeciągnąć na pulpit albo upuścić na niego
 folder ze zdjęciami), lub z wiersza poleceń:
 
 ```powershell
