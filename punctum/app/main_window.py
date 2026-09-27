@@ -259,7 +259,10 @@ class MainWindow(QMainWindow):
         self.zoom_panel.actual_requested.connect(self.view.zoom_actual)
         self.detail_label = self.zoom_panel.detail_label
 
-        self.before_button = QPushButton(t("Przed / po"))
+        # Porownanie siedzi w sekcji powiekszenia jako same ikony - osobna
+        # sekcja z trzema szerokimi przyciskami zabierala miejsce w panelu.
+        # Nazwy niosa dymki.
+        self.before_button = QPushButton()
         self.before_button.setIcon(ikona("before-after"))
         podpowiedz(self.before_button, "podglad.przed_po")
         self.before_button.pressed.connect(self._show_before)
@@ -268,28 +271,18 @@ class MainWindow(QMainWindow):
         # (punkt 19 planu): podzial linia w jednym widoku albo dwa widoki obok
         # siebie. Wykluczaja sie, ale oba moga byc wylaczone - stad reczne
         # odznaczanie zamiast QButtonGroup, ktora nie pozwala odznaczyc.
-        self.split_button = QPushButton(t("Podział"))
+        self.split_button = QPushButton()
         self.split_button.setIcon(ikona("split-view"))
         self.split_button.setCheckable(True)
         podpowiedz(self.split_button, "podglad.podzial")
-        self.side_button = QPushButton(t("Obok siebie"))
+        self.side_button = QPushButton()
         self.side_button.setIcon(ikona("side-by-side"))
         self.side_button.setCheckable(True)
         podpowiedz(self.side_button, "podglad.obok")
         self._compare_buttons = {"split": self.split_button, "side": self.side_button}
         for mode, button in self._compare_buttons.items():
             button.toggled.connect(lambda on, mode=mode: self._on_compare_toggled(mode, on))
-        compare_row = QHBoxLayout()
-        compare_row.setContentsMargins(0, 0, 0, 0)
-        compare_row.addWidget(self.split_button, 1)
-        compare_row.addWidget(self.side_button, 1)
-        compare_layout = QVBoxLayout()
-        compare_layout.setContentsMargins(0, 0, 0, 0)
-        compare_layout.addWidget(self.before_button)
-        compare_layout.addLayout(compare_row)
-
-        compare = QWidget()
-        compare.setLayout(compare_layout)
+        self.zoom_panel.add_buttons([self.before_button, self.split_button, self.side_button])
 
         # Panele sa zbudowane z sekcji, ktore uzytkownik zwija, ukrywa
         # i przestawia (punkt 23). Uklad trzyma UkladPaneli pod stalymi
@@ -298,7 +291,6 @@ class MainWindow(QMainWindow):
         for klucz, tresc in (
             ("nawigator", self.navigator),
             ("powiekszenie", self.zoom_panel),
-            ("przed_po", compare),
             ("dane", self.info_panel),
             ("histogram", self.histogram_widget),
             *self.edit_panel.sekcje.items(),

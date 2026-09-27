@@ -12,6 +12,7 @@ from .podpowiedzi import podpowiedz
 from ..przeklad import t
 
 STEPS = 1000
+BUTTON_WIDTH = 34  # przyciski ikonowe w wierszu pod suwakiem
 
 
 class ZoomPanel(QWidget):
@@ -59,20 +60,41 @@ class ZoomPanel(QWidget):
         self.detail_label = QLabel("")
         self.detail_label.setObjectName("metaLabel")
 
-        buttons = QHBoxLayout()
-        buttons.setContentsMargins(0, 0, 0, 0)
-        buttons.setSpacing(4)
-        buttons.addWidget(self.fit_button)
-        buttons.addWidget(self.actual_button)
-        buttons.addStretch(1)
-        buttons.addWidget(self.zoom_label)
+        # Procent obok suwaka, ktorego dotyczy - wiersz przyciskow zostaje
+        # wolny na porownanie przed/po (add_buttons).
+        slider_row = QHBoxLayout()
+        slider_row.setContentsMargins(0, 0, 0, 0)
+        slider_row.setSpacing(6)
+        slider_row.addWidget(self.slider, 1)
+        slider_row.addWidget(self.zoom_label)
+
+        self._buttons = QHBoxLayout()
+        self._buttons.setContentsMargins(0, 0, 0, 0)
+        self._buttons.setSpacing(4)
+        self._buttons.addWidget(self.fit_button)
+        self._buttons.addWidget(self.actual_button)
+        self._buttons.addStretch(1)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(4)
-        layout.addWidget(self.slider)
-        layout.addLayout(buttons)
+        layout.addLayout(slider_row)
+        layout.addLayout(self._buttons)
         layout.addWidget(self.detail_label)
+
+    def add_buttons(self, buttons: list[QPushButton]) -> None:
+        """Dokleja przyciski porownania za odstepem, w tym samym wierszu
+        i tym samym rozmiarze ikon co przyciski powiekszenia."""
+        # przed koncowym rozpychaczem - przyciski maja stac przy 1:1
+        index = self._buttons.count() - 1
+        self._buttons.insertSpacing(index, 8)
+        for offset, button in enumerate(buttons, start=1):
+            self._buttons.insertWidget(index + offset, button)
+        # Piec przyciskow w domyslnej szerokosci nie miesci sie w waskim
+        # panelu i wypycha procent poza krawedz - wszystkie jednakowo waskie.
+        for button in (self.fit_button, self.actual_button, *buttons):
+            button.setIconSize(QSize(18, 18))
+            button.setFixedWidth(BUTTON_WIDTH)
 
     # --- przeliczenia ---------------------------------------------------
 

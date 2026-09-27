@@ -39,8 +39,10 @@ MIEJSCA = (LEWY, PRAWY, SCHOWEK)
 # Kolejnosc slownika = kolejnosc w ukladzie domyslnym i w oknie ukladu.
 TYTULY = {
     "nawigator": N_("Nawigator"),
-    "powiekszenie": N_("Powiększenie"),
-    "przed_po": N_("Przed / po"),
+    # Klucz zostaje stary, zeby zapisane uklady dalej trafialy. Przyciski
+    # przed/po mieszkaja tu od 19 - sekcja "przed_po" zniknela, a jej
+    # klucz w starym zapisie po prostu odpada.
+    "powiekszenie": N_("Powiększenie i porównanie"),
     "dane": N_("Dane zdjęcia"),
     "histogram": N_("Histogram"),
     "kadrowanie": N_("Kadrowanie i obrót"),
@@ -52,7 +54,7 @@ TYTULY = {
 }
 
 UKLAD_DOMYSLNY = {
-    LEWY: ["nawigator", "powiekszenie", "przed_po", "dane"],
+    LEWY: ["nawigator", "powiekszenie", "dane"],
     PRAWY: ["histogram", "kadrowanie", "balans", "ton", "obecnosc", "wyostrzanie", "szum"],
 }
 
