@@ -243,6 +243,7 @@ window.mapState = function() {
   return JSON.stringify({
     tiles: document.querySelectorAll('img.leaflet-tile-loaded, img.leaflet-tile').length,
     markers: Object.keys(markers).length,
+    track: trackLine ? trackLine.getLatLngs().length : 0,
     tagging: tagging,
     layer: current,
     center: [map.getCenter().lat, map.getCenter().lng],
@@ -290,6 +291,34 @@ function pickResult(index) {
   if (window.bridge) window.bridge.placeFound(lat, lon, item.display_name.split(',')[0]);
 }
 window.pickResult = pickResult;
+
+// Slad GPX jako linia. Tylko do ogladania - klikniecia ida dalej do mapy,
+// zeby w trybie przypisywania dalo sie kliknac punkt lezacy na sladzie.
+let trackLine = null;
+function showTrack(points) {
+  if (trackLine) map.removeLayer(trackLine);
+  trackLine = null;
+  if (!points.length) return;
+  trackLine = L.polyline(points, {color:'#f0a040', weight:3, opacity:0.85, interactive:false})
+    .addTo(map);
+  map.fitBounds(trackLine.getBounds(), {padding:[30, 30], maxZoom:16});
+}
+window.showTrack = showTrack;
+
+// Nazwa miejsca dla wspolrzednych. Odpowiedz wraca zawsze, takze pusta po
+// bledzie - Python zdejmuje wtedy napis "Szukanie…" zamiast czekac.
+async function reverseGeocode(lat, lon, lang) {
+  let name = '';
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}` +
+      `&format=json&zoom=16&accept-language=${encodeURIComponent(lang)}`);
+    const data = await response.json();
+    name = (data.display_name || '').split(',').slice(0, 3).map(s => s.trim()).join(', ');
+  } catch (error) {}
+  if (window.bridge) window.bridge.placeNamed(lat, lon, name);
+}
+window.reverseGeocode = reverseGeocode;
 
 document.addEventListener('click', event => {
   if (!event.target.closest('.search-bar')) {

@@ -133,5 +133,11 @@
   "panele.okno_schowek": {"tytul": "Nieużywane", "opis": "Sekcje, których nie ma w żadnym panelu. Przeciągnij sekcję tutaj, żeby ją odłożyć, albo stąd do panelu, żeby ją przywrócić."},
   "panele.okno_lewy": {"tytul": "Panel lewy", "opis": "Sekcje lewego panelu w kolejności od góry. Przeciągaj, żeby zmienić kolejność; przeciągnięcie do „Nieużywane” wyłącza sekcję."},
   "panele.okno_prawy": {"tytul": "Panel prawy", "opis": "Sekcje prawego panelu w kolejności od góry. Przeciągaj, żeby zmienić kolejność; przeciągnięcie do „Nieużywane” wyłącza sekcję."},
-  "panele.okno_domyslny": {"tytul": "Przywróć układ domyślny", "opis": "Ustawia sekcje tak jak przy pierwszym uruchomieniu, także te odłożone do „Nieużywane”. Zmiana wchodzi po OK."}
+  "panele.okno_domyslny": {"tytul": "Przywróć układ domyślny", "opis": "Ustawia sekcje tak jak przy pierwszym uruchomieniu, także te odłożone do „Nieużywane”. Zmiana wchodzi po OK."},
+  "mapa.slad": {"tytul": "Ślad GPX", "opis": "Wczytuje ślad z telefonu, zegarka albo nawigacji i nadaje zdjęciom położenie z chwili, w której je zrobiono. Bierze zaznaczone zdjęcia, a bez zaznaczenia wszystkie widoczne na liście. Ślad rysuje się na mapie.", "uwaga": "Cały wynik cofa się jednym Ctrl+Z"},
+  "slad.strefa": {"tytul": "Strefa czasowa aparatu", "opis": "O ile godzin czas ustawiony w aparacie wyprzedza UTC. Podpowiedź bierze się ze strefy komputera w dniu pierwszego zdjęcia, z czasem letnim.", "uwaga": "Zdjęcia z podróży: strefa miejsca, w którym ustawiono zegar aparatu"},
+  "slad.zegar": {"tytul": "Poprawka zegara aparatu", "opis": "O ile sekund zegar aparatu spieszył się względem prawdziwego czasu (spóźnianie - wartość ujemna). Najłatwiej ją ustalić ze zdjęcia ekranu telefonu z widocznym zegarem."},
+  "slad.tolerancja": {"tytul": "Największa odległość w czasie", "opis": "Zdjęcie zrobione dalej od najbliższego punktu śladu nie dostaje położenia. Między dwoma bliskimi punktami położenie jest liczone z proporcji czasu."},
+  "slad.tylko_bez": {"tytul": "Tylko zdjęcia bez lokalizacji", "opis": "Zdjęcia, które już mają współrzędne - z aparatu albo nadane wcześniej - zostają nietknięte."},
+  "slad.nadaj": {"tytul": "Nadaj lokalizację", "opis": "Wpisuje dopasowane położenia do sidecarów zdjęć. Do plików trafią przy eksporcie."}
 }

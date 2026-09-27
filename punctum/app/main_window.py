@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from datetime import datetime
 
 import numpy as np
 from PySide6.QtCore import QRect, QRectF, Qt, QThreadPool, QTimer
@@ -43,6 +44,7 @@ from ..core import (
     read_sidecar,
     write_sidecar,
 )
+from ..core.exif_edit import normalise_datetime
 from ..core.export import (
     ON_EXISTING_ASK,
     ON_EXISTING_OVERWRITE,
@@ -629,6 +631,10 @@ class MainWindow(QMainWindow):
             self.load_folder(folder)
 
     def load_folder(self, folder: str) -> None:
+        # Nastawy biezacego zdjecia trafiaja do slownika i sidecara dopiero
+        # przy przejsciu na inne zdjecie - zmiana katalogu tez jest takim
+        # przejsciem, inaczej ostatnie ruchy suwakow przepadaja.
+        self.remember_current_edits()
         try:
             self.folder_paths = folder_photos(folder)
         except OSError as exc:
@@ -914,6 +920,7 @@ class MainWindow(QMainWindow):
                 self.map_view.location_assigned.connect(self._on_location_assigned)
                 self.map_view.photo_activated.connect(self._open_from_map)
                 self.map_view.location_restored.connect(self._on_location_restored)
+                self.map_view.locations_matched.connect(self._on_locations_matched)
                 self.map_view.undo_requested.connect(self._cofnij_lokalizacje)
                 self.map_view.redo_requested.connect(self._ponow_lokalizacje)
                 # Drugi panel metadanych - ten sam stan, te same sygnaly, co
@@ -941,11 +948,35 @@ class MainWindow(QMainWindow):
             self.filmstrip.icons(),
             self.filmstrip.edited_paths(),
             camera=self._camera_locations(),
+            times={path: self._czas_wykonania(path) for path in self.paths},
         )
         chosen = self.filmstrip.selected_paths() or (
             [self.current_path] if self.current_path else []
         )
         self.map_view.set_selection(chosen)
+
+    def _czas_wykonania(self, path: str) -> datetime | None:
+        """Data wykonania do dni i sladu GPX: poprawiona w panelu metadanych
+        ma pierwszenstwo przed ta z aparatu - uzytkownik poprawia ja wlasnie
+        po to, zeby zdjecie trafilo we wlasciwe miejsce."""
+        params = self._params_for(path)
+        tekst = params.metadata.get("DateTimeOriginal", "") if params is not None else ""
+        poprawiona = normalise_datetime(tekst) if str(tekst).strip() else None
+        if poprawiona:
+            return datetime.strptime(poprawiona, "%Y:%m:%d %H:%M:%S")
+        meta = self.metadata.get(path)
+        return meta.shot_at if meta is not None else None
+
+    def _on_locations_matched(self, zmiany: dict) -> None:
+        """Slad GPX dal kazdemu zdjeciu wlasny punkt - jeden krok historii."""
+        self.historia_mapy.zapamietaj(
+            {path: (self._nadana_lokalizacja(path), nowa) for path, nowa in zmiany.items()}
+        )
+        self._ustaw_lokalizacje(dict(zmiany))
+        self.status.showMessage(mnoga(len(zmiany),
+            "Nadano lokalizację ze śladu GPX - {n} zdjęcie|"
+            "Nadano lokalizację ze śladu GPX - {n} zdjęcia|"
+            "Nadano lokalizację ze śladu GPX - {n} zdjęć"))
 
     def _camera_locations(self) -> dict[str, tuple[float, float]]:
         """Wspolrzedne zapisane przez aparat - to, do czego wraca "Przywroc"."""

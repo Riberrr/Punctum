@@ -134,5 +134,11 @@
   "panele.okno_schowek": {"tytul": "Unused", "opis": "Sections that are in neither panel. Drag a section here to put it away, or from here into a panel to bring it back."},
   "panele.okno_lewy": {"tytul": "Left panel", "opis": "Sections of the left panel, top to bottom. Drag to reorder; dragging a section to Unused turns it off."},
   "panele.okno_prawy": {"tytul": "Right panel", "opis": "Sections of the right panel, top to bottom. Drag to reorder; dragging a section to Unused turns it off."},
-  "panele.okno_domyslny": {"tytul": "Restore default layout", "opis": "Arranges the sections as on first start, including those put away in Unused. Takes effect after OK."}
+  "panele.okno_domyslny": {"tytul": "Restore default layout", "opis": "Arranges the sections as on first start, including those put away in Unused. Takes effect after OK."},
+  "mapa.slad": {"tytul": "GPX track", "opis": "Loads a track from a phone, watch or navigation device and gives photos the position from the moment they were taken. Uses the selected photos, or all photos visible in the list when none is selected. The track is drawn on the map.", "uwaga": "The whole result is undone with one Ctrl+Z"},
+  "slad.strefa": {"tytul": "Camera time zone", "opis": "How many hours the camera's clock is ahead of UTC. The suggestion is the computer's time zone on the day of the first photo, including daylight saving time.", "uwaga": "Travel photos: the zone where the camera clock was set"},
+  "slad.zegar": {"tytul": "Camera clock correction", "opis": "How many seconds the camera clock was ahead of the real time (negative when it was behind). The easiest way to find it is a photo of a phone screen showing the clock."},
+  "slad.tolerancja": {"tytul": "Largest time distance", "opis": "A photo taken further than this from the nearest track point gets no position. Between two close points the position is interpolated by time."},
+  "slad.tylko_bez": {"tytul": "Only photos without a location", "opis": "Photos that already have coordinates - from the camera or assigned earlier - stay untouched."},
+  "slad.nadaj": {"tytul": "Assign location", "opis": "Writes the matched positions to the photos' sidecars. They go into the files on export."}
 }

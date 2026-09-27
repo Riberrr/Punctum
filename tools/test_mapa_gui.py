@@ -10,12 +10,15 @@ Uzycie:  python tools/test_mapa_gui.py <plik.rw2> <plik.jpg> [wiecej...]
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import sys
 import tempfile
+from datetime import timedelta
 
 from PySide6.QtCore import QTimer
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QApplication
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -33,6 +36,7 @@ from punctum.app import MainWindow  # noqa: E402
 from punctum.app.markers import GEO_ROLE  # noqa: E402
 from punctum.core.settings import settings_path  # noqa: E402
 from punctum.core.sidecar import read_sidecar  # noqa: E402
+from punctum.core.slad import strefa_systemu, wspolrzedne_z_tekstu  # noqa: E402
 
 LAT, LON = 50.0686361, 22.2290139
 
@@ -101,18 +105,16 @@ def stage_open_map() -> None:
           window.map_view.web.page().backgroundColor().name() != "#ffffff",
           window.map_view.web.page().backgroundColor().name())
     check("mapa dostala wszystkie zdjecia z katalogu",
-          window.map_view.list.count() == len(window.paths) == len(sys.argv) - 1,
-          f"{window.map_view.list.count()} pozycji, w katalogu {len(window.paths)}")
+          len(window.map_view.photo_items()) == len(window.paths) == len(sys.argv) - 1,
+          f"{len(window.map_view.photo_items())} pozycji, w katalogu {len(window.paths)}")
 
     view = window.map_view
-    wait_for(lambda: all(not view.list.item(i).icon().isNull()
-                         for i in range(view.list.count())),
+    wait_for(lambda: all(not item.icon().isNull() for item in view.photo_items()),
              "miniatury w liście mapy", 15000)
-    with_icon = sum(1 for i in range(view.list.count())
-                    if not view.list.item(i).icon().isNull())
+    with_icon = sum(1 for item in view.photo_items() if not item.icon().isNull())
     check("lista mapy pokazuje miniatury",
-          with_icon == view.list.count(),
-          f"{with_icon} z {view.list.count()} pozycji ma miniature")
+          with_icon == len(view.photo_items()),
+          f"{with_icon} z {len(view.photo_items())} pozycji ma miniature")
 
 
 def stage_assign() -> None:
@@ -123,7 +125,7 @@ def stage_assign() -> None:
 
     # Zaznaczamy dwa pierwsze zdjecia i wolamy most tak, jak zrobilby to
     # klikniety Leaflet. Samo klikniecie w kafelek jest poza zasiegiem testu.
-    paths = [view.list.item(i).data(0x0100) for i in range(min(2, view.list.count()))]
+    paths = [item.data(0x0100) for item in view.photo_items()[:2]]
     view.set_selection(paths)
     check("zaznaczenie przeszlo do listy mapy", view.selected_paths() == paths,
           f"{len(view.selected_paths())} zaznaczonych")
@@ -139,8 +141,141 @@ def stage_assign() -> None:
           all(s is not None and abs(s.latitude - LAT) < 1e-6
               and abs(s.longitude - LON) < 1e-6 for s in stored))
     check("lista mapy oznacza zdjecia z lokalizacja",
-          bool(view.list.item(0).data(GEO_ROLE)), view.list.item(0).text())
+          bool(view.photo_items()[0].data(GEO_ROLE)), view.photo_items()[0].text())
     window.first_two = paths
+
+
+def stage_dni() -> None:
+    """Naglowki dni na liscie i zaznaczanie calego dnia."""
+    view = window.map_view
+    # Czasy dochodza z EXIF-em razem z miniaturami - odswiezamy liste teraz,
+    # kiedy wszystkie juz sa, tak jak zrobilby to powrot na zakladke.
+    window._on_tab_changed(window.tabs.currentIndex())
+    app.processEvents()
+    dni = {c.date() for c in view.times.values() if c is not None}
+    bez_daty = any(c is None for c in view.times.values())
+    headers = [view.list.item(r) for r in range(view.list.count())
+               if view._naglowek(view.list.item(r))]
+    oczekiwane = len(dni) + (1 if bez_daty else 0) if dni else 0
+    check("naglowek dla kazdego dnia", len(headers) == oczekiwane,
+          f"{len(headers)} naglowkow, dni ze zdjeciami {len(dni)}")
+    check("naglowki nie licza sie jako zdjecia", len(view.photo_items()) == len(window.paths))
+    if headers:
+        view._on_item_clicked(headers[0])
+        dzien = [i.data(0x0100) for i in view._zdjecia_dnia(headers[0])]
+        check("klikniecie naglowka zaznacza caly dzien",
+              bool(dzien) and view.selected_paths() == dzien,
+              f"{len(view.selected_paths())} zaznaczonych, w dniu {len(dzien)}")
+        check("naglowek sam nie jest zaznaczony", not headers[0].isSelected())
+    view.set_selection(window.first_two)
+    view.set_grouping(False)
+    check("bez grupowania lista ma same zdjecia", view.list.count() == len(window.paths))
+    check("wylaczenie grupowania zachowuje zaznaczenie",
+          set(view.selected_paths()) == set(window.first_two))
+    view.set_grouping(True)
+    check("wlaczenie grupowania zachowuje zaznaczenie",
+          set(view.selected_paths()) == set(window.first_two))
+
+
+def stage_schowek() -> None:
+    """Kopiuj / wklej wspolrzedne przez schowek systemowy."""
+    view = window.map_view
+    clip = QGuiApplication.clipboard()
+    view.set_selection([window.first_two[0]])
+    view.kopiuj_lokalizacje()
+    skopiowane = wspolrzedne_z_tekstu(clip.text())
+    check("kopiowanie wklada wspolrzedne do schowka",
+          skopiowane is not None and abs(skopiowane[0] - LAT) < 1e-5, clip.text())
+    window.inne = [p for p in window.paths if p not in window.first_two]
+    if not window.inne:
+        check("wklejanie: potrzebne trzecie zdjecie", False, "podaj co najmniej 3 zdjecia")
+        return
+    cel = window.inne[0]
+    view.set_selection([cel])
+    view.wklej_lokalizacje()
+    app.processEvents()
+    s = read_sidecar(cel)
+    check("wklejenie nadaje lokalizacje zaznaczonemu",
+          s is not None and s.has_location and abs(s.latitude - LAT) < 1e-5)
+    clip.setText("50.5, 19.5")
+    view.wklej_lokalizacje()
+    s = read_sidecar(cel)
+    check("wkleja sie tez tekst z innego programu",
+          s is not None and s.has_location and abs(s.latitude - 50.5) < 1e-9)
+    window._cofnij_lokalizacje()
+    window._cofnij_lokalizacje()
+    s = read_sidecar(cel)
+    check("dwa cofniecia zdejmuja obie wklejone lokalizacje", s is None or not s.has_location)
+    clip.setText("to nie sa wspolrzedne")
+    view.wklej_lokalizacje()
+    s = read_sidecar(cel)
+    check("tekst bez wspolrzednych niczego nie zmienia", s is None or not s.has_location)
+
+
+def stage_slad() -> None:
+    """Slad GPX: dopasowanie po czasie, zla strefa, cofniecie."""
+    view = window.map_view
+    cel = window.inne[0] if getattr(window, "inne", None) else None
+    czas = view.times.get(cel) if cel else None
+    check("slad: jest zdjecie z data wykonania", czas is not None)
+    if czas is None:
+        return
+    utc = czas - strefa_systemu(czas)
+    gpx = os.path.join(workspace, "slad.gpx")
+    with open(gpx, "w", encoding="utf-8") as handle:
+        handle.write('<?xml version="1.0"?><gpx version="1.1" '
+                     'xmlns="http://www.topografix.com/GPX/1/1"><trk><trkseg>')
+        for chwila, lat, lon in ((utc - timedelta(minutes=1), 49.0, 20.0),
+                                 (utc + timedelta(minutes=1), 49.2, 20.4)):
+            handle.write(f'<trkpt lat="{lat}" lon="{lon}">'
+                         f'<time>{chwila:%Y-%m-%dT%H:%M:%S}Z</time></trkpt>')
+        handle.write("</trkseg></trk></gpx>")
+    view.set_selection([cel])
+    okna = []
+    view.dopasuj_slad(gpx, dialog_hook=lambda d: okna.append(d) or True)
+    app.processEvents()
+    check("okno sladu dopasowalo zaznaczone zdjecie",
+          bool(okna) and set(okna[0].wynik) == {cel},
+          okna[0].podsumowanie.text() if okna else "brak okna")
+    s = read_sidecar(cel)
+    check("zdjecie dostalo punkt z polowy drogi",
+          s is not None and s.has_location
+          and abs(s.latitude - 49.1) < 1e-6 and abs(s.longitude - 20.2) < 1e-6,
+          "brak" if s is None or not s.has_location else f"{s.latitude:.5f}, {s.longitude:.5f}")
+    if okna:
+        okno = okna[0]
+        okno.tylko_bez.setChecked(False)
+        okno.strefa.setValue(okno.strefa.value() + 1.0)
+        check("zla strefa - nic sie nie dopasowuje",
+              not okno.wynik and not okno.nadaj.isEnabled(), okno.podsumowanie.text())
+    if view.has_map:
+        stan = {}
+        view.web.page().runJavaScript("window.mapState()",
+                                      lambda raw: stan.update(json.loads(raw)))
+        wait_for(lambda: stan, "stan mapy po wczytaniu śladu", 8000)
+        check("slad narysowany na mapie", stan.get("track") == 2, str(stan.get("track")))
+    window._cofnij_lokalizacje()
+    s = read_sidecar(cel)
+    check("cofniecie zdejmuje lokalizacje ze sladu", s is None or not s.has_location)
+
+
+def stage_miejsce() -> None:
+    """Nazwa miejsca pod lista i jej pamiec."""
+    view = window.map_view
+    view._place_timer.stop()
+    view.set_selection([window.first_two[0]])
+    view._on_place_named(LAT, LON, "Rynek, Test")
+    check("nazwa miejsca pod lista",
+          not view.place_label.isHidden() and "Rynek" in view.place_label.text(),
+          view.place_label.text())
+    view.set_selection([])
+    view._pokaz_miejsce()
+    check("bez zaznaczenia nazwa znika", view.place_label.isHidden())
+    view.set_selection([window.first_two[1]])
+    view._pokaz_miejsce()
+    check("drugie zdjecie z tego miejsca bierze nazwe z pamieci",
+          not view.place_label.isHidden() and "Rynek" in view.place_label.text(),
+          view.place_label.text())
 
 
 def stage_slider() -> None:
@@ -194,8 +329,7 @@ def stage_verify() -> None:
           first in view.locations and abs(view.locations[first][0] - LAT) < 1e-6,
           f"{view.locations.get(first)}")
     check("lista pokazuje znacznik lokalizacji",
-          sum(1 for row in range(view.list.count())
-              if view.list.item(row).data(GEO_ROLE)) == 2)
+          sum(1 for item in view.photo_items() if item.data(GEO_ROLE)) == 2)
 
     # usuniecie lokalizacji
     view.set_selection([first])
@@ -262,7 +396,8 @@ def report() -> None:
 
 
 os.makedirs("out", exist_ok=True)
-lancuch(app, [stage_open_map, stage_assign, stage_slider,
+lancuch(app, [stage_open_map, stage_assign, stage_dni, stage_schowek, stage_slad,
+              stage_miejsce, stage_slider,
               stage_slider_check, stage_reopen, stage_verify], report)
 
 app.exec()
