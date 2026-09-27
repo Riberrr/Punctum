@@ -276,6 +276,91 @@ def stage_rysik() -> None:
     panel.deleteLater()
 
 
+def stage_przypinanie() -> None:
+    """Punkt 30 C: przypinanie u gory / u dolu, przyciski na belce, okno."""
+    from PySide6.QtCore import QEvent
+
+    from punctum.app.panele import DOL, GORA, MIN_PRZEWIJANEJ
+
+    u.przywroc_domyslny()
+    panel = window.left_panel
+    presety = u.sekcje["presety"]
+    nag = presety.naglowek
+    app.processEvents()
+    check("bez najechania przyciski przypinania schowane",
+          not nag.przypnij_gore.isVisible() and not nag.odepnij.isVisible()
+          and not panel.gora.isVisible() and not panel.dol.isVisible())
+    QApplication.sendEvent(nag, QEvent(QEvent.Enter))
+    check("po najechaniu przypnij u gory i u dolu",
+          nag.przypnij_gore.isVisible() and nag.przypnij_dol.isVisible())
+    nag.przypnij_gore.click()
+    app.processEvents()
+    check("przypieta u gory poza przewijana czescia",
+          panel.gora.isVisible() and panel.gora.isAncestorOf(presety)
+          and not panel.scroll.isAncestorOf(presety) and klucze(LEWY)[0] == "presety",
+          str(klucze(LEWY)))
+    check("przypieta ma odepnij, bez przypnij",
+          nag.odepnij.isVisible() and not nag.przypnij_gore.isVisible())
+    u.sekcje["nawigator"].naglowek.przypnij_dol.click()
+    app.processEvents()
+    check("przypieta u dolu", panel.dol.isAncestorOf(u.sekcje["nawigator"])
+          and klucze(LEWY)[-1] == "nawigator" and panel.dol.isVisible(), str(klucze(LEWY)))
+    klodka = panel.klodka.geometry()
+    przycisk = nag.odepnij.mapTo(panel, nag.odepnij.rect().topRight())
+    check("klodka nie zaslania przyciskow pierwszej belki",
+          przycisk.x() < klodka.left(), f"{przycisk.x()} >= {klodka.left()}")
+
+    # rozwiniete metadane przypiete - czesc przewijana nie znika
+    u.przypnij("dane", GORA)
+    window.info_panel.set_details_visible(True)
+    for _ in range(3):
+        app.processEvents()
+    check("duza przypieta nie zjada czesci przewijanej",
+          panel.scroll.height() >= MIN_PRZEWIJANEJ, str(panel.scroll.height()))
+    check("grupa przypieta nie wyzsza niz jej tresc",
+          panel.gora.height() <= panel.gora.tresc() + 1,
+          f"{panel.gora.height()} > {panel.gora.tresc()}")
+    window.info_panel.set_details_visible(False)
+    for _ in range(3):
+        app.processEvents()
+    check("po zwinieciu metadanych grupa sie kurczy",
+          panel.gora.height() <= panel.gora.tresc() + 1 and panel.gora.tresc() < 400,
+          f"{panel.gora.height()} / {panel.gora.tresc()}")
+
+    nag.odepnij.click()
+    app.processEvents()
+    check("odpieta z gory pierwsza w czesci przewijanej",
+          panel.lista.sekcje[0].klucz == "presety" and "presety" not in u.stan["przypiete"],
+          str([s.klucz for s in panel.lista.sekcje]))
+
+    dialog = OknoUkladu(u.stan, window)
+    check("okno: przypiete oznaczone",
+          dialog.wynik()["przypiete"] == u.stan["przypiete"], str(dialog.wynik()["przypiete"]))
+    dialog.przypnij("histogram", DOL)
+    dialog.przypnij("dane", "odepnij")
+    wynik = dialog.wynik()
+    check("okno: przypinanie i odpinanie",
+          wynik["przypiete"] == {"histogram": DOL, "nawigator": DOL}
+          and wynik[PRAWY][-1] == "histogram", str(wynik))
+    dialog.deleteLater()
+    u.przyjmij(wynik)
+    app.processEvents()
+    check("uklad z okna trafia do panelu",
+          window.right_panel.dol.isAncestorOf(u.sekcje["histogram"]))
+
+    path = os.path.join(tempfile.gettempdir(), "punctum-panele-przypiete.json")
+    Settings(panel_layout=u.do_zapisu()).save(path)
+    wczytany = Settings.load(path).panel_layout
+    os.remove(path)
+    check("przypiecia przechodza przez plik ustawien",
+          uporzadkuj(wczytany)["przypiete"] == u.stan["przypiete"], str(wczytany.get("przypiete")))
+    u.przywroc_domyslny()
+    app.processEvents()
+    check("uklad domyslny bez przypiec",
+          u.stan["przypiete"] == {} and not panel.gora.isVisible() and not panel.dol.isVisible())
+    panel.grab().save(os.path.join(tempfile.gettempdir(), "punctum-przypiete.png"))
+
+
 def finish() -> None:
     try:
         failures = wypisz(results)
@@ -288,5 +373,6 @@ def finish() -> None:
 
 
 lancuch(app, [stage_start, stage_zwijanie, stage_menu, stage_klodka, stage_przenoszenie,
-              stage_okno, stage_domyslny, stage_metadane, stage_rysik], finish)
+              stage_okno, stage_domyslny, stage_metadane, stage_rysik, stage_przypinanie],
+        finish)
 sys.exit(app.exec())

@@ -19,7 +19,8 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 from wspolne import wypisz  # noqa: E402
 
 from punctum.app.panele import (  # noqa: E402
-    LEWY, PRAWY, SCHOWEK, TYTULY, UKLAD_DOMYSLNY, przenies, uporzadkuj, wstaw_domyslnie,
+    DOL, GORA, LEWY, PRAWY, SCHOWEK, TYTULY, UKLAD_DOMYSLNY, odepnij, przenies, przypnij,
+    uporzadkuj, wstaw_domyslnie,
 )
 from punctum.core.settings import Settings  # noqa: E402
 
@@ -97,6 +98,37 @@ check("wlaczenie wraca za domyslnego poprzednika",
       stan[PRAWY][:3] == ["histogram", "kadrowanie", "balans"] and stan[SCHOWEK] == [], str(stan))
 wstaw_domyslnie(stan, "histogram")
 check("wlaczenie bez poprzednika = na poczatek", stan[PRAWY][0] == "histogram", str(stan[PRAWY]))
+
+# --- przypinanie (punkt 30 C)
+stan = uporzadkuj({})
+check("domyslnie nic przypiete", stan["przypiete"] == {})
+przypnij(stan, "presety", GORA)
+przypnij(stan, "dane", GORA)
+check("przypiete u gory w kolejnosci przypinania, na poczatku panelu",
+      stan[LEWY][:2] == ["presety", "dane"], str(stan[LEWY]))
+przypnij(stan, "nawigator", DOL)
+check("przypieta u dolu na koncu panelu", stan[LEWY][-1] == "nawigator", str(stan[LEWY]))
+odepnij(stan, "presety")
+check("odpieta z gory = pierwsza w czesci przewijanej",
+      stan[LEWY] == ["dane", "presety", "powiekszenie", "nawigator"], str(stan[LEWY]))
+odepnij(stan, "nawigator")
+check("odpieta z dolu = ostatnia w czesci przewijanej",
+      stan[LEWY][-1] == "nawigator" and stan["przypiete"] == {"dane": GORA}, str(stan))
+przenies(stan, "histogram", LEWY, None, DOL)
+check("upuszczenie w grupie przypina", stan["przypiete"].get("histogram") == DOL
+      and stan[LEWY][-1] == "histogram", str(stan))
+przenies(stan, "dane", SCHOWEK)
+check("odlozenie do schowka odpina", "dane" not in stan["przypiete"] and komplet(stan))
+przenies(stan, "ton", LEWY, "dane")
+check("wstawienie przed sekcje spoza panelu nie psuje grup",
+      stan[LEWY][-1] == "histogram", str(stan[LEWY]))
+stan = uporzadkuj({LEWY: ["nawigator", "dane", "presety"],
+                   "przypiete": {"presety": GORA, "nawigator": DOL, "ton": "bok", "x": GORA}})
+check("zapis: grupy wyrownane, nieznane i bledne przypiecia odpadaja",
+      stan[LEWY][0] == "presety" and stan[LEWY][-1] == "nawigator"
+      and stan["przypiete"] == {"nawigator": DOL, "presety": GORA}, str(stan))
+stan = uporzadkuj({SCHOWEK: ["dane"], "przypiete": {"dane": GORA}})
+check("przypiecie sekcji ze schowka odpada", stan["przypiete"] == {}, str(stan["przypiete"]))
 
 check("ustawienia: uklad inny niz slownik zerowany",
       Settings(panel_layout="x").normalised().panel_layout == {})

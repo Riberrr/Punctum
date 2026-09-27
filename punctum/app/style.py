@@ -66,6 +66,11 @@ QMainWindow::separator { background: #131315; width: 1px; height: 1px; }
 }
 #sectionGrip { color: #5a5a62; font-size: 11px; }
 #dropLine { background: #6c63ff; }
+/* Przypinanie (punkt 30 C): przyciski na belce jak strzalka zwijania,
+   kreska mocniejsza niz miedzy sekcjami - granica tego, co nie przewija sie. */
+#sectionPin { background: transparent; border: none; border-radius: 3px; padding: 0; }
+#sectionPin:hover { background: #2b2b30; }
+#pinDivider { background: #3c3c42; }
 #panelLock {
     background: transparent; border: 1px solid transparent;
     border-radius: 4px; padding: 3px;

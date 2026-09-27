@@ -61,7 +61,9 @@ IKONY = [
     ("crop", "Kadrowanie"), ("rotate-left", "Obrót w lewo"), ("rotate-180", "Obrót o 180°"),
     ("rotate-right", "Obrót w prawo"), ("before-after", "Przed / po"), ("fit", "Dopasuj"),
     ("actual-size", "100 %"), ("export", "Eksport"), ("undo", "Cofnij"), ("redo", "Ponów"),
-    ("lock", "Kłódka"), ("unlock", "Kłódka otwarta"), ("filter", "Filtr"),
+    ("lock", "Kłódka"), ("unlock", "Kłódka otwarta"),
+    ("pin-top", "Przypnij u góry"), ("pin-bottom", "Przypnij u dołu"), ("unpin", "Odepnij"),
+    ("filter", "Filtr"),
     ("select-all", "Zaznacz wszystkie"), ("geotag", "Z geotagiem"), ("no-geotag", "Bez geotagu"),
     ("geotag-reset", "Przywróć geotag"),
 ]
