@@ -126,6 +126,43 @@ def apply_contrast(img: np.ndarray, contrast: float) -> np.ndarray:
     return np.float32(MID_GREY) * np.power(np.maximum(img, 0.0) / np.float32(MID_GREY) + _EPS, exponent)
 
 
+MONO_RANGE_EV = 1.5  # suwak barwy na +-100 przy pelnym nasyceniu = +-1,5 EV
+
+
+def apply_mono(img: np.ndarray, p: EditParams) -> np.ndarray:
+    """Monochrom: jasnosc piksela poprawiona wedlug jego barwy.
+
+    Liczone na danych liniowych, przed krzywa sRGB, bo poprawka jest
+    mnoznikiem swiatla (w dzialkach EV) - tak dziala kolorowy filtr przed
+    obiektywem. Sila rosnie z nasyceniem piksela: szarosci filtr nie
+    zmienia, wiec neutralne partie zostaja tam, gdzie byly. Barwa miedzy
+    dwoma suwakami bierze od obu, liniowo - przejscia na niebie czy skorze
+    nie maja przez to progow.
+    """
+    if not p.mono:
+        return img
+    rgb = np.maximum(img, 0.0)
+    lum = _luminance(rgb)
+    mix = np.array(p.mono_mix, dtype=np.float32)
+    if np.any(np.abs(mix) > 1e-6):
+        mx = rgb.max(axis=2)
+        mn = rgb.min(axis=2)
+        delta = mx - mn
+        safe = np.maximum(delta, _EPS)
+        r, g, b = rgb[..., 0], rgb[..., 1], rgb[..., 2]
+        # barwa jak w HSV, w szostych czesciach kola: 0 czerwien, 1 zolc ...
+        hue = np.where(
+            mx == r, np.mod((g - b) / safe, 6.0),
+            np.where(mx == g, (b - r) / safe + 2.0, (r - g) / safe + 4.0),
+        )
+        index = np.floor(hue).astype(np.int32) % 6
+        frac = (hue - np.floor(hue)).astype(np.float32)
+        weight = mix[index] * (1.0 - frac) + mix[(index + 1) % 6] * frac
+        chroma = np.clip(delta / np.maximum(mx, _EPS), 0.0, 1.0)
+        lum = lum * np.exp2(weight / 100.0 * MONO_RANGE_EV * chroma).astype(np.float32)
+    return np.repeat(lum[..., None], 3, axis=2).astype(np.float32)
+
+
 def linear_to_srgb(img: np.ndarray) -> np.ndarray:
     """Krzywa przenoszenia sRGB - ostatni krok toru liniowego."""
     x = np.clip(img, 0.0, 1.0)
@@ -230,6 +267,7 @@ def apply_tone(img: np.ndarray, raw: RawImage, p: EditParams) -> np.ndarray:
     img = apply_highlights_shadows(img, p.highlights, p.shadows)
     img = apply_whites_blacks(img, p.whites, p.blacks)
     img = apply_contrast(img, p.contrast)
+    img = apply_mono(img, p)
     img = linear_to_srgb(img)
     return apply_saturation(img, p.saturation, p.vibrance)
 

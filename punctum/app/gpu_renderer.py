@@ -67,6 +67,9 @@ uniform float u_whites;
 uniform float u_blacks;
 uniform float u_vibrance;
 uniform float u_saturation;
+uniform float u_mono;          // 1 = monochrom
+uniform vec3  u_monoA;         // suwaki barw: czerwien, zolc, ziele
+uniform vec3  u_monoB;         // turkus, blekit, fiolet
 
 const float MID = 0.18;
 const vec3  LUMA = vec3(0.2126, 0.7152, 0.0722);
@@ -113,6 +116,28 @@ void main() {
     if (u_contrast != 0.0) {
         float e = 1.0 + 0.6 * (u_contrast / 100.0);
         c = MID * pow(max(c, 0.0) / MID + 1e-6, vec3(e));
+    }
+
+    // --- monochrom, jak apply_mono w pipeline.py ----------------------
+    if (u_mono > 0.5) {
+        vec3 m = max(c, 0.0);
+        float y = dot(m, LUMA);
+        float mx = max(max(m.r, m.g), m.b);
+        float delta = mx - min(min(m.r, m.g), m.b);
+        if (delta > 1e-6) {
+            float h;
+            if (mx == m.r)      h = mod((m.g - m.b) / delta, 6.0);
+            else if (mx == m.g) h = (m.b - m.r) / delta + 2.0;
+            else                h = (m.r - m.g) / delta + 4.0;
+            float mix6[6] = float[6](u_monoA.x, u_monoA.y, u_monoA.z,
+                                     u_monoB.x, u_monoB.y, u_monoB.z);
+            int i = int(floor(h)) % 6;
+            float f = h - floor(h);
+            float w = mix6[i] * (1.0 - f) + mix6[(i + 1) % 6] * f;
+            float chroma = clamp(delta / max(mx, 1e-6), 0.0, 1.0);
+            y *= exp2(w / 100.0 * 1.5 * chroma);
+        }
+        c = vec3(y);
     }
 
     // --- krzywa sRGB --------------------------------------------------
@@ -407,8 +432,12 @@ class GpuRenderer:
                 ("u_blacks", p.blacks),
                 ("u_vibrance", p.vibrance),
                 ("u_saturation", p.saturation),
+                ("u_mono", 1.0 if p.mono else 0.0),
             ):
                 program.setUniformValue1f(name, float(value))
+            mix = [float(v) for v in p.mono_mix]
+            program.setUniformValue("u_monoA", QVector3D(*mix[:3]))
+            program.setUniformValue("u_monoB", QVector3D(*mix[3:]))
 
             functions.glDrawArrays(0x0005, 0, 4)  # GL_TRIANGLE_STRIP
 

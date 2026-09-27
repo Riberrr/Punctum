@@ -64,6 +64,9 @@ for plik in glob.glob(os.path.join(APP, "*.py")):
 with open(os.path.join(APP, "edit_panel.py"), encoding="utf-8") as handle:
     suwaki = re.findall(r"self\._add\([^,]+,\s*\"(\w+)\"", handle.read())
 check("znalezione suwaki", len(suwaki) >= 17, f"{len(suwaki)}")
+# suwaki monochromu powstaja w petli nad polami MONO_FIELDS
+from punctum.core.params import MONO_FIELDS  # noqa: E402
+suwaki += list(MONO_FIELDS)
 uzyte |= {f"suwak.{k}" for k in suwaki}
 uzyte |= {f"exif.{f.key}" for f in FIELDS}
 uzyte |= {f"ustawienia.silnik_{k}" for k in ENGINE_LABELS}

@@ -32,6 +32,18 @@ class EditParams:
     vibrance: float = 0.0  # -100 .. +100
     saturation: float = 0.0  # -100 .. +100
 
+    # --- monochrom -----------------------------------------------------
+    # Konwersja na skale szarosci z mieszaniem barw: kazdy suwak rozjasnia
+    # albo przyciemnia piksele swojej barwy (co 60 stopni kola barw), tak
+    # jak kolorowy filtr na obiektywie przy filmie czarno-bialym.
+    mono: bool = False
+    mono_red: float = 0.0  # -100 .. +100
+    mono_yellow: float = 0.0
+    mono_green: float = 0.0
+    mono_cyan: float = 0.0
+    mono_blue: float = 0.0
+    mono_magenta: float = 0.0
+
     # --- geometria ------------------------------------------------------
     # obrot o wielokrotnosc 90 stopni (0, 90, 180, 270) - zmiana orientacji
     orientation: int = 0
@@ -73,6 +85,12 @@ class EditParams:
     def has_metadata(self) -> bool:
         return any(str(value).strip() for value in self.metadata.values())
 
+    @property
+    def mono_mix(self) -> tuple[float, float, float, float, float, float]:
+        """Suwaki barw monochromu w kolejnosci kola barw, od czerwieni."""
+        return (self.mono_red, self.mono_yellow, self.mono_green,
+                self.mono_cyan, self.mono_blue, self.mono_magenta)
+
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
@@ -103,6 +121,9 @@ class EditParams:
 
 
 SHARPEN_MIN_RADIUS = 0.5  # px obrazu wyswietlanego; ponizej wyostrzanie pomijamy
+
+# Pola suwakow monochromu, w kolejnosci kola barw (0, 60, ... 300 stopni).
+MONO_FIELDS = ("mono_red", "mono_yellow", "mono_green", "mono_cyan", "mono_blue", "mono_magenta")
 
 
 def default_params(jpeg: bool = False) -> EditParams:

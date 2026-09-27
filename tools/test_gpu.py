@@ -51,6 +51,11 @@ CASES = {
     "obrót płynny": EditParams(exposure=0.5, rotation=6.5),
     "obrót 90°": EditParams(exposure=0.5, orientation=90),
     "obrót 270° + kadr": EditParams(orientation=270, crop=(0.2, 0.1, 0.9, 0.95), contrast=20),
+    "monochrom": EditParams(mono=True, contrast=10),
+    "monochrom z filtrem": EditParams(
+        mono=True, exposure=0.3, mono_red=60, mono_yellow=20, mono_green=-30,
+        mono_cyan=-50, mono_blue=-80, mono_magenta=20,
+    ),
     "wszystko naraz": EditParams(
         temperature=6800.0, tint=12, exposure=0.8, contrast=15, highlights=-40,
         shadows=45, whites=10, blacks=-12, vibrance=20, saturation=-8,

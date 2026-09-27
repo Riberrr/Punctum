@@ -138,7 +138,8 @@ def stage_przenoszenie() -> None:
     app.processEvents()
     obecnosc = u.sekcje["obecnosc"]
     check("sekcja przeniesiona do lewego panelu",
-          window.left_panel.isAncestorOf(obecnosc) and klucze(LEWY)[-2:] == ["obecnosc", "dane"],
+          window.left_panel.isAncestorOf(obecnosc)
+          and klucze(LEWY)[klucze(LEWY).index("obecnosc") + 1] == "dane",
           str(klucze(LEWY)))
     check("suwaki jada razem z sekcja",
           obecnosc.isVisible() and window.edit_panel.sliders["vibrance"].isVisible())

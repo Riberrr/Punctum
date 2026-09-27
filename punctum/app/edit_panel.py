@@ -8,6 +8,7 @@ import numpy as np
 from PySide6.QtCore import QObject, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QPainter, QPainterPath
 from PySide6.QtWidgets import (
+    QCheckBox,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -20,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from ..core import EditParams
 from ..core.metadata import PhotoMetadata
+from ..core.params import MONO_FIELDS
 from .podpowiedzi import podpowiedz
 from .sliders import (
     CONTRAST_STOPS,
@@ -33,6 +35,16 @@ from .sliders import (
 )
 from .style import ikona
 from ..przeklad import t
+
+
+def _mono_stops(r: int, g: int, b: int) -> list[tuple[float, QColor]]:
+    """Rowek suwaka barwy monochromu: w lewo ta barwa ciemnieje, w prawo
+    jasnieje - dokladnie to, co dzieje sie z nia na zdjeciu."""
+    return [
+        (0.00, QColor(r // 4, g // 4, b // 4)),
+        (0.50, QColor(r, g, b)),
+        (1.00, QColor((r + 3 * 245) // 4, (g + 3 * 245) // 4, (b + 3 * 245) // 4)),
+    ]
 
 
 class HistogramWidget(QFrame):
@@ -297,6 +309,8 @@ class EditPanel(QObject):
         self._add(layout, "vibrance", t("Jaskrawość"), -100, 100, 0, gradient=VIBRANCE_STOPS)
         self._add(layout, "saturation", t("Nasycenie"), -100, 100, 0, gradient=SATURATION_STOPS)
 
+        self._buduj_monochrom(self._tresc("monochrom"))
+
         layout = self._tresc("wyostrzanie")
         self._add(layout, "sharpen_amount", t("Ilość"), 0, 150, 40)
         self._add(layout, "sharpen_radius", t("Promień"), 0.5, 3.0, 1.0, decimals=1)
@@ -331,9 +345,70 @@ class EditPanel(QObject):
         podpowiedz(slider, f"suwak.{key}", suwak=True)
         layout.addWidget(slider)
 
+    def _buduj_monochrom(self, layout: QVBoxLayout) -> None:
+        """Wlacznik, szybkie filtry i szesc suwakow barw.
+
+        Filtry sa probkami koloru, a nie napisami: w najwezszym panelu piec
+        slow ("Pomaranczowy"...) sie nie miesci, a kolor filtra mowi sam za
+        siebie. Nazwa jest w dymku. "Bez filtra" to probka szara.
+        """
+        self.mono_check = QCheckBox(t("Konwersja na monochrom"))
+        podpowiedz(self.mono_check, "monochrom.wlacz")
+        self.mono_check.toggled.connect(lambda _on: self._on_change("mono", 0.0))
+        row = QHBoxLayout()
+        row.setSpacing(4)
+        row.addWidget(self.mono_check, 1)
+        self.filtry: dict[str, QPushButton] = {}
+        for klucz, kolor, tip in (
+            ("brak", "#8a8a8e", "monochrom.filtr_brak"),
+            ("zolty", "#e6c229", "monochrom.filtr_zolty"),
+            ("pomaranczowy", "#e8862a", "monochrom.filtr_pomaranczowy"),
+            ("czerwony", "#d23c3c", "monochrom.filtr_czerwony"),
+            ("zielony", "#4aa84f", "monochrom.filtr_zielony"),
+        ):
+            button = QPushButton()
+            button.setObjectName("filtrMono")
+            button.setFixedSize(20, 20)
+            button.setCursor(Qt.PointingHandCursor)
+            button.setStyleSheet(
+                f"QPushButton {{ background: {kolor}; border: 1px solid #1c1c1e;"
+                f" border-radius: 10px; }}"
+                f" QPushButton:hover {{ border: 1px solid #e8e8ea; }}"
+            )
+            podpowiedz(button, tip)
+            button.clicked.connect(lambda _=False, k=klucz: self.ustaw_filtr(k))
+            self.filtry[klucz] = button
+            row.addWidget(button)
+        layout.addLayout(row)
+
+        for key, label, stops in (
+            ("mono_red", t("Czerwienie"), _mono_stops(210, 60, 60)),
+            ("mono_yellow", t("Żółcie"), _mono_stops(215, 190, 60)),
+            ("mono_green", t("Zielenie"), _mono_stops(70, 180, 90)),
+            ("mono_cyan", t("Turkusy"), _mono_stops(60, 185, 190)),
+            ("mono_blue", t("Błękity"), _mono_stops(70, 110, 215)),
+            ("mono_magenta", t("Fiolety"), _mono_stops(180, 70, 200)),
+        ):
+            self._add(layout, key, label, -100, 100, 0, gradient=stops)
+
+    def ustaw_filtr(self, klucz: str) -> None:
+        """Wpisuje nastawy klasycznego filtra i wlacza monochrom."""
+        from ..core.presety import wartosci_filtra
+        values = {"mono": True}
+        values.update(dict.fromkeys(MONO_FIELDS, 0.0) if klucz == "brak" else wartosci_filtra(klucz))
+        self.apply_values(values)
+
     def _on_change(self, key: str, value: float) -> None:
-        if not self._loading:
-            self.params_changed.emit()
+        if self._loading:
+            return
+        # Ruch suwaka barwy przy wylaczonym monochromie nic by nie zmienil
+        # na podgladzie - lepiej od razu wlaczyc konwersje, niz kazac szukac,
+        # dlaczego suwak "nie dziala".
+        if key in MONO_FIELDS and not self.mono_check.isChecked():
+            self._loading = True
+            self.mono_check.setChecked(True)
+            self._loading = False
+        self.params_changed.emit()
 
     # --- stan -----------------------------------------------------------
 
@@ -383,17 +458,27 @@ class EditPanel(QObject):
             "sharpen_radius": p.sharpen_radius,
             "sharpen_detail": p.sharpen_detail,
             "sharpen_masking": p.sharpen_masking,
+            **{name: getattr(p, name) for name in MONO_FIELDS},
         }
         for key, value in values.items():
             if key in self.sliders:
                 self.sliders[key].set_value(value)
+        self.mono_check.setChecked(p.mono)
         self._loading = False
 
-    def apply_values(self, values: dict[str, float]) -> None:
-        """Wpisuje komplet wartosci naraz i przelicza podglad tylko raz."""
+    def apply_values(self, values: dict) -> None:
+        """Wpisuje wartosci naraz i przelicza podglad tylko raz.
+
+        Przyjmuje tez `mono` (wlacznik) i temperature None ("jak na
+        ujeciu") - w tej postaci przychodza z presetu.
+        """
         self._loading = True
         for key, value in values.items():
-            if key in self.sliders:
+            if key == "mono":
+                self.mono_check.setChecked(bool(value))
+            elif key == "temperature" and value is None:
+                self.sliders[key].set_value(self._as_shot_temp)
+            elif key in self.sliders:
                 self.sliders[key].set_value(value)
         self._loading = False
         self.params_changed.emit()
@@ -421,6 +506,8 @@ class EditPanel(QObject):
             sharpen_radius=get("sharpen_radius"),
             sharpen_detail=get("sharpen_detail"),
             sharpen_masking=get("sharpen_masking"),
+            mono=self.mono_check.isChecked(),
+            **{name: get(name) for name in MONO_FIELDS},
         )
 
     def set_history_state(self, can_undo: bool, can_redo: bool) -> None:
@@ -436,5 +523,6 @@ class EditPanel(QObject):
         self._loading = True
         for slider in self.sliders.values():
             slider.reset()
+        self.mono_check.setChecked(False)
         self._loading = False
         self.params_changed.emit()

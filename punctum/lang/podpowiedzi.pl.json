@@ -141,5 +141,23 @@
   "slad.zegar": {"tytul": "Poprawka zegara aparatu", "opis": "O ile sekund zegar aparatu spieszył się względem prawdziwego czasu (spóźnianie - wartość ujemna). Najłatwiej ją ustalić ze zdjęcia ekranu telefonu z widocznym zegarem."},
   "slad.tolerancja": {"tytul": "Największa odległość w czasie", "opis": "Zdjęcie zrobione dalej od najbliższego punktu śladu nie dostaje położenia. Między dwoma bliskimi punktami położenie jest liczone z proporcji czasu."},
   "slad.tylko_bez": {"tytul": "Tylko zdjęcia bez lokalizacji", "opis": "Zdjęcia, które już mają współrzędne - z aparatu albo nadane wcześniej - zostają nietknięte."},
-  "slad.nadaj": {"tytul": "Nadaj lokalizację", "opis": "Wpisuje dopasowane położenia do sidecarów zdjęć. Do plików trafią przy eksporcie."}
+  "slad.nadaj": {"tytul": "Nadaj lokalizację", "opis": "Wpisuje dopasowane położenia do sidecarów zdjęć. Do plików trafią przy eksporcie."},
+
+  "monochrom.wlacz": {"tytul": "Konwersja na monochrom", "opis": "Zamienia zdjęcie na czarno-białe, mieszając barwy według suwaków poniżej. Bez ruszania suwaków każdy kolor dostaje swoją zwykłą jasność.", "uwaga": "Ruch suwaka barwy albo filtr włącza konwersję sam"},
+  "monochrom.filtr_brak": {"tytul": "Bez filtra", "opis": "Zeruje suwaki barw: każdy kolor przechodzi w szarość o swojej naturalnej jasności."},
+  "monochrom.filtr_zolty": {"tytul": "Filtr żółty", "opis": "Lekko przyciemnia niebo i wydobywa chmury, skóra zostaje jasna. Najbezpieczniejszy wybór na krajobraz."},
+  "monochrom.filtr_pomaranczowy": {"tytul": "Filtr pomarańczowy", "opis": "Wyraźnie ciemniejsze niebo i woda, jaśniejsza skóra i cegła. Mocniej niż żółty, łagodniej niż czerwony."},
+  "monochrom.filtr_czerwony": {"tytul": "Filtr czerwony", "opis": "Dramatyczny: niebo prawie czarne, chmury białe, zieleń ciemna. Dobry do architektury i burzowego nieba."},
+  "monochrom.filtr_zielony": {"tytul": "Filtr zielony", "opis": "Rozjaśnia liście i trawę, przyciemnia skórę i czerwienie. Do zdjęć roślin i portretów w plenerze."},
+  "suwak.mono_red": {"tytul": "Czerwienie", "opis": "Jasność czerwonych partii po konwersji: w prawo jaśniej, w lewo ciemniej. Rada: usta, cegła, jesienne liście."},
+  "suwak.mono_yellow": {"tytul": "Żółcie", "opis": "Jasność żółtych i pomarańczowych partii. Rada: skóra leży między czerwieniami a żółciami - ruszaj oboma naraz."},
+  "suwak.mono_green": {"tytul": "Zielenie", "opis": "Jasność zieleni: trawa, liście, las. W prawo rozświetla roślinność, w lewo ją zagęszcza."},
+  "suwak.mono_cyan": {"tytul": "Turkusy", "opis": "Jasność turkusów: morze, woda w basenie, część nieba przy horyzoncie."},
+  "suwak.mono_blue": {"tytul": "Błękity", "opis": "Jasność błękitów, przede wszystkim nieba. W lewo niebo ciemnieje, a chmury odcinają się mocniej."},
+  "suwak.mono_magenta": {"tytul": "Fiolety", "opis": "Jasność fioletów i różów: kwiaty, neony, zachody słońca."},
+  "presety.lista": {"tytul": "Presety", "opis": "Kliknij preset, żeby nałożyć go na zdjęcie. Zmienia tylko zapisane w nim suwaki, resztę zostawia.", "uwaga": "Ctrl+Z cofa nałożenie  prawy przycisk: eksport, usuwanie, import"},
+  "presety.zapisz": {"tytul": "Zapisz jako preset", "opis": "Zapamiętuje bieżące nastawy wybranych grup suwaków pod nową nazwą."},
+  "presety.usun": {"tytul": "Usuń preset", "opis": "Usuwa zaznaczony własny preset. Wbudowanych nie da się usunąć."},
+  "presety.nazwa": {"tytul": "Nazwa presetu", "opis": "Tak preset będzie widoczny na liście. Ta sama nazwa zastępuje istniejący preset."},
+  "presety.grupa": {"tytul": "Grupa suwaków", "opis": "Zaznaczone grupy trafią do presetu. Balans bieli, ostrość i szum zależą od konkretnego zdjęcia, dlatego domyślnie są pominięte."}
 }

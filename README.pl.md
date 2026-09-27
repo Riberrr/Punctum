@@ -60,7 +60,19 @@ albo przyciskami *Dopasuj* / *100 %*; dwuklik przełącza dopasowanie ↔ 100 %.
 Nawigator z ramką pokazującą powiększony fragment (klikalny), przytrzymanie
 *Przed / po* pokazuje zdjęcie bez korekt, histogram na żywo.
 
-**Wyostrzanie** — ilość, promień, szczegóły, maskowanie; RAW domyślnie 40,
+**Monochrom** — konwersja na czarno-białe z mieszaniem barw: sześć suwaków
+(czerwienie, żółcie, zielenie, turkusy, błękity, fiolety) rozjaśnia albo
+przyciemnia każdą barwę, tak jak kolorowy filtr na obiektywie przy filmie
+czarno-białym. Próbki kolorów nakładają klasyczne filtry: żółty,
+pomarańczowy, czerwony i zielony.
+
+**Presety** — wbudowane (*Żywy*, *Stonowany*, *Monochrom*, *Monochrom
+kontrastowy*) i własne. Preset zapamiętuje tylko grupy suwaków wybrane przy
+zapisie, więc kładzie się na to, co już jest na zdjęciu; kadr, lokalizacja
+i metadane nigdy do niego nie trafiają. Jedno kliknięcie nakłada preset
+(`Ctrl+Z` cofa); presety to pliki JSON do eksportu i importu.
+
+**Ostrość** — ilość, promień, szczegóły, maskowanie; RAW domyślnie 40,
 JPEG 0 (wyostrzył go już aparat).
 
 **Usuwanie szumu** — osobno szum jasności i szum koloru, siła dopasowana do
@@ -131,7 +143,7 @@ zdjęcie":
 **Prawy panel** zbiera to, co zmienia zdjęcie. Na górze, zawsze widoczne:
 histogram, kadrowanie i obrót (przycisk kadrowania, obroty o 90° i 180°,
 suwak kąta, *Wyzeruj kadr*) oraz wiersz *Automatycznie* / *Wyzeruj*. Pod
-nimi lista suwaków — balans bieli, odcień, obecność, redukcja szumu —
+nimi lista suwaków — balans bieli, światło, kolor, monochrom, ostrość, redukcja szumu —
 przewijana we własnym obszarze.
 
 **Rozmiary.** Szerokość obu paneli i wysokość paska miniatur zmienia się

@@ -50,7 +50,8 @@ for nazwa, smiec in (("None", None), ("napis", "x"), ("lista", [1, 2]),
 
 stan = uporzadkuj({LEWY: ["dane", "nieznana", "dane", "nawigator"], PRAWY: ["dane", "histogram"]})
 check("nieznane klucze i powtorki odpadaja", komplet(stan), str(stan))
-check("pierwsze wystapienie wygrywa", stan[LEWY][:2] == ["dane", "nawigator"]
+check("pierwsze wystapienie wygrywa",
+      stan[LEWY].index("dane") < stan[LEWY].index("nawigator")
       and "dane" not in stan[PRAWY], str(stan))
 
 zapis = {LEWY: list(UKLAD_DOMYSLNY[LEWY]),
@@ -62,7 +63,8 @@ zapis = {LEWY: list(UKLAD_DOMYSLNY[LEWY]),
          PRAWY: ["ton", "histogram", "kadrowanie", "obecnosc", "wyostrzanie", "szum"]}
 stan = uporzadkuj(zapis)
 check("nowa sekcja w przestawionym panelu: za poprzednikiem, reszta nietknieta",
-      stan[PRAWY] == ["ton", "histogram", "kadrowanie", "balans", "obecnosc", "wyostrzanie", "szum"],
+      stan[PRAWY] == ["ton", "histogram", "kadrowanie", "balans", "obecnosc", "monochrom",
+                      "wyostrzanie", "szum"],
       str(stan[PRAWY]))
 
 stan = uporzadkuj({PRAWY: ["kadrowanie", "balans"], LEWY: []})
@@ -79,7 +81,8 @@ check("uporzadkowanie jest stale", uporzadkuj(stan) == stan)
 
 stan = uporzadkuj({})
 przenies(stan, "obecnosc", LEWY, "dane")
-check("przeniesienie przed wskazana sekcje", stan[LEWY][-2:] == ["obecnosc", "dane"]
+check("przeniesienie przed wskazana sekcje",
+      stan[LEWY][stan[LEWY].index("obecnosc") + 1] == "dane"
       and "obecnosc" not in stan[PRAWY], str(stan))
 przenies(stan, "obecnosc", SCHOWEK)
 check("przeniesienie na koniec (schowek)", stan[SCHOWEK] == ["obecnosc"] and komplet(stan))

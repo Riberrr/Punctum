@@ -59,6 +59,7 @@ from ..core.historia import HistoriaKrokow, HistoriaStanow
 from ..core.metadata import PhotoMetadata
 from ..core.settings import ENGINE_CPU, ENGINE_GPU, LAYOUT_LIMITS, Settings
 from .edit_panel import EditPanel, HistogramWidget, InfoPanel
+from .presety_panel import PresetyPanel
 from .exif_panel import ExifPanel
 from .export_dialog import ExportDialog
 from .filmstrip import Filmstrip
@@ -288,10 +289,16 @@ class MainWindow(QMainWindow):
         # i przestawia (punkt 23). Uklad trzyma UkladPaneli pod stalymi
         # kluczami; tu tylko podajemy mu tresci.
         self.panele = UkladPaneli(self)
+        self.presety_panel = PresetyPanel(
+            lambda: self.display_params() if self.full_raw is not None else None, self
+        )
+        self.presety_panel.zastosuj.connect(self._zastosuj_preset)
+        self.presety_panel.komunikat.connect(lambda tekst: self.status.showMessage(tekst))
         for klucz, tresc in (
             ("nawigator", self.navigator),
             ("powiekszenie", self.zoom_panel),
             ("dane", self.info_panel),
+            ("presety", self.presety_panel),
             ("histogram", self.histogram_widget),
             *self.edit_panel.sekcje.items(),
         ):
@@ -493,6 +500,19 @@ class MainWindow(QMainWindow):
             lambda: self.edit_panel.crop_button.setChecked(not self.crop_mode)
         )
         edit_menu.addAction(crop_action)
+        edit_menu.addSeparator()
+        # Te same akcje co w sekcji presetow - menu dziala tez wtedy, gdy
+        # sekcja lezy w schowku.
+        presets_menu = edit_menu.addMenu(t("Presety"))
+        for text, slot in (
+            (t("Zapisz bieżące jako preset…"), self.presety_panel.zapisz_biezace),
+            (t("Importuj preset…"), self.presety_panel.importuj),
+            (t("Eksportuj zaznaczony preset…"), self.presety_panel.eksportuj_zaznaczony),
+            (t("Usuń zaznaczony preset"), self.presety_panel.usun_zaznaczony),
+        ):
+            action = QAction(text, self)
+            action.triggered.connect(slot)
+            presets_menu.addAction(action)
 
         view_menu = self.menuBar().addMenu(t("&Widok"))
         for text, shortcut, slot in (
@@ -1694,6 +1714,15 @@ class MainWindow(QMainWindow):
         task = AutoToneTask(self.current_path, self.full_raw, self.display_params())
         task.signals.auto_ready.connect(self._on_auto_ready)
         self.pool.start(task)
+
+    def _zastosuj_preset(self, preset) -> None:
+        """Naklada preset na biezace zdjecie - jednym krokiem historii, bo
+        idzie ta sama droga co automat (apply_values -> params_changed)."""
+        if self.full_raw is None:
+            self.status.showMessage(t("Najpierw otwórz zdjęcie."))
+            return
+        self.edit_panel.apply_values(dict(preset.wartosci))
+        self.status.showMessage(t("Zastosowano preset „{nazwa}”.", nazwa=preset.etykieta()))
 
     def _on_auto_ready(self, path: str, values: dict) -> None:
         self.edit_panel.auto_button.setEnabled(True)

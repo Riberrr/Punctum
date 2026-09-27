@@ -44,18 +44,23 @@ TYTULY = {
     # klucz w starym zapisie po prostu odpada.
     "powiekszenie": N_("Powiększenie i porównanie"),
     "dane": N_("Dane zdjęcia"),
+    "presety": N_("Presety"),
     "histogram": N_("Histogram"),
     "kadrowanie": N_("Kadrowanie i obrót"),
     "balans": N_("Balans bieli"),
-    "ton": N_("Odcień"),
-    "obecnosc": N_("Obecność"),
-    "wyostrzanie": N_("Wyostrzanie"),
+    # Klucze "ton", "obecnosc" i "wyostrzanie" zostaja z zapisanych ukladow;
+    # zmienily sie tylko nazwy na ekranie (wlasne, nie zapozyczone).
+    "ton": N_("Światło"),
+    "obecnosc": N_("Kolor"),
+    "monochrom": N_("Monochrom"),
+    "wyostrzanie": N_("Ostrość"),
     "szum": N_("Usuwanie szumu"),
 }
 
 UKLAD_DOMYSLNY = {
-    LEWY: ["nawigator", "powiekszenie", "dane"],
-    PRAWY: ["histogram", "kadrowanie", "balans", "ton", "obecnosc", "wyostrzanie", "szum"],
+    LEWY: ["nawigator", "powiekszenie", "dane", "presety"],
+    PRAWY: ["histogram", "kadrowanie", "balans", "ton", "obecnosc", "monochrom",
+            "wyostrzanie", "szum"],
 }
 
 TYTULY_MIEJSC = {

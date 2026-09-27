@@ -60,7 +60,18 @@ crop rotates the photo. At rest you see the rule of thirds, while dragging an
 A navigator with a frame showing the zoomed part (clickable), holding
 *Before / after* shows the photo without edits, a live histogram.
 
-**Sharpening** — amount, radius, detail, masking; RAW defaults to 40,
+**Monochrome** — conversion to black and white that mixes colours: six
+sliders (reds, yellows, greens, cyans, blues, violets) lighten or darken
+each colour, the way a coloured filter on the lens does with black-and-white
+film. Colour swatches apply the classic yellow, orange, red and green filters.
+
+**Presets** — built-in (*Vivid*, *Muted*, *Monochrome*, *High-contrast
+monochrome*) and your own. A preset stores only the slider groups you choose
+when saving it, so it lays over what is already on the photo; crop, location
+and metadata never go into a preset. One click applies it (`Ctrl+Z` undoes);
+presets are JSON files you can export and import.
+
+**Sharpness** — amount, radius, detail, masking; RAW defaults to 40,
 JPEG to 0 (the camera has already sharpened it).
 
 **Noise reduction** — luminance noise and color noise separately, with the
@@ -130,7 +141,7 @@ The Edit tab:
 **The right panel** collects what changes the photo. At the top, always
 visible: the histogram, crop and rotate (crop button, 90° and 180° rotations,
 angle slider, *Reset crop*) and the *Auto* / *Reset* row. Below them the list
-of sliders — white balance, tone, presence, noise reduction — scrolling in its
+of sliders — white balance, light, colour, monochrome, sharpness, noise reduction — scrolling in its
 own area.
 
 **Sizes.** The width of both panels and the height of the thumbnail strip are

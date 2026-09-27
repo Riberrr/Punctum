@@ -31,7 +31,7 @@ from datetime import datetime
 from xml.sax.saxutils import escape
 
 from .loader import is_raw
-from .params import EditParams
+from .params import MONO_FIELDS, EditParams
 
 PUNCTUM_NS = "https://github.com/Riberrr/Punctum/ns/1.0/"
 CRS_NS = "http://ns.adobe.com/camera-raw-settings/1.0/"
@@ -42,6 +42,16 @@ OWN_SUFFIX = ".punctum.xmp"
 
 # orientacja w stopniach -> wartosc pola tiff:Orientation
 _TIFF_ORIENTATION = {0: 1, 90: 6, 180: 3, 270: 8}
+
+# Nazwy pol XMP suwakow monochromu (pole EditParams -> punctum:...).
+_MONO_XMP = {
+    "mono_red": "MonoRed",
+    "mono_yellow": "MonoYellow",
+    "mono_green": "MonoGreen",
+    "mono_cyan": "MonoCyan",
+    "mono_blue": "MonoBlue",
+    "mono_magenta": "MonoMagenta",
+}
 
 
 def _standard_path(photo_path: str) -> str:
@@ -146,7 +156,15 @@ def _lines(params: EditParams) -> list[str]:
         ("punctum:SharpenRadius", f"{params.sharpen_radius:.4f}"),
         ("punctum:SharpenDetail", f"{params.sharpen_detail:.4f}"),
         ("punctum:SharpenMasking", f"{params.sharpen_masking:.4f}"),
+        ("punctum:Mono", "True" if params.mono else "False"),
     ]
+    # Suwaki barw tylko przy wlaczonym monochromie albo gdy ktos je ruszyl -
+    # szesc zer w kazdym sidecarze nic by nie mowilo.
+    if params.mono or any(abs(v) > 1e-9 for v in params.mono_mix):
+        fields += [
+            (f"punctum:{_MONO_XMP[name]}", f"{getattr(params, name):.4f}")
+            for name in MONO_FIELDS
+        ]
 
     if params.has_location:
         # Wlasne pola trzymaja liczbe ze znakiem - tak jak w kodzie, bez
@@ -307,6 +325,8 @@ def read_sidecar(photo_path: str) -> EditParams | None:
             sharpen_radius=number("SharpenRadius", 1.0),
             sharpen_detail=number("SharpenDetail", 25.0),
             sharpen_masking=number("SharpenMasking", 0.0),
+            mono=found.get(f"{{{PUNCTUM_NS}}}Mono", "False") == "True",
+            **{name: number(_MONO_XMP[name], 0.0) for name in MONO_FIELDS},
             latitude=coordinate("Latitude"),
             longitude=coordinate("Longitude"),
             metadata=_bez_falszywej_orientacji(photo_path, {
