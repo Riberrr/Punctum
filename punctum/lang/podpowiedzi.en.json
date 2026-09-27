@@ -160,5 +160,6 @@
   "presety.zapisz": {"tytul": "Save as preset", "opis": "Stores the current settings of the chosen slider groups under a new name."},
   "presety.usun": {"tytul": "Delete preset", "opis": "Deletes the selected preset of your own. Built-in presets cannot be deleted."},
   "presety.nazwa": {"tytul": "Preset name", "opis": "This is how the preset appears in the list. The same name replaces an existing preset."},
-  "presety.grupa": {"tytul": "Slider group", "opis": "Checked groups go into the preset. White balance, sharpness and noise depend on the particular photo, so they are left out by default."}
+  "presety.grupa": {"tytul": "Slider group", "opis": "Checked groups go into the preset. White balance, sharpness and noise depend on the particular photo, so they are left out by default."},
+  "exif.rysik": {"tytul": "Edit field", "opis": "Opens the field for editing. Enter saves, Esc cancels, Tab moves to the next field. Double-clicking the row does the same."}
 }

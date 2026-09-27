@@ -159,5 +159,6 @@
   "presety.zapisz": {"tytul": "Zapisz jako preset", "opis": "Zapamiętuje bieżące nastawy wybranych grup suwaków pod nową nazwą."},
   "presety.usun": {"tytul": "Usuń preset", "opis": "Usuwa zaznaczony własny preset. Wbudowanych nie da się usunąć."},
   "presety.nazwa": {"tytul": "Nazwa presetu", "opis": "Tak preset będzie widoczny na liście. Ta sama nazwa zastępuje istniejący preset."},
-  "presety.grupa": {"tytul": "Grupa suwaków", "opis": "Zaznaczone grupy trafią do presetu. Balans bieli, ostrość i szum zależą od konkretnego zdjęcia, dlatego domyślnie są pominięte."}
+  "presety.grupa": {"tytul": "Grupa suwaków", "opis": "Zaznaczone grupy trafią do presetu. Balans bieli, ostrość i szum zależą od konkretnego zdjęcia, dlatego domyślnie są pominięte."},
+  "exif.rysik": {"tytul": "Edytuj pole", "opis": "Otwiera pole do edycji. Enter zapisuje, Esc anuluje, Tab przechodzi do następnego pola. Dwuklik na wierszu działa tak samo."}
 }

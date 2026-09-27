@@ -231,6 +231,51 @@ def stage_metadane() -> None:
     check("sekcja danych znow na swoim miejscu", dane.isVisible())
 
 
+def stage_rysik() -> None:
+    """Zwarte Dane zdjecia (punkt 30 D): wiersze, rysik, Enter/Tab/Esc."""
+    from punctum.app.exif_panel import ExifPanel
+
+    panel = ExifPanel(przewijany=False, zwarty=True)
+    zmiany: list[dict] = []
+    panel.changed.connect(zmiany.append)
+    panel.set_photo(None, {})
+    panel.resize(300, 600)
+    panel.show()
+    app.processEvents()
+    klucze_pol = list(panel.wiersze)
+    k1, k2 = klucze_pol[0], klucze_pol[1]
+    check("wiersze zamiast pol edycji",
+          len(klucze_pol) == len(panel.editors)
+          and not any(e.isVisible() for e in panel.editors.values())
+          and panel.wiersze[k1].wartosc.text() == "—")
+    panel.wiersze[k1].rysik.click()
+    app.processEvents()
+    ed1 = panel.editors[k1]
+    check("rysik otwiera edytor pola", ed1.isVisible() and panel._edytowany == k1)
+    QTest.keyClicks(ed1, "Ala")
+    QTest.keyClick(ed1, Qt.Key_Tab)
+    app.processEvents()
+    check("Tab zapisuje i przechodzi do nastepnego pola",
+          not ed1.isVisible() and panel._edytowany == k2
+          and panel.wiersze[k1].wartosc.text() == "◆ Ala"
+          and zmiany and zmiany[-1].get(k1) == "Ala",
+          f"{panel.wiersze[k1].wartosc.text()!r} {panel._edytowany}")
+    ed2 = panel.editors[k2]
+    QTest.keyClicks(ed2, "zzz")
+    QTest.keyClick(ed2, Qt.Key_Escape)
+    app.processEvents()
+    check("Esc anuluje edycje", panel._edytowany is None and not ed2.isVisible()
+          and panel._value_of(k2) == "" and k2 not in zmiany[-1])
+    panel.edytuj(k1)
+    QTest.keyClicks(ed1, "Ola")
+    QTest.keyClick(ed1, Qt.Key_Return)
+    app.processEvents()
+    check("Enter zapisuje i zamyka", panel._edytowany is None
+          and panel.wiersze[k1].wartosc.text() == "◆ Ola")
+    panel.close()
+    panel.deleteLater()
+
+
 def finish() -> None:
     try:
         failures = wypisz(results)
@@ -243,5 +288,5 @@ def finish() -> None:
 
 
 lancuch(app, [stage_start, stage_zwijanie, stage_menu, stage_klodka, stage_przenoszenie,
-              stage_okno, stage_domyslny, stage_metadane], finish)
+              stage_okno, stage_domyslny, stage_metadane, stage_rysik], finish)
 sys.exit(app.exec())

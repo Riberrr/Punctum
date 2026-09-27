@@ -244,7 +244,7 @@ class MainWindow(QMainWindow):
         # Metadane sa chowanym dnem sekcji z danymi zdjecia: rozwija je
         # strzalka w rogu tej sekcji, a nie osobny przycisk na calą szerokosc.
         # Dzieki temu panel nie "wyskakuje" - sekcja po prostu rosnie w dol.
-        self.exif_panel = ExifPanel(przewijany=False)
+        self.exif_panel = ExifPanel(przewijany=False, zwarty=True)
         self.exif_panel.changed.connect(self._on_metadata_changed)
         self.exif_panel.write_requested.connect(self._write_metadata_to_originals)
         self.info_panel.set_details(self.exif_panel)
