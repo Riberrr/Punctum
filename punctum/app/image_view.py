@@ -15,7 +15,7 @@ from __future__ import annotations
 import os
 
 import numpy as np
-from PySide6.QtCore import QPointF, QRect, QRectF, Qt, QTimer, Signal
+from PySide6.QtCore import QEvent, QPointF, QRect, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QBrush,
     QColor,
@@ -340,7 +340,7 @@ class ImageView(QGraphicsView):
         if self._base.pixmap().isNull():
             return
         self.fitInView(self._scene.sceneRect(), Qt.KeepAspectRatio)
-        self._zoom = self.transform().m11()
+        self._zoom = self.transform().m11() * self._gestosc()
         self._fitted = True
         self.zoom_changed.emit(self._zoom)
         self._after_view_change()
@@ -350,7 +350,8 @@ class ImageView(QGraphicsView):
             return
         factor = max(self.MIN_ZOOM, min(self.MAX_ZOOM, factor))
         self.resetTransform()
-        self.scale(factor, factor)
+        scale = factor / self._gestosc()
+        self.scale(scale, scale)
         self._zoom = factor
         self._fitted = False
         self.zoom_changed.emit(factor)
@@ -365,7 +366,7 @@ class ImageView(QGraphicsView):
         viewport = self.viewport().rect()
         if rect.isEmpty() or viewport.isEmpty():
             return 1.0
-        return min(viewport.width() / rect.width(), viewport.height() / rect.height())
+        return min(viewport.width() / rect.width(), viewport.height() / rect.height()) * self._gestosc()
 
     def zoom_centred(self, factor: float) -> None:
         """Powiekszenie wokol srodka widoku - dla suwaka.
@@ -388,6 +389,30 @@ class ImageView(QGraphicsView):
     def zoom(self) -> float:
         return self._zoom
 
+    def _gestosc(self) -> float:
+        """Pikseli ekranu na piksel okna (skala Windows razy skala interfejsu).
+
+        Powiekszenie `zoom` liczymy w pikselach EKRANU: 100 % ma pokazac jeden
+        piksel zdjecia na jednym pikselu monitora, niezaleznie od tego, jak
+        bardzo powiekszone sa napisy i przyciski. Transformacja widoku dziala
+        w pikselach okna, wiec przelicza sie ja przez te gestosc.
+        """
+        return self.devicePixelRatioF() or 1.0
+
+    def event(self, event) -> bool:
+        if event.type() == QEvent.DevicePixelRatioChange and not self._base.pixmap().isNull():
+            # Okno przeszlo na monitor o innej gestosci: ta sama transformacja
+            # znaczy tam inne powiekszenie. Dopasowany widok dopasowujemy od
+            # nowa, a przy recznym powiekszeniu trzymamy procent, nie transformacje.
+            if self._fitted:
+                self.fit_to_window()
+            else:
+                self.resetTransform()
+                scale = self._zoom / self._gestosc()
+                self.scale(scale, scale)
+                self._after_view_change()
+        return super().event(event)
+
     def zoom_about(self, factor: float, position: QPointF) -> None:
         """Powiekszenie wokol punktu okna - dla kolka nad widokiem "przed".
 
@@ -403,7 +428,7 @@ class ImageView(QGraphicsView):
         self.scale(factor / self._zoom, factor / self._zoom)
         self.setTransformationAnchor(anchor)
         centre = QPointF(self.viewport().rect().center())
-        self.centerOn(point + (centre - position) / factor)
+        self.centerOn(point + (centre - position) * (self._gestosc() / factor))
         self._zoom = factor
         self._fitted = False
         self.zoom_changed.emit(factor)
@@ -785,7 +810,8 @@ class ImageView(QGraphicsView):
         painter.fillRect(QRectF(rect.left(), crop.top(), crop.left() - rect.left(), crop.height()), shade)
         painter.fillRect(QRectF(crop.right(), crop.top(), rect.right() - crop.right(), crop.height()), shade)
 
-        pixel = 1.0 / max(self._zoom, 1e-6)  # stala grubosc linii na ekranie
+        # stala grubosc linii na ekranie: piksel okna w jednostkach sceny
+        pixel = self._gestosc() / max(self._zoom, 1e-6)
 
         # siatka: trojpodzial w spoczynku, gestsza podczas przeciagania
         divisions = 8 if self._drag_kind else 3

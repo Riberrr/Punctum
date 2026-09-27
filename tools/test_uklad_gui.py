@@ -6,6 +6,8 @@ metadanych nie rusza szerokosci niczego, a rozmiary paneli i paska miniatur
 zmienia sie mysza i sa pamietane.
 
 Uzycie:  python tools/test_uklad_gui.py <plik.rw2> <plik.jpg> [wiecej...]
+Po przejsciu test uruchamia sie jeszcze raz przy skali interfejsu 0,8 i 1,5
+(QT_SCALE_FACTOR w podprocesie).
 Zrzut okna po ulozeniu trafia do katalogu tymczasowego (punctum-uklad.png).
 """
 
@@ -34,6 +36,7 @@ from punctum.app.settings_dialog import PAGE_ABOUT, SettingsDialog  # noqa: E402
 from punctum.core.settings import LAYOUT_LIMITS, Settings, settings_path  # noqa: E402
 
 results: list[tuple[str, bool, str]] = []
+SKALA = float(os.environ.get("QT_SCALE_FACTOR", "1") or 1)
 
 
 def check(name: str, ok: bool, detail: str = "") -> None:
@@ -68,6 +71,22 @@ def fully_visible(widget, panel) -> bool:
         return False
     top_left = widget.mapTo(panel, widget.rect().topLeft())
     return panel.rect().contains(QRect(top_left, widget.size()))
+
+
+def widoczny(widget, panel) -> bool:
+    """Jak fully_visible, ale przy powiekszonym interfejsie wystarczy, ze
+    panel przewija sie do widzetu - przy skali 150 % na zwyklym monitorze
+    wszystko sie nie zmiesci i od tego jest wspolne przewijanie (punkt 30 B)."""
+    if fully_visible(widget, panel) or SKALA <= 1.0:
+        return fully_visible(widget, panel)
+    pasek = panel.scroll.verticalScrollBar()
+    bylo = pasek.value()
+    panel.scroll.ensureWidgetVisible(widget)
+    app.processEvents()
+    ok = fully_visible(widget, panel)
+    pasek.setValue(bylo)  # kolejne etapy licza polozenia od gory panelu
+    app.processEvents()
+    return ok
 
 
 def stage_start() -> None:
@@ -105,7 +124,7 @@ def stage_widocznosc() -> None:
         ("przycisk Przed / po", window.before_button),
         ("dane zdjecia", window.info_panel),
     ):
-        check(f"lewy panel: {name} widoczny", fully_visible(widget, left))
+        check(f"lewy panel: {name} widoczny", widoczny(widget, left))
     panel = window.edit_panel
     for name, widget in (
         ("histogram", window.histogram_widget),
@@ -115,11 +134,12 @@ def stage_widocznosc() -> None:
         ("Automatycznie", panel.auto_button),
         ("Wyzeruj", panel.reset_button),
     ):
-        check(f"prawy panel: {name} widoczny", fully_visible(widget, right))
+        check(f"prawy panel: {name} widoczny", widoczny(widget, right))
     check("suwaki przewijaja sie osobno",
           not right.scroll.widget().isAncestorOf(panel.auto_button))
 
-    path = os.path.join(tempfile.gettempdir(), "punctum-uklad.png")
+    nazwa = "punctum-uklad.png" if SKALA == 1.0 else f"punctum-uklad-{SKALA:g}.png"
+    path = os.path.join(tempfile.gettempdir(), nazwa)
     window.grab().save(path)
 
 
@@ -137,6 +157,12 @@ def stage_powiekszenie() -> None:
           f"{zoom.slider.value()} / {zoom.value_for(1.0)}")
     check("etykieta pokazuje 100 %", zoom.zoom_label.text() == "100 %",
           zoom.zoom_label.text())
+    # 100 % to piksel zdjecia na piksel MONITORA, takze przy skali Windows
+    # i skali interfejsu - inaczej ocena ostrosci przy 100 % bylaby falszywa.
+    gestosc = view.devicePixelRatioF()
+    ekran = view.transform().m11() * gestosc
+    check("100 % to piksel zdjecia na piksel ekranu", abs(ekran - 1.0) < 1e-3,
+          f"{ekran:.3f} przy gestosci {gestosc:.2f}")
     zoom.slider.setValue(zoom.slider.maximum())
     app.processEvents()
     check("koniec suwaka to maksimum podgladu",
@@ -236,4 +262,20 @@ def finish() -> None:
 
 lancuch(app, [stage_start, stage_widocznosc, stage_powiekszenie, stage_metadane,
               stage_przeciaganie], finish)
-sys.exit(app.exec())
+failures = app.exec()
+
+# Ta sama seria przy innej skali interfejsu (punkt 30 A). QT_SCALE_FACTOR
+# Qt czyta tylko przy tworzeniu QApplication, wiec kazda skala to osobny proces.
+if not failures and "QT_SCALE_FACTOR" not in os.environ:
+    import subprocess
+
+    for skala in ("0.8", "1.5"):
+        print(f"--- skala interfejsu {skala}")
+        sys.stdout.flush()
+        failures += subprocess.call(
+            [sys.executable, os.path.abspath(__file__), *sys.argv[1:]],
+            env=dict(os.environ, QT_SCALE_FACTOR=skala),
+        )
+        if failures:
+            break
+sys.exit(failures)

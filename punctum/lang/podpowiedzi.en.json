@@ -164,5 +164,6 @@
   "presety.usun": {"tytul": "Delete preset", "opis": "Deletes the selected preset of your own. Built-in presets cannot be deleted."},
   "presety.nazwa": {"tytul": "Preset name", "opis": "This is how the preset appears in the list. The same name replaces an existing preset."},
   "presety.grupa": {"tytul": "Slider group", "opis": "Checked groups go into the preset. White balance, sharpness and noise depend on the particular photo, so they are left out by default."},
-  "exif.rysik": {"tytul": "Edit field", "opis": "Opens the field for editing. Enter saves, Esc cancels, Tab moves to the next field. Double-clicking the row does the same."}
+  "exif.rysik": {"tytul": "Edit field", "opis": "Opens the field for editing. Enter saves, Esc cancels, Tab moves to the next field. Double-clicking the row does the same."},
+  "ustawienia.skala": {"tytul": "Interface scale", "opis": "Enlarges or shrinks the labels, buttons and panels of the whole program, on top of the system scale. The photo at 100 % stays at 1:1.", "uwaga": "The change takes effect after restarting the program."}
 }

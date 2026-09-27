@@ -419,5 +419,8 @@
  "Nazwa:": "Name:",
  "Zapamiętaj:": "Remember:",
  "Kadr, lokalizacja i metadane nie trafiają do presetu.": "Crop, location and metadata are never stored in a preset.",
- "Zastosowano preset „{nazwa}”.": "Applied preset “{nazwa}”."
+ "Zastosowano preset „{nazwa}”.": "Applied preset “{nazwa}”.",
+ "Skala interfejsu": "Interface scale",
+ "Skala:": "Scale:",
+ "Nowa skala obowiązuje od ponownego uruchomienia programu. Podgląd przy 100 % dalej pokazuje piksel zdjęcia na pikselu ekranu.": "The new scale takes effect after restarting the program. At 100 % the preview still shows one photo pixel per screen pixel."
 }

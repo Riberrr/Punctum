@@ -30,14 +30,23 @@ def _ikona_programu(app: QApplication) -> None:
             pass
 
 
+def _skala_interfejsu(settings: Settings) -> None:
+    # Qt czyta QT_SCALE_FACTOR tylko przy tworzeniu QApplication, wiec musi
+    # stac przed nia. Zmiennej ustawionej recznie (np. w tescie) nie ruszamy.
+    if "QT_SCALE_FACTOR" not in os.environ and abs(settings.ui_scale - 1.0) > 1e-3:
+        os.environ["QT_SCALE_FACTOR"] = f"{settings.ui_scale:g}"
+
+
 def main() -> int:
+    settings = Settings.load()
+    _skala_interfejsu(settings)
     app = QApplication(sys.argv)
     app.setApplicationName("Punctum")
     app.setOrganizationName("Punctum")
     _ikona_programu(app)
     # Jezyk przed pierwszym oknem - napisy licza sie przy tworzeniu widzetow,
     # a ekran startowy tez juz mowi w wybranym jezyku.
-    zastosuj_jezyk(app, Settings.load().language)
+    zastosuj_jezyk(app, settings.language)
 
     ekran = EkranStartowy()
     ekran.show()

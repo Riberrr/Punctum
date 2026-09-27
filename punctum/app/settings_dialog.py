@@ -41,6 +41,8 @@ from ..core.settings import (
     ENGINE_GPU,
     NOISE_QUALITY_LABELS,
     PREVIEW_SIZES,
+    UI_SCALE_MAX,
+    UI_SCALE_MIN,
     Settings,
     settings_path,
 )
@@ -332,6 +334,20 @@ class SettingsDialog(QDialog):
         layout = QVBoxLayout(page)
         layout.setSpacing(10)
 
+        scale = QGroupBox(t("Skala interfejsu"))
+        scale_form = QFormLayout(scale)
+        self.scale_box = QSpinBox()
+        self.scale_box.setRange(round(UI_SCALE_MIN * 100), round(UI_SCALE_MAX * 100))
+        self.scale_box.setSingleStep(5)
+        self.scale_box.setSuffix(" %")
+        scale_form.addRow(t("Skala:"), self.scale_box)
+        podpowiedz_wiersza(scale_form, self.scale_box, "ustawienia.skala")
+        scale_form.addRow("", _hint(
+            t("Nowa skala obowiązuje od ponownego uruchomienia programu. "
+            "Podgląd przy 100 % dalej pokazuje piksel zdjęcia na pikselu ekranu.")
+        ))
+        layout.addWidget(scale)
+
         tips = QGroupBox(t("Podpowiedzi"))
         tips_form = QFormLayout(tips)
         self.tooltips_box = QCheckBox(t("Pokazuj podpowiedzi"))
@@ -536,6 +552,7 @@ class SettingsDialog(QDialog):
         self.pixel_peek_box.setValue(s.pixel_peek_zoom)
         self.tooltips_box.setChecked(s.show_tooltips)
         self.tooltip_delay_box.setValue(s.tooltip_delay_ms)
+        self.scale_box.setValue(round(s.ui_scale * 100))
         self.tooltip_delay_box.setEnabled(s.show_tooltips)
         self.wheel_lockout_box.setValue(s.wheel_lockout_ms)
         self.wheel_dwell_box.setValue(s.wheel_dwell_ms)
@@ -567,6 +584,7 @@ class SettingsDialog(QDialog):
         s.pixel_peek_zoom = self.pixel_peek_box.value()
         s.show_tooltips = self.tooltips_box.isChecked()
         s.tooltip_delay_ms = self.tooltip_delay_box.value()
+        s.ui_scale = self.scale_box.value() / 100.0
         s.wheel_lockout_ms = self.wheel_lockout_box.value()
         s.wheel_dwell_ms = self.wheel_dwell_box.value()
         s.export_format = self.format_box.currentData()

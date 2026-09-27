@@ -57,6 +57,12 @@ def config_directory() -> str:
     return os.path.join(base, APP_NAME)
 
 
+# Zakres skali interfejsu. Ponizej 75 % napisy sa nieczytelne, a powyzej
+# 200 % okno na zwyklym monitorze przestaje miescic panele.
+UI_SCALE_MIN = 0.75
+UI_SCALE_MAX = 2.0
+
+
 def settings_path() -> str:
     return os.path.join(config_directory(), "settings.json")
 
@@ -111,6 +117,10 @@ class Settings:
     # Kod jezyka interfejsu (pl, en...). Pusty = jeszcze nie wybrany: przy
     # starcie bierzemy jezyk systemu, o ile mamy dla niego plik przekladu.
     language: str = ""
+    # Skala napisow, przyciskow i paneli (1.0 = jak system). Dziala przez
+    # QT_SCALE_FACTOR, ktory Qt czyta tylko przy starcie - stad zmiana po
+    # ponownym uruchomieniu.
+    ui_scale: float = 1.0
     reopen_last_folder: bool = True
     last_folder: str = ""
     # Zapis korekt obok zdjec (sidecar XMP). Dzieki temu obrobke 2000 zdjec
@@ -146,6 +156,7 @@ class Settings:
         clean.detail_delay_ms = max(0, min(2000, int(clean.detail_delay_ms)))
         clean.noise_delay_ms = max(0, min(5000, int(clean.noise_delay_ms)))
         clean.tooltip_delay_ms = max(0, min(5000, int(clean.tooltip_delay_ms)))
+        clean.ui_scale = round(float(min(UI_SCALE_MAX, max(UI_SCALE_MIN, float(clean.ui_scale)))), 2)
         if clean.language not in jezyki():
             clean.language = ""  # plik jezyka zniknal - wybierzemy od nowa przy starcie
         if clean.preview_noise_quality not in NOISE_QUALITY_LABELS:
