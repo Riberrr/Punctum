@@ -54,8 +54,10 @@ class PresetyPanel(QWidget):
 
         self.lista = QListWidget()
         self.lista.setObjectName("listaPresetow")
-        self.lista.setMinimumHeight(90)
-        self.lista.setMaximumHeight(200)
+        # Lista ma tyle wysokosci, ile pozycji (`_dopasuj_wysokosc`): przewija
+        # sie caly panel, a nie lista w nim (punkt 30).
+        self.lista.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.lista.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.lista.setContextMenuPolicy(Qt.CustomContextMenu)
         self.lista.customContextMenuRequested.connect(self._menu_kontekstowe)
         self.lista.itemClicked.connect(self._on_klik)
@@ -96,7 +98,12 @@ class PresetyPanel(QWidget):
                 self.lista.addItem(item)
                 if zaznacz is not None and not preset.wbudowany and preset.nazwa == zaznacz:
                     self.lista.setCurrentItem(item)
+        self._dopasuj_wysokosc()
         self._odswiez_przyciski()
+
+    def _dopasuj_wysokosc(self) -> None:
+        wiersze = sum(max(0, self.lista.sizeHintForRow(i)) for i in range(self.lista.count()))
+        self.lista.setFixedHeight(wiersze + 2 * self.lista.frameWidth() + 4)
 
     def zaznaczony(self) -> presety.Preset | None:
         item = self.lista.currentItem()

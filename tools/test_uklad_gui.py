@@ -161,9 +161,14 @@ def stage_metadane() -> None:
     check("suwak powiekszenia dalej widoczny",
           fully_visible(window.zoom_panel.slider, window.left_panel))
     exif = window.exif_panel
-    check("przyciski metadanych widoczne bez przewijania",
+    # Od punktu 30 lewy panel przewija sie w calosci, jak prawy: przyciski
+    # maja byc osiagalne paskiem panelu, a nie widoczne od razu.
+    window.left_panel.scroll.ensureWidgetVisible(exif.write_button)
+    app.processEvents()
+    check("przyciski metadanych osiagalne po przewinieciu panelu",
           all(fully_visible(b, window.left_panel)
               for b in (exif.all_button, exif.clear_button, exif.write_button)))
+    window.left_panel.scroll.verticalScrollBar().setValue(0)
     window.info_panel.details_button.click()
     app.processEvents()
 

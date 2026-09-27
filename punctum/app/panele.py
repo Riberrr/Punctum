@@ -226,8 +226,6 @@ class _NaglowekSekcji(QWidget):
 class Sekcja(QFrame):
     """Naglowek z nazwa plus tresc, ktora zwija sie pod naglowek."""
 
-    rozciaganie_zmienione = Signal()
-
     def __init__(self, klucz: str, tresc: QWidget, uklad: "UkladPaneli"):
         super().__init__()
         self.setObjectName("panelSection")
@@ -236,7 +234,6 @@ class Sekcja(QFrame):
         self.uklad = uklad
         self.zwinieta = False
         self.przesuwalna = False
-        self._rozciagliwa = False
 
         self.naglowek = _NaglowekSekcji(self)
         layout = QVBoxLayout(self)
@@ -254,36 +251,10 @@ class Sekcja(QFrame):
         self.zwinieta = on
         self.tresc.setVisible(not on)
         self.naglowek.strzalka.setText("▸" if on else "▾")
-        self.rozciaganie_zmienione.emit()
 
     def set_przesuwalna(self, on: bool) -> None:
         self.przesuwalna = on
         self.naglowek.set_przesuwalny(on)
-
-    def ustaw_rozciaganie(self, on: bool) -> None:
-        """Sekcja z wlasnym przewijaniem (rozwiniete metadane) bierze wolne
-        miejsce panelu; zwinieta nie moze rozdmuchac ramki na pol okna."""
-        self._rozciagliwa = bool(on)
-        self.rozciaganie_zmienione.emit()
-
-    def chce_miejsca(self) -> bool:
-        return self._rozciagliwa and not self.zwinieta
-
-
-class _UkladListy(QVBoxLayout):
-    """Pionowy uklad listy sekcji, ktory nie zglasza wysokosci zaleznej od
-    szerokosci.
-
-    Etykiety z zawijaniem (dane zdjecia) wlaczaja w ukladzie tryb
-    "wysokosc zalezy od szerokosci". QScrollArea rozciaga wtedy tresc do
-    wysokosci PREFEROWANEJ (zmierzone: 944 px przy 687 px miejsca), zamiast
-    scisnac ja do minimalnej - rozwiniete metadane wypychaly swoje przyciski
-    pod krawedz panelu, choc z wlasnym przewijaniem zmiescilyby sie w nim.
-    """
-
-    def hasHeightForWidth(self) -> bool:
-        return False
-
 
 class _ListaSekcji(QWidget):
     """Wnetrze przewijanego panelu; przyjmuje upuszczane sekcje."""
@@ -292,7 +263,12 @@ class _ListaSekcji(QWidget):
         super().__init__()
         self._panel = panel
         self.setAcceptDrops(True)
-        self.uklad_pionowy = _UkladListy(self)
+        # Zwykly uklad, z wysokoscia zalezna od szerokosci: QScrollArea daje
+        # wtedy tresci pelna wysokosc, a nie minimalna. Punkt 30 - sekcje
+        # nie maja wlasnych paskow i nie sa sciskane, przewija sie caly panel
+        # (dawniej sciskanie bylo celowe i rozwiniete metadane oraz lista
+        # presetow dostawaly po kilka wierszy z wlasnym paskiem).
+        self.uklad_pionowy = QVBoxLayout(self)
         self.uklad_pionowy.setContentsMargins(10, 0, 10, 4)
         self.uklad_pionowy.setSpacing(0)
         self.kreska = QFrame(self)
@@ -419,16 +395,6 @@ class PanelSekcji(QWidget):
             uklad.addWidget(sekcja)
             sekcja.show()
         uklad.addStretch(1)
-        self.rozloz_miejsce()
-
-    def rozloz_miejsce(self) -> None:
-        uklad = self.lista.uklad_pionowy
-        ktos_chce = False
-        for i, sekcja in enumerate(self.sekcje):
-            chce = sekcja.chce_miejsca() and not sekcja.isHidden()
-            ktos_chce |= chce
-            uklad.setStretch(i, 1 if chce else 0)
-        uklad.setStretch(len(self.sekcje), 0 if ktos_chce else 1)
 
 
 class UkladPaneli(QObject):
@@ -452,7 +418,6 @@ class UkladPaneli(QObject):
     def dodaj_sekcje(self, klucz: str, tresc: QWidget) -> Sekcja:
         sekcja = Sekcja(klucz, tresc, self)
         sekcja.setParent(self._magazyn)
-        sekcja.rozciaganie_zmienione.connect(self._rozloz)
         self.sekcje[klucz] = sekcja
         return sekcja
 
@@ -523,10 +488,6 @@ class UkladPaneli(QObject):
             sekcja = self.sekcje.get(klucz)
             if sekcja is not None and sekcja.parentWidget() is not self._magazyn:
                 sekcja.setParent(self._magazyn)
-
-    def _rozloz(self) -> None:
-        for panel in self.panele.values():
-            panel.rozloz_miejsce()
 
     # --- menu i okno --------------------------------------------------
 

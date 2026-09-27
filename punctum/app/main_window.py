@@ -244,14 +244,9 @@ class MainWindow(QMainWindow):
         # Metadane sa chowanym dnem sekcji z danymi zdjecia: rozwija je
         # strzalka w rogu tej sekcji, a nie osobny przycisk na calą szerokosc.
         # Dzieki temu panel nie "wyskakuje" - sekcja po prostu rosnie w dol.
-        self.exif_panel = ExifPanel()
+        self.exif_panel = ExifPanel(przewijany=False)
         self.exif_panel.changed.connect(self._on_metadata_changed)
         self.exif_panel.write_requested.connect(self._write_metadata_to_originals)
-        # 170, nie 240: od punktu 23 kazda sekcja lewego panelu ma naglowek
-        # (razem ~120 px). Przy 1080p i szerszym panelu przyciski rozwinietych
-        # metadanych wypadaly pod krawedz; lista pol ma wlasne przewijanie,
-        # a przy wolnym miejscu sekcja i tak sie rozciaga.
-        self.exif_panel.setMinimumHeight(170)
         self.info_panel.set_details(self.exif_panel)
 
         self.zoom_panel = ZoomPanel(ImageView.MAX_ZOOM)
@@ -303,9 +298,6 @@ class MainWindow(QMainWindow):
             *self.edit_panel.sekcje.items(),
         ):
             self.panele.dodaj_sekcje(klucz, tresc)
-        # Rozwiniete metadane maja wlasne przewijanie, wiec sekcja danych
-        # bierze wolne miejsce panelu dopiero po rozwinieciu.
-        self.info_panel.details_toggled.connect(self.panele.sekcje["dane"].ustaw_rozciaganie)
 
         left = self.panele.utworz_panel(LEWY)
         left.setObjectName("leftPanel")

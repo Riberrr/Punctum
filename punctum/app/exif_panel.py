@@ -40,7 +40,7 @@ class ExifPanel(QWidget):
     changed = Signal(dict)  # komplet zmienionych pol
     write_requested = Signal()  # zapis do pliku zrodlowego
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, przewijany: bool = True):
         super().__init__(parent)
         self.path: str | None = None
         self.original: dict[str, str] = {}  # co jest w pliku
@@ -77,15 +77,7 @@ class ExifPanel(QWidget):
         form.addWidget(self.problem)
         form.addStretch(1)
 
-        self.scroll = QScrollArea()
-        self.scroll.setWidget(form_host)
-        self.scroll.setWidgetResizable(True)
-        self.scroll.setFrameShape(QScrollArea.NoFrame)
-        # Panel nie ma prawa poszerzac kolumny, w ktorej stoi: w Edycji
-        # rozwiniecie metadanych rozpychalo caly prawy panel, a razem z nim
-        # przesuwalo podglad zdjecia.
-        self.scroll.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Expanding)
-        self.scroll.setMinimumWidth(0)
+        self.pola_box = self._obudowa(form_host, przewijany)
 
         self.all_button = QPushButton(t("Wszystkie tagi"))
         self.all_button.setCheckable(True)
@@ -118,21 +110,37 @@ class ExifPanel(QWidget):
         self.table_layout.setContentsMargins(0, 2, 10, 2)
         self.table_layout.setHorizontalSpacing(10)
         self.table_layout.setVerticalSpacing(2)
-        self.table_scroll = QScrollArea()
-        self.table_scroll.setWidget(self.table)
-        self.table_scroll.setWidgetResizable(True)
-        self.table_scroll.setFrameShape(QScrollArea.NoFrame)
-        self.table_scroll.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Expanding)
-        self.table_scroll.setMinimumWidth(0)
-        self.table_scroll.hide()
+        self.tabela_box = self._obudowa(self.table, przewijany)
+        self.tabela_box.hide()
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(6)
-        layout.addWidget(self.scroll, 1)
-        layout.addWidget(self.table_scroll, 1)
+        layout.addWidget(self.pola_box, 1)
+        layout.addWidget(self.tabela_box, 1)
         layout.addLayout(buttons)
         self.buttons = buttons
+
+    @staticmethod
+    def _obudowa(tresc: QWidget, przewijany: bool) -> QWidget:
+        """W Mapie panel jest pelna kolumna i przewija sie sam. W Edycji
+        siedzi w sekcji przewijanego panelu: drugi pasek wewnatrz pierwszego
+        sciskal pola do kilku wierszy (punkt 30), wiec tam bez obudowy."""
+        if przewijany:
+            box = QScrollArea()
+            box.setWidget(tresc)
+            box.setWidgetResizable(True)
+            box.setFrameShape(QScrollArea.NoFrame)
+            pion = QSizePolicy.Expanding
+        else:
+            box = tresc
+            pion = QSizePolicy.Preferred
+        # Panel nie ma prawa poszerzac kolumny, w ktorej stoi: w Edycji
+        # rozwiniecie metadanych rozpychalo caly prawy panel, a razem z nim
+        # przesuwalo podglad zdjecia.
+        box.setSizePolicy(QSizePolicy.Ignored, pion)
+        box.setMinimumWidth(0)
+        return box
 
     def _editor(self, field) -> QWidget:
         """Pole formularza dobrane do rodzaju danych."""
@@ -233,8 +241,8 @@ class ExifPanel(QWidget):
     # ------------------------------------------------ wszystkie tagi
 
     def _on_show_all(self, on: bool) -> None:
-        self.scroll.setVisible(not on)
-        self.table_scroll.setVisible(on)
+        self.pola_box.setVisible(not on)
+        self.tabela_box.setVisible(on)
         if on:
             self._fill_table()
 

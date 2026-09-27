@@ -1,8 +1,8 @@
 """Panele z sekcjami w dzialajacym oknie (punkt 23).
 
 Zwijanie, ukrywanie z menu Widok, klodka, przenoszenie miedzy panelami
-i do schowka, okno ukladu, powrot do ukladu domyslnego, rozciaganie
-rozwinietych metadanych. Zdjec nie potrzebuje, ale przyjmuje je jak inne
+i do schowka, okno ukladu, powrot do ukladu domyslnego, jedno przewijanie
+lewego panelu z rozwinietymi metadanymi i presetami (punkt 30). Zdjec nie potrzebuje, ale przyjmuje je jak inne
 testy z serii. Zrzut: %TEMP%/punctum-panele.png.
 
 Uzycie:  python tools/test_panele_gui.py [zdjecia...] [--pelny]
@@ -14,7 +14,7 @@ import os
 import sys
 import tempfile
 
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QScrollArea
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -199,15 +199,33 @@ def stage_domyslny() -> None:
 
 def stage_metadane() -> None:
     dane = u.sekcje["dane"]
-    lista = window.left_panel.lista.uklad_pionowy
-    i = klucze(LEWY).index("dane")
+    panel = window.left_panel
+    lista = panel.lista.uklad_pionowy
+    if "presety" not in klucze(LEWY):
+        u.przenies("presety", LEWY)
     window.info_panel.set_details_visible(True)
     app.processEvents()
-    check("rozwiniete metadane biora wolne miejsce", lista.stretch(i) == 1)
+    app.processEvents()
+    exif = window.exif_panel
+    check("metadane bez wlasnego przewijania", not dane.findChildren(QScrollArea))
+    check("przyciski metadanych w obrebie sekcji",
+          exif.write_button.mapTo(dane, exif.write_button.rect().bottomLeft()).y() <= dane.height(),
+          f"{exif.write_button.mapTo(dane, exif.write_button.rect().bottomLeft()).y()} > {dane.height()}")
+    check("rozwiniete metadane przewijaja caly panel",
+          panel.scroll.verticalScrollBar().maximum() > 0,
+          str(panel.scroll.verticalScrollBar().maximum()))
+    pl = window.presety_panel.lista
+    check("lista presetow bez paska i nieucieta",
+          pl.verticalScrollBar().maximum() == 0 and pl.height() >= pl.sizeHintForRow(0) * pl.count(),
+          f"{pl.height()} / {pl.count()} pozycji")
+    for sekcja in panel.sekcje:
+        tresc = sekcja.tresc
+        if tresc.isVisible() and tresc.height() + 1 < tresc.minimumSizeHint().height():
+            check(f"sekcja {sekcja.klucz} nie jest sciskana", False,
+                  f"{tresc.height()} < {tresc.minimumSizeHint().height()}")
     u.przelacz_zwiniecie("dane")
     app.processEvents()
-    check("zwinieta sekcja danych nie rozpycha panelu", lista.stretch(i) == 0
-          and lista.stretch(lista.count() - 1) == 1)
+    check("po zwinieciu wolne miejsce na dole", lista.stretch(lista.count() - 1) == 1)
     u.przelacz_zwiniecie("dane")
     window.info_panel.set_details_visible(False)
     check("sekcja danych znow na swoim miejscu", dane.isVisible())
