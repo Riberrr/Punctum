@@ -26,11 +26,20 @@ from PySide6.QtGui import (
     QPixmap,
     QWheelEvent,
 )
-from PySide6.QtWidgets import QGraphicsPixmapItem, QGraphicsScene, QGraphicsView
+from PySide6.QtWidgets import (
+    QGraphicsItem,
+    QGraphicsPixmapItem,
+    QGraphicsRectItem,
+    QGraphicsScene,
+    QGraphicsView,
+)
 
+from ..przeklad import t
 from .style import ASSETS_DIRECTORY
 
 HANDLE_GRAB_PX = 11  # promien chwytania uchwytu, w pikselach ekranu
+SPLIT_GRAB_PX = 8  # jak blisko linii podzialu kursor ja chwyta
+SPLIT_KNOB_PX = 12  # promien kolka na linii podzialu
 ROTATE_BAND_PX = 70  # jak daleko poza kadrem lapie kursor obrotu
 MIN_CROP_PX = 32  # najmniejszy dopuszczalny kadr
 
@@ -70,6 +79,30 @@ class ImageView(QGraphicsView):
         self._detail.hide()
         self._scene.addItem(self._base)
         self._scene.addItem(self._detail)
+
+        # Podzielony podglad przed/po (punkt 19). Wersja "przed" lezy nad
+        # "po" w prostokacie, ktory przycina swoje dzieci do lewej strony
+        # linii. Obie wersje zyja w tych samych wspolrzednych sceny, wiec
+        # powiekszenie, przesuwanie i ostry fragment dzialaja bez zadnej
+        # synchronizacji - tego nie dalyby dwa osobne widoki.
+        self._split_clip = QGraphicsRectItem()
+        self._split_clip.setFlag(QGraphicsItem.ItemClipsChildrenToShape, True)
+        self._split_clip.setPen(QPen(Qt.NoPen))
+        self._split_clip.setBrush(QBrush(Qt.NoBrush))
+        self._split_clip.setZValue(2)
+        self._split_clip.hide()
+        self._before_base = QGraphicsPixmapItem(self._split_clip)
+        self._before_base.setTransformationMode(Qt.SmoothTransformation)
+        self._before_base.setCacheMode(QGraphicsPixmapItem.DeviceCoordinateCache)
+        self._before_detail = QGraphicsPixmapItem(self._split_clip)
+        self._before_detail.setTransformationMode(Qt.SmoothTransformation)
+        self._before_detail.setZValue(1)
+        self._before_detail.hide()
+        self._scene.addItem(self._split_clip)
+        self._split_on = False
+        self._split = 0.5  # polozenie linii jako ulamek szerokosci zdjecia
+        self._split_hover = False
+
         self.setScene(self._scene)
 
         self.setRenderHints(QPainter.SmoothPixmapTransform)
@@ -128,6 +161,7 @@ class ImageView(QGraphicsView):
             self.fit_to_window()
         else:
             self._schedule_detail()
+        self._update_split()
         self._emit_view_rect()
 
     def set_detail(self, rgb8: np.ndarray, rect: QRect, scale: float) -> None:
@@ -140,12 +174,15 @@ class ImageView(QGraphicsView):
 
     def clear_detail(self) -> None:
         self._detail.hide()
+        self._before_detail.hide()
 
     def clear_image(self) -> None:
         self._base.setPixmap(QPixmap())
+        self._before_base.setPixmap(QPixmap())
         self.clear_detail()
         self._image_size = (0, 0)
         self._scene.setSceneRect(0, 0, 0, 0)
+        self._update_split()
 
     @property
     def image_size(self) -> tuple[int, int]:
@@ -154,6 +191,100 @@ class ImageView(QGraphicsView):
     def base_pixmap(self) -> QPixmap:
         """Gotowa pixmapa podgladu - zeby nawigator nie konwertowal jej drugi raz."""
         return self._base.pixmap()
+
+    # --------------------------------------------------- podzial przed/po
+
+    def set_split(self, enabled: bool) -> None:
+        """Wlacza linie podzialu. Obraz "przed" podaje okno (set_before_image) -
+        widok nie wie, jak go policzyc."""
+        self._split_on = enabled
+        if not enabled:
+            self._before_base.setPixmap(QPixmap())
+            self._before_detail.hide()
+            self._set_split_hover(False)
+        self._update_split()
+
+    @property
+    def split_enabled(self) -> bool:
+        return self._split_on
+
+    @property
+    def split_visible(self) -> bool:
+        return self._split_clip.isVisible()
+
+    @property
+    def split_position(self) -> float:
+        return self._split
+
+    def set_split_position(self, fraction: float) -> None:
+        self._split = float(np.clip(fraction, 0.0, 1.0))
+        self._update_split()
+
+    def set_before_image(self, rgb8: np.ndarray) -> None:
+        """Obraz "przed" w tej samej geometrii co biezacy podglad."""
+        pixmap = numpy_to_pixmap(rgb8)
+        self._before_base.setPixmap(pixmap)
+        self._before_base.setScale(self._image_size[0] / float(max(pixmap.width(), 1)))
+        self._before_detail.hide()
+        self._update_split()
+        # ostry fragment "przed" trzeba dorysowac tak samo jak "po"
+        self._schedule_detail()
+
+    def set_before_detail(self, rgb8: np.ndarray, rect: QRect, scale: float) -> None:
+        if self._before_base.pixmap().isNull():
+            return
+        self._before_detail.setPixmap(numpy_to_pixmap(rgb8))
+        self._before_detail.setScale(1.0 / scale if scale else 1.0)
+        self._before_detail.setPos(float(rect.x()), float(rect.y()))
+        self._before_detail.show()
+
+    def _update_split(self) -> None:
+        width, height = self._image_size
+        # W kadrowaniu podzial znika: ramka pokazuje zdjecie nieprzyciete,
+        # a obraz "przed" jest liczony w geometrii kadru.
+        visible = (
+            self._split_on and not self._crop_mode and width > 0
+            and not self._before_base.pixmap().isNull()
+        )
+        self._split_clip.setVisible(visible)
+        if visible:
+            self._split_clip.setRect(QRectF(0.0, 0.0, width * self._split, float(height)))
+        self.viewport().update()
+
+    def _split_line(self) -> tuple[float, float, float] | None:
+        """Linia podzialu w pikselach okna: (x, gora, dol) albo None."""
+        if not self._split_clip.isVisible():
+            return None
+        width, height = self._image_size
+        top = self.mapFromScene(QPointF(width * self._split, 0.0))
+        bottom = self.mapFromScene(QPointF(width * self._split, float(height)))
+        view = self.viewport().rect()
+        y0, y1 = max(float(top.y()), float(view.top())), min(float(bottom.y()), float(view.bottom()))
+        if y1 <= y0:
+            return None
+        return float(top.x()), y0, y1
+
+    def _near_split(self, position: QPointF) -> bool:
+        line = self._split_line()
+        if line is None:
+            return False
+        x, y0, y1 = line
+        return abs(position.x() - x) <= SPLIT_GRAB_PX and y0 <= position.y() <= y1
+
+    def _set_split_hover(self, hover: bool) -> None:
+        if hover == self._split_hover:
+            return
+        self._split_hover = hover
+        # Kursor ustawiamy na viewporcie, bo tam trzyma go tryb przeciagania
+        # dlonia; po zejsciu z linii wracamy do otwartej dloni. Bez tego trybu
+        # (kadrowanie) viewport ma zostac bez kursora - wlasny przykrylby
+        # kursory uchwytow ustawiane na samym widoku.
+        if hover:
+            self.viewport().setCursor(Qt.SplitHCursor)
+        elif self.dragMode() == QGraphicsView.ScrollHandDrag:
+            self.viewport().setCursor(Qt.OpenHandCursor)
+        else:
+            self.viewport().unsetCursor()
 
     # ---------------------------------------------------------- detal
 
@@ -285,6 +416,10 @@ class ImageView(QGraphicsView):
 
     def scrollContentsBy(self, dx: int, dy: int) -> None:
         super().scrollContentsBy(dx, dy)
+        # Kolko i podpisy podzialu stoja w miejscu okna, a nie zdjecia -
+        # przesuniete kopiowaniem pikseli zostawialyby smuge.
+        if self._split_clip.isVisible():
+            self.viewport().update()
         self._emit_view_rect()
         self._schedule_detail()
 
@@ -295,11 +430,15 @@ class ImageView(QGraphicsView):
         self.setDragMode(QGraphicsView.NoDrag if enabled else QGraphicsView.ScrollHandDrag)
         if enabled:
             self.clear_detail()
+            # "przed" w starej geometrii kadru po wyjsciu z kadrowania bylby
+            # nieaktualny - okno policzy go od nowa
+            self._before_base.setPixmap(QPixmap())
+            self._set_split_hover(False)
             self.fit_to_window()
         else:
             self.unsetCursor()
             self._schedule_detail()
-        self.viewport().update()
+        self._update_split()
 
     def set_crop_fractions(self, crop: tuple[float, float, float, float]) -> None:
         width, height = self._image_size
@@ -397,6 +536,12 @@ class ImageView(QGraphicsView):
         return ImageView._rotate_cursor_cache
 
     def mousePressEvent(self, event) -> None:
+        # Linia podzialu ma pierwszenstwo przed przesuwaniem zdjecia dlonia -
+        # inaczej chwycenie jej przesuwaloby caly widok.
+        if event.button() == Qt.LeftButton and self._near_split(QPointF(event.position())):
+            self._drag_kind = "split"
+            event.accept()
+            return
         if not self._crop_mode or event.button() != Qt.LeftButton:
             super().mousePressEvent(event)
             return
@@ -422,6 +567,14 @@ class ImageView(QGraphicsView):
 
     def mouseMoveEvent(self, event) -> None:
         position = QPointF(event.position())
+
+        if self._drag_kind == "split":
+            width = self._image_size[0]
+            if width:
+                self.set_split_position(self.mapToScene(event.position().toPoint()).x() / width)
+            return
+        if self._drag_kind is None and not self._crop_mode:
+            self._set_split_hover(self._near_split(position))
 
         if self._crop_mode and self._drag_kind is None:
             handle = self._handle_at(position)
@@ -452,6 +605,9 @@ class ImageView(QGraphicsView):
             super().mouseReleaseEvent(event)
             return
         kind, self._drag_kind, self._drag_handle = self._drag_kind, None, None
+        if kind == "split":
+            self._set_split_hover(self._near_split(QPointF(event.position())))
+            return
         if kind == "rotate":
             self.rotation_changed.emit(self._rotation)
         else:
@@ -518,7 +674,48 @@ class ImageView(QGraphicsView):
 
     # --- rysowanie nakladki ----------------------------------------------
 
+    def _draw_split(self, painter: QPainter) -> None:
+        line = self._split_line()
+        if line is None:
+            return
+        x, y0, y1 = line
+        painter.save()
+        # Linia, kolko i podpisy maja stala wielkosc na ekranie, wiec rysujemy
+        # je w pikselach okna, a nie sceny.
+        painter.resetTransform()
+        painter.setRenderHint(QPainter.Antialiasing, True)
+        painter.setPen(QPen(QColor(0, 0, 0, 110), 3.0))
+        painter.drawLine(QPointF(x, y0), QPointF(x, y1))
+        painter.setPen(QPen(QColor(255, 255, 255, 230), 1.5))
+        painter.drawLine(QPointF(x, y0), QPointF(x, y1))
+
+        # kolko z grotami w polowie widocznej czesci linii - mowi, ze linie
+        # da sie chwycic, zanim kursor na nia trafi
+        cy = (y0 + y1) / 2.0
+        painter.setPen(QPen(QColor(255, 255, 255, 230), 1.5))
+        painter.setBrush(QColor(28, 28, 32, 210))
+        painter.drawEllipse(QPointF(x, cy), SPLIT_KNOB_PX, SPLIT_KNOB_PX)
+        painter.setBrush(Qt.NoBrush)
+        for side in (-1.0, 1.0):
+            tip, back = x + side * 7.0, x + side * 3.0
+            painter.drawPolyline([QPointF(back, cy - 4.0), QPointF(tip, cy), QPointF(back, cy + 4.0)])
+
+        # podpisy u gory, po obu stronach linii
+        metrics = painter.fontMetrics()
+        top = y0 + 10.0
+        for text, right_aligned in ((t("Przed"), True), (t("Po"), False)):
+            width = metrics.horizontalAdvance(text) + 14.0
+            left = x - 10.0 - width if right_aligned else x + 10.0
+            box = QRectF(left, top, width, metrics.height() + 6.0)
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(QColor(28, 28, 32, 190))
+            painter.drawRoundedRect(box, 4.0, 4.0)
+            painter.setPen(QColor(235, 235, 240))
+            painter.drawText(box, Qt.AlignCenter, text)
+        painter.restore()
+
     def drawForeground(self, painter: QPainter, rect: QRectF) -> None:
+        self._draw_split(painter)
         if not self._crop_mode or self._crop.isNull():
             return
 

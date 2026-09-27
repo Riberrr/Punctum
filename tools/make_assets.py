@@ -205,6 +205,12 @@ IKONY = {
         '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 2v20"/>'
         f'<path d="M3 6a2 2 0 0 1 2-2h7v16H5a2 2 0 0 1-2-2z" fill="{KOLOR_IKON}" fill-opacity=".35" stroke="none"/>'
     ),
+    # Ta sama ramka co "przed / po", ale linia z kolkiem i grotami - jak
+    # uchwyt, ktory podzial rysuje na zdjeciu.
+    "split-view": (
+        '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v5M12 15v5"/>'
+        '<circle cx="12" cy="12" r="3"/><path d="M7.5 10.5 6 12l1.5 1.5M16.5 10.5 18 12l-1.5 1.5"/>'
+    ),
     "undo": '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
     "redo": '<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',
     "fit": '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',

@@ -55,7 +55,7 @@ if not defined ZDJECIA (
 
 echo.
 echo === z interfejsem ===
-for %%T in (test_trwalosc_gui test_mapa_gui test_jpeg_gui test_znaczniki_gui test_uklad_gui test_panele_gui test_szum_podglad_gui test_podpowiedzi_gui test_historia_gui) do (
+for %%T in (test_trwalosc_gui test_mapa_gui test_jpeg_gui test_znaczniki_gui test_uklad_gui test_panele_gui test_szum_podglad_gui test_podpowiedzi_gui test_historia_gui test_podzial_gui) do (
     %PY% tools\%%T.py %ZDJECIA% %FLAGI% || goto porazka
 )
 

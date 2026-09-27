@@ -151,6 +151,11 @@ class MainWindow(QMainWindow):
         # przytrzymany "Przed / po": podglad pokazuje zdjecie bez korekt i nic,
         # co przyjdzie w tym czasie z watkow, nie moze go podmienic
         self._before_shown = False
+        # Podzial przed/po: klucz geometrii, w ktorej policzono obraz "przed".
+        # Suwaki tonalne go nie zmieniaja, wiec liczymy go od nowa tylko po
+        # zmianie kadru, obrotu, zdjecia albo rozmiaru podgladu.
+        self._split_key = None
+        self._latest_before_detail = 0
         self._noise_pending = None  # (obraz bez odszumiania, parametry)
 
         # Tor tonalny na karcie graficznej. Bez niego podglad liczy numpy,
@@ -247,12 +252,17 @@ class MainWindow(QMainWindow):
         podpowiedz(self.before_button, "podglad.przed_po")
         self.before_button.pressed.connect(self._show_before)
         self.before_button.released.connect(self._show_after)
-        # Wiersz, nie sam przycisk: obok stanie przelacznik podzielonego
-        # podgladu przed/po (punkt 19 planu).
+        # Przytrzymanie pokazuje cale zdjecie bez korekt, podzial - obie
+        # wersje naraz, rozdzielone linia (punkt 19 planu).
+        self.split_button = QPushButton(t("Podział"))
+        self.split_button.setIcon(ikona("split-view"))
+        self.split_button.setCheckable(True)
+        podpowiedz(self.split_button, "podglad.podzial")
+        self.split_button.toggled.connect(self._set_split)
         compare_row = QHBoxLayout()
         compare_row.setContentsMargins(0, 0, 0, 0)
         compare_row.addWidget(self.before_button, 1)
-        compare_row.addStretch(1)
+        compare_row.addWidget(self.split_button, 1)
 
         compare = QWidget()
         compare.setLayout(compare_row)
@@ -477,6 +487,14 @@ class MainWindow(QMainWindow):
             action.setShortcut(QKeySequence(shortcut))
             action.triggered.connect(slot)
             view_menu.addAction(action)
+        # Skrot jak w Lightroomie. Akcja i przycisk pilnuja sie nawzajem;
+        # setChecked z tym samym stanem nie wysyla sygnalu, wiec bez petli.
+        self.split_action = QAction(t("Podział przed / po"), self)
+        self.split_action.setCheckable(True)
+        self.split_action.setShortcut(QKeySequence("Y"))
+        self.split_action.toggled.connect(self.split_button.setChecked)
+        self.split_button.toggled.connect(self.split_action.setChecked)
+        view_menu.addAction(self.split_action)
         view_menu.addSeparator()
         # Menu budowane przy kazdym otwarciu: pokazuje biezacy uklad,
         # takze po zmianach zrobionych przeciaganiem albo w oknie ukladu.
@@ -1376,6 +1394,7 @@ class MainWindow(QMainWindow):
         if self._before_shown:
             return  # pokazemy po puszczeniu przycisku
         self.view.set_image(rgb8, image_size)
+        self._odswiez_przed(rgb8, image_size)
         self.navigator.set_pixmap(self.view.base_pixmap())
         self.histogram_widget.set_histogram(histogram(rgb8))
         if self.crop_mode:
@@ -1413,6 +1432,8 @@ class MainWindow(QMainWindow):
     def _render_detail(self, rect: QRect, scale: float) -> None:
         if self.full_raw is None:
             return
+        if self.view.split_visible and not self._before_shown:
+            self._render_before_detail(rect, scale)
         # Przy "przed" ostry fragment tez ma byc bez korekt - inaczej po
         # chwili na zdjecie bez korekt wjezdzal fragment z korektami.
         # EditParams() ma domyslnie kolor 25 i wyostrzanie 40 - "przed" liczymy
@@ -1461,9 +1482,80 @@ class MainWindow(QMainWindow):
 
     # ------------------------------------------------------------- przed/po
 
+    def _before_params(self) -> EditParams:
+        """Zdjecie bez korekt, ale w geometrii biezacego podgladu - inaczej
+        polowki podzialu nie trafilyby w siebie. Bez odszumiania koloru
+        i wyostrzania, tak jak before_image."""
+        params = self.display_params()
+        return EditParams(
+            noise_color=0.0, sharpen_amount=0.0, orientation=params.orientation,
+            rotation=params.rotation, crop=params.crop,
+        )
+
+    def _set_split(self, enabled: bool) -> None:
+        self._split_key = None
+        self._latest_before_detail = -1
+        self.view.set_split(enabled)
+        if enabled and self.current_image is not None and not self._before_shown:
+            self._odswiez_przed(self.current_image, self.view.image_size)
+
+    def _odswiez_przed(self, preview: np.ndarray, image_size: tuple) -> None:
+        """Obraz "przed" dla podzialu, w rozmiarze biezacego podgladu."""
+        if not self.view.split_enabled or self.full_raw is None or self.crop_mode:
+            return
+        params = self._before_params()
+        height, width = preview.shape[:2]
+        key = (self.current_path, params.orientation, params.rotation, params.crop,
+               width, height)
+        if key == self._split_key:
+            return
+        rgb8 = None
+        if self.gpu_source_ready:
+            out_w, out_h = image_size
+            rgb8 = self.gpu.render(
+                self.full_raw, params, width, height,
+                region=(0, 0, out_w, out_h), scale=width / float(max(1, out_w)),
+            )
+        if rgb8 is None and self.proxy is not None:
+            # Na procesorze to ulamek sekundy, ale tylko po zmianie geometrii,
+            # wiec nie ma po co zakladac na to osobnego watku.
+            rgb8 = develop(self.proxy, params, denoise=False)
+        if rgb8 is None:
+            return
+        self._split_key = key
+        self.view.set_before_image(rgb8)
+
+    def _render_before_detail(self, rect: QRect, scale: float) -> None:
+        params = self._before_params()
+        if self.gpu_source_ready:
+            rgb8 = self.gpu.render(
+                self.full_raw, params,
+                max(1, round(rect.width() * scale)), max(1, round(rect.height() * scale)),
+                region=(rect.x(), rect.y(), rect.width(), rect.height()), scale=scale,
+                nearest=scale >= self.settings.pixel_peek_zoom,
+            )
+            if rgb8 is not None:
+                self.view.set_before_detail(rgb8, rect, scale)
+                return
+        self._job_counter += 1
+        self._latest_before_detail = self._job_counter
+        # bez jakosci odszumiania: "przed" nie jest odszumiane
+        task = DetailRenderTask(self._job_counter, self.full_raw, params, rect, scale)
+        task.signals.detail_ready.connect(self._on_before_detail_ready)
+        self.pool.start(task)
+
+    def _on_before_detail_ready(self, job_id: int, rgb8, rect: QRect, scale: float) -> None:
+        if job_id != self._latest_before_detail:
+            return
+        self.view.set_before_detail(rgb8, rect, scale)
+
     def _show_before(self) -> None:
         if self.before_image is None:
             return
+        # Przytrzymanie pokazuje cale zdjecie bez kadru - polowka "przed"
+        # w geometrii kadru nie pasowalaby do niego, wiec podzial na ten
+        # czas znika.
+        self.view.set_split(False)
         self._before_shown = True
         self._latest_detail = -1  # fragment liczony jeszcze "po" ma przepasc
         self.view.clear_detail()
@@ -1476,17 +1568,22 @@ class MainWindow(QMainWindow):
     def _show_after(self) -> None:
         self._before_shown = False
         self._latest_detail = -1  # fragment "przed" nie moze wjechac na "po"
+        # podzial wraca takze wtedy, gdy obrazu jeszcze nie ma - dorysuje go
+        # _show_preview
+        self._split_key = None
+        self.view.set_split(self.split_button.isChecked())
         if self.current_image is None or self.full_raw is None:
             return
-        self.view.set_image(
-            self.current_image, geometry_size(self.full_raw, self.display_params())
-        )
+        size = geometry_size(self.full_raw, self.display_params())
+        self.view.set_image(self.current_image, size)
+        self._odswiez_przed(self.current_image, size)
         self.histogram_widget.set_histogram(histogram(self.current_image))
 
     # ---------------------------------------------------------- kadrowanie
 
     def _set_crop_mode(self, enabled: bool) -> None:
         self.crop_mode = enabled
+        self._split_key = None  # widok zgubil "przed" przy wejsciu w kadrowanie
         self.view.set_crop_mode(enabled)
         self.view.set_rotation(self.edit_panel.sliders["rotation"].value())
         self._render_preview()
