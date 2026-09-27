@@ -15,7 +15,7 @@ import json
 import os
 
 from PySide6.QtCore import QObject, QRectF, QSize, QUrl, Qt, Signal, Slot
-from PySide6.QtGui import QColor, QFontMetrics, QIcon, QPainter
+from PySide6.QtGui import QAction, QActionGroup, QColor, QFontMetrics, QIcon, QPainter
 from PySide6.QtWebChannel import QWebChannel
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import (
@@ -23,9 +23,11 @@ from PySide6.QtWidgets import (
     QLabel,
     QListWidget,
     QListWidgetItem,
+    QMenu,
     QPushButton,
     QStyle,
     QStyledItemDelegate,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -34,11 +36,22 @@ from .exif_panel import ExifPanel
 from .map_page import strona
 from .podpowiedzi import podpowiedz
 from .markers import EDIT_ROLE, GEO_ROLE, LEGEND, MARK_COLUMN, paint_marks
-from ..przeklad import t
+from .style import ikona
+from ..przeklad import N_, t
 
 # Miniatura w liscie: na tyle duza, zeby rozpoznac kadr, na tyle mala, zeby
 # przy dwustu zdjeciach dalo sie przewijac liste, a nie album.
 THUMB_SIZE = QSize(96, 66)
+
+# Filtry listy: klucz -> napis w menu lejka. Klucze ida tez do testow.
+FILTR_WSZYSTKIE = "wszystkie"
+FILTRY = (
+    (FILTR_WSZYSTKIE, N_("Wszystkie zdjęcia")),
+    ("z_lokalizacja", N_("Z lokalizacją")),
+    ("bez_lokalizacji", N_("Bez lokalizacji")),
+    ("nadana", N_("Z lokalizacją nadaną na mapie")),
+    ("poprawione", N_("Z poprawkami")),
+)
 
 
 class PhotoRowDelegate(QStyledItemDelegate):
@@ -128,10 +141,17 @@ class MapView(QWidget):
     # sciezki zdjec, szerokosc, dlugosc  (None, None = skasowanie lokalizacji)
     location_assigned = Signal(list, object, object)
     photo_activated = Signal(str)  # dwuklik na liscie - przejscie do edycji
+    location_restored = Signal(list)  # zdjecia wracajace do wspolrzednych z aparatu
+    undo_requested = Signal()
+    redo_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.locations: dict[str, tuple[float, float]] = {}
+        # Wspolrzedne z aparatu - odrozniaja "zdjecie ma GPS" od "my je
+        # zmienilismy", czyli to, co umie cofnac przycisk przywracania.
+        self.camera: dict[str, tuple[float, float]] = {}
+        self.filtr = FILTR_WSZYSTKIE
         self.edited: set[str] = set()  # zdjecia z zapisanymi poprawkami
         self.icons: dict = {}  # miniatury, po sciezkach
         self.has_map = False  # czy biblioteka mapy wczytala sie z sieci
@@ -167,6 +187,57 @@ class MapView(QWidget):
         podpowiedz(self.fit_button, "mapa.pokaz_wszystkie")
         self.fit_button.clicked.connect(lambda: self._js("fitToMarkers()"))
 
+        self.undo_button = QPushButton(t("Cofnij"))
+        self.undo_button.setIcon(ikona("undo"))
+        podpowiedz(self.undo_button, "mapa.cofnij")
+        self.undo_button.clicked.connect(self.undo_requested.emit)
+        self.redo_button = QPushButton(t("Ponów"))
+        self.redo_button.setIcon(ikona("redo"))
+        podpowiedz(self.redo_button, "mapa.ponow")
+        self.redo_button.clicked.connect(self.redo_requested.emit)
+        self.set_history_state(False, False)
+
+        self.restore_button = QPushButton(t("Przywróć lokalizację z aparatu"))
+        self.restore_button.setIcon(ikona("geotag-reset"))
+        podpowiedz(self.restore_button, "mapa.przywroc")
+        self.restore_button.clicked.connect(self._on_restore)
+        self.restore_button.setEnabled(False)
+
+        # Male przyciski nad lista: szybkie zaznaczanie i lejek. Dzialaja na
+        # tym, co widac - zaznaczanie ukrytych filtrem zdjec konczyloby sie
+        # nadaniem lokalizacji zdjeciom, ktorych uzytkownik nie widzial.
+        self.select_all_button = self._maly_przycisk("select-all", "mapa.zaznacz_wszystkie")
+        self.select_all_button.clicked.connect(lambda: self._zaznacz(lambda p: True))
+        self.select_located_button = self._maly_przycisk("geotag", "mapa.zaznacz_geotag")
+        self.select_located_button.clicked.connect(
+            lambda: self._zaznacz(lambda p: p in self.locations)
+        )
+        self.select_missing_button = self._maly_przycisk("no-geotag", "mapa.zaznacz_bez_geotagu")
+        self.select_missing_button.clicked.connect(
+            lambda: self._zaznacz(lambda p: p not in self.locations)
+        )
+        self.filter_button = self._maly_przycisk("filter", "mapa.filtr")
+        self.filter_button.setCheckable(True)  # wcisniety = lista jest przefiltrowana
+        self.filter_button.setPopupMode(QToolButton.InstantPopup)
+        self.filter_menu = QMenu(self.filter_button)
+        self.filter_actions = QActionGroup(self.filter_menu)
+        for klucz, napis in FILTRY:
+            action = QAction(t(napis), self.filter_menu)
+            action.setCheckable(True)
+            action.setChecked(klucz == self.filtr)
+            action.setData(klucz)
+            self.filter_actions.addAction(action)
+            self.filter_menu.addAction(action)
+            if klucz == FILTR_WSZYSTKIE:
+                self.filter_menu.addSeparator()
+        self.filter_actions.triggered.connect(lambda a: self.set_filter(a.data()))
+        self.filter_button.setMenu(self.filter_menu)
+        # Klikniecie przycisku z menu potrafi przelaczyc jego wcisniecie,
+        # nawet gdy nic nie wybrano - stan ma zalezec tylko od filtra.
+        self.filter_menu.aboutToHide.connect(
+            lambda: self.filter_button.setChecked(self.filtr != FILTR_WSZYSTKIE)
+        )
+
         self.status = QLabel("")
         self.status.setObjectName("metaLabel")
         self.status.setWordWrap(True)
@@ -196,10 +267,28 @@ class MapView(QWidget):
         side = QVBoxLayout()
         side.setContentsMargins(8, 8, 4, 8)
         side.setSpacing(6)
-        side.addWidget(QLabel(t("Zdjęcia")))
+        header = QHBoxLayout()
+        header.setContentsMargins(0, 0, 0, 0)
+        header.setSpacing(2)
+        header.addWidget(QLabel(t("Zdjęcia")), 1)
+        for button in (self.select_all_button, self.select_located_button,
+                       self.select_missing_button):
+            header.addWidget(button)
+        header.addSpacing(6)
+        header.addWidget(self.filter_button)
+
+        history = QHBoxLayout()
+        history.setContentsMargins(0, 0, 0, 0)
+        history.setSpacing(4)
+        history.addWidget(self.undo_button)
+        history.addWidget(self.redo_button)
+
+        side.addLayout(header)
         side.addWidget(self.list, 1)
         side.addLayout(buttons)
         side.addWidget(self.fit_button)
+        side.addLayout(history)
+        side.addWidget(self.restore_button)
         side.addWidget(self.status)
 
         # Panel metadanych po prawej. W tej zakladce jest na niego miejsce,
@@ -254,9 +343,11 @@ class MapView(QWidget):
         locations: dict[str, tuple[float, float]],
         icons: dict | None = None,
         edited: set[str] | None = None,
+        camera: dict[str, tuple[float, float]] | None = None,
     ) -> None:
         """Podaje aktualna zawartosc katalogu, znane lokalizacje i miniatury."""
         self.locations = dict(locations)
+        self.camera = dict(camera or {})
         self.edited = set(edited or ())
         self.icons = dict(icons or {})
         self.list.blockSignals(True)
@@ -271,6 +362,7 @@ class MapView(QWidget):
                 item.setIcon(icon)
             self.list.addItem(item)
         self.list.blockSignals(False)
+        self._zastosuj_filtr()
 
         if self._ready:
             self._draw_markers()
@@ -301,6 +393,7 @@ class MapView(QWidget):
         self.list.blockSignals(False)
         self._highlight()
         self._refresh_status()
+        self._odswiez_przywracanie()
 
     def set_edited(self, path: str, edited: bool) -> None:
         """Znacznik poprawek dosłany z Edycji - lista ma pokazywac to samo."""
@@ -311,7 +404,9 @@ class MapView(QWidget):
             item = self.list.item(row)
             if item.data(Qt.UserRole) == path:
                 self._apply_marks(item, path)
-                return
+                break
+        if self.filtr == "poprawione":
+            self._zastosuj_filtr()
 
     def set_thumbnail(self, path: str, icon) -> None:
         """Miniatura dosłana po otwarciu mapy - wpada na swoje miejsce."""
@@ -333,6 +428,7 @@ class MapView(QWidget):
     def _on_selection(self) -> None:
         self._highlight()
         self._refresh_status()
+        self._odswiez_przywracanie()
         chosen = self.selected_paths()
         # Jedno zaznaczone zdjecie z lokalizacja: przesun mape na nie, zeby
         # bylo widac, gdzie w ogole jest. Przy wielu tego nie robimy - skok
@@ -384,8 +480,86 @@ class MapView(QWidget):
             item = self.list.item(row)
             if item.data(Qt.UserRole) in changed:
                 self._apply_marks(item, item.data(Qt.UserRole))
+        self._zastosuj_filtr()
         self._draw_markers()
         self._refresh_status()
+        self._odswiez_przywracanie()
+
+    # ------------------------------------------ zaznaczanie, filtr, historia
+
+    def _maly_przycisk(self, nazwa: str, tip: str) -> QToolButton:
+        button = QToolButton()
+        button.setIcon(ikona(nazwa))
+        button.setIconSize(QSize(16, 16))
+        button.setAutoRaise(True)
+        podpowiedz(button, tip)
+        return button
+
+    def set_history_state(self, can_undo: bool, can_redo: bool) -> None:
+        self.undo_button.setEnabled(can_undo)
+        self.redo_button.setEnabled(can_redo)
+
+    def _zmieniona(self, path: str) -> bool:
+        """Zdjecie ma GPS z aparatu, a lista pokazuje inne wspolrzedne - nasze."""
+        return path in self.camera and self.locations.get(path) != self.camera[path]
+
+    def _odswiez_przywracanie(self) -> None:
+        self.restore_button.setEnabled(any(self._zmieniona(p) for p in self.selected_paths()))
+
+    def _on_restore(self) -> None:
+        chosen = [p for p in self.selected_paths() if self._zmieniona(p)]
+        if chosen:
+            self.location_restored.emit(chosen)
+
+    def _pasuje(self, path: str) -> bool:
+        if self.filtr == "z_lokalizacja":
+            return path in self.locations
+        if self.filtr == "bez_lokalizacji":
+            return path not in self.locations
+        if self.filtr == "nadana":
+            return path in self.locations and self.locations.get(path) != self.camera.get(path)
+        if self.filtr == "poprawione":
+            return path in self.edited
+        return True
+
+    def set_filter(self, klucz: str) -> None:
+        self.filtr = klucz
+        for action in self.filter_actions.actions():
+            action.setChecked(action.data() == klucz)
+        self._zastosuj_filtr()
+
+    def _zastosuj_filtr(self) -> None:
+        """Chowa wiersze spoza filtra i zdejmuje z nich zaznaczenie.
+
+        Ukryte, a nadal zaznaczone zdjecie dostaloby lokalizacje przy
+        nastepnym kliknieciu w mape - bez sladu na liscie, ze w ogole bralo
+        w tym udzial.
+        """
+        self.filter_button.setChecked(self.filtr != FILTR_WSZYSTKIE)
+        self.list.blockSignals(True)
+        for row in range(self.list.count()):
+            item = self.list.item(row)
+            hidden = not self._pasuje(item.data(Qt.UserRole))
+            item.setHidden(hidden)
+            if hidden and item.isSelected():
+                item.setSelected(False)
+        self.list.blockSignals(False)
+        self._on_selection()
+
+    def visible_paths(self) -> list[str]:
+        return [
+            self.list.item(row).data(Qt.UserRole)
+            for row in range(self.list.count())
+            if not self.list.item(row).isHidden()
+        ]
+
+    def _zaznacz(self, warunek) -> None:
+        self.list.blockSignals(True)
+        for row in range(self.list.count()):
+            item = self.list.item(row)
+            item.setSelected(not item.isHidden() and warunek(item.data(Qt.UserRole)))
+        self.list.blockSignals(False)
+        self._on_selection()
 
     def _refresh_status(self) -> None:
         total = self.list.count()

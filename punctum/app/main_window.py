@@ -53,6 +53,7 @@ from ..core.export import (
     resolve_conflicts,
 )
 from ..core.hardware import system_info
+from ..core.historia import HistoriaKrokow, HistoriaStanow
 from ..core.metadata import PhotoMetadata
 from ..core.settings import ENGINE_CPU, ENGINE_GPU, LAYOUT_LIMITS, Settings
 from .edit_panel import EditPanel, HistogramWidget, InfoPanel
@@ -85,6 +86,10 @@ from ..przeklad import mnoga, t
 DEBOUNCE_CPU_MS = 90  # tor numpy: nie liczymy obrazu na kazdy piksel ruchu suwaka
 DEBOUNCE_GPU_MS = 0  # tor GPU: tylko scalenie zdarzen z jednego obiegu petli
 FULL_CROP = (0.0, 0.0, 1.0, 1.0)
+# Po tylu ms spokoju zmiana suwakow staje sie krokiem historii. Krotszy czas
+# rozbijalby jedno "dostrajanie" na kilka krokow, dluzszy gubilby szybkie
+# poprawki robione jedna po drugiej.
+HISTORIA_MS = 450
 
 
 class MainWindow(QMainWindow):
@@ -128,6 +133,15 @@ class MainWindow(QMainWindow):
         self.orientation = 0
         self.crop = FULL_CROP
         self.crop_mode = False
+
+        # Cofnij/ponow: w Edycji osobny ciag stanow na kazde zdjecie, w Mapie
+        # wspolna lista przypisan (jedno przypisanie wielu zdjeciom = krok).
+        self.historia = HistoriaStanow()
+        self.historia_mapy = HistoriaKrokow()
+        self.history_timer = QTimer(self)
+        self.history_timer.setSingleShot(True)
+        self.history_timer.setInterval(HISTORIA_MS)
+        self.history_timer.timeout.connect(self._zatwierdz_krok)
 
         self._job_counter = 0
         self._latest_job = 0
@@ -204,6 +218,8 @@ class MainWindow(QMainWindow):
         self.edit_panel.crop_mode_toggled.connect(self._set_crop_mode)
         self.edit_panel.orientation_step.connect(self._rotate_orientation)
         self.edit_panel.crop_reset_requested.connect(self._reset_crop)
+        self.edit_panel.undo_requested.connect(self._cofnij_edycje)
+        self.edit_panel.redo_requested.connect(self._ponow_edycje)
 
         # Metadane sa chowanym dnem sekcji z danymi zdjecia: rozwija je
         # strzalka w rogu tej sekcji, a nie osobny przycisk na calą szerokosc.
@@ -427,6 +443,18 @@ class MainWindow(QMainWindow):
         # Korekta i kadrowanie zmieniaja zdjecie, wiec naleza do Edycji,
         # a nie do Widoku. Skroty zostaja te same.
         edit_menu = self.menuBar().addMenu(t("&Edycja"))
+        # Jeden skrot na obie zakladki: w Mapie cofa przypisanie lokalizacji,
+        # w Edycji korekte. Pole tekstowe z fokusem (np. metadane) zabiera
+        # Ctrl+Z dla siebie, zanim dotrze on do menu - i tak ma byc.
+        self.undo_action = QAction(t("Cofnij"), self)
+        self.undo_action.setShortcut(QKeySequence.Undo)
+        self.undo_action.triggered.connect(self._cofnij)
+        self.redo_action = QAction(t("Ponów"), self)
+        self.redo_action.setShortcuts([QKeySequence("Ctrl+Y"), QKeySequence("Ctrl+Shift+Z")])
+        self.redo_action.triggered.connect(self._ponow)
+        edit_menu.addAction(self.undo_action)
+        edit_menu.addAction(self.redo_action)
+        edit_menu.addSeparator()
         auto_action = QAction(t("Automatyczna korekcja"), self)
         auto_action.setShortcut(QKeySequence("Ctrl+U"))
         auto_action.triggered.connect(self._run_auto)
@@ -614,6 +642,11 @@ class MainWindow(QMainWindow):
         self.info_panel.set_metadata(None)
         self.full_raw = self.proxy = None
         self.current_path = None
+        # Historia dotyczy zdjec z katalogu, ktory wlasnie zamykamy.
+        self.history_timer.stop()
+        self.historia.wyczysc()
+        self.historia_mapy.wyczysc()
+        self._odswiez_historie()
 
         raw_count, jpeg_count = count_formats(self.folder_paths)
         self.format_count.setText(f"{raw_count} RAW  •  {jpeg_count} JPEG")
@@ -880,6 +913,9 @@ class MainWindow(QMainWindow):
                 self.map_view = MapView()
                 self.map_view.location_assigned.connect(self._on_location_assigned)
                 self.map_view.photo_activated.connect(self._open_from_map)
+                self.map_view.location_restored.connect(self._on_location_restored)
+                self.map_view.undo_requested.connect(self._cofnij_lokalizacje)
+                self.map_view.redo_requested.connect(self._ponow_lokalizacje)
                 # Drugi panel metadanych - ten sam stan, te same sygnaly, co
                 # panel w Edycji. Zdjecie biezace dostaje od razu, bo mapa
                 # powstaje dopiero teraz i nie widziala wczesniejszych zmian.
@@ -889,6 +925,7 @@ class MainWindow(QMainWindow):
                 )
                 self.map_tab.layout().addWidget(self.map_view)
                 self._show_metadata(self.current_path)
+                self._odswiez_historie()
             finally:
                 QApplication.restoreOverrideCursor()
         return self.map_view
@@ -903,31 +940,44 @@ class MainWindow(QMainWindow):
             self._known_locations(),
             self.filmstrip.icons(),
             self.filmstrip.edited_paths(),
+            camera=self._camera_locations(),
         )
         chosen = self.filmstrip.selected_paths() or (
             [self.current_path] if self.current_path else []
         )
         self.map_view.set_selection(chosen)
 
+    def _camera_locations(self) -> dict[str, tuple[float, float]]:
+        """Wspolrzedne zapisane przez aparat - to, do czego wraca "Przywroc"."""
+        return {
+            path: (meta.latitude, meta.longitude)
+            for path, meta in self.metadata.items()
+            if meta is not None and meta.has_gps
+        }
+
+    def _nadana_lokalizacja(self, path: str) -> tuple[float, float] | None:
+        """Nasza lokalizacja zdjecia, takze z sidecara na dysku."""
+        params = self._params_for(path)
+        if params is not None and params.has_location:
+            return (params.latitude, params.longitude)
+        return None
+
+    def _widoczna_lokalizacja(self, path: str) -> tuple[float, float] | None:
+        """To, co pokazuje mapa: nasza lokalizacja, a bez niej ta z aparatu."""
+        own = self._nadana_lokalizacja(path)
+        if own is not None:
+            return own
+        meta = self.metadata.get(path)
+        return (meta.latitude, meta.longitude) if meta is not None and meta.has_gps else None
+
     def _on_location_assigned(self, paths: list, latitude, longitude) -> None:
         """Mapa nadala albo skasowala wspolrzedne zaznaczonym zdjeciom."""
-        changed: dict[str, tuple[float, float] | None] = {}
-        for path in paths:
-            params = self._params_for(path) or default_params_for(path)
-            params.latitude = latitude
-            params.longitude = longitude
-            self.edits[path] = params
-            self._store_edits(path)
-            changed[path] = None if latitude is None else (latitude, longitude)
-            self.filmstrip.set_located(path, self._has_location(path))
-
-        if self.map_view is not None:
-            self.map_view.apply_locations(changed)
-        if self.current_path in changed:
-            self.info_panel.set_metadata(
-                self.metadata.get(self.current_path),
-                self._own_location(self.current_path),
-            )
+        nowa = None if latitude is None else (latitude, longitude)
+        # Caly ruch - nawet na trzydziestu zdjeciach - to jeden krok historii.
+        self.historia_mapy.zapamietaj(
+            {path: (self._nadana_lokalizacja(path), nowa) for path in paths}
+        )
+        self._ustaw_lokalizacje({path: nowa for path in paths})
         if latitude is None:
             self.status.showMessage(mnoga(len(paths), "Usunięto lokalizację z {n} zdjęcia|"
                       "Usunięto lokalizację z {n} zdjęć|Usunięto lokalizację z {n} zdjęć"))
@@ -942,6 +992,61 @@ class MainWindow(QMainWindow):
                       "zdjęć; do metadanych trafi przy eksporcie.",
                       wsp=f"{latitude:.5f}, {longitude:.5f}")
             )
+
+    def _on_location_restored(self, paths: list) -> None:
+        """Zdjecia wracaja do wspolrzednych z aparatu: nasza lokalizacja znika.
+
+        Z punktu widzenia danych to to samo, co usuniecie - roznica jest
+        w tym, co uzytkownik widzi i co czyta w komunikacie.
+        """
+        self.historia_mapy.zapamietaj(
+            {path: (self._nadana_lokalizacja(path), None) for path in paths}
+        )
+        self._ustaw_lokalizacje({path: None for path in paths})
+        self.status.showMessage(mnoga(len(paths), "Przywrócono lokalizację z aparatu — {n} zdjęcie|"
+                  "Przywrócono lokalizację z aparatu — {n} zdjęcia|"
+                  "Przywrócono lokalizację z aparatu — {n} zdjęć"))
+
+    def _ustaw_lokalizacje(self, zmiany: dict[str, tuple[float, float] | None]) -> None:
+        """Wpisuje nasze lokalizacje (None = brak) i odswieza wszystko, co je pokazuje.
+
+        Wspolna droga dla przypisania, usuniecia, cofniecia i ponowienia -
+        dzieki temu cofniete przypisanie zapisuje sie w sidecarze tak samo
+        jak zwykle.
+        """
+        changed: dict[str, tuple[float, float] | None] = {}
+        for path, location in zmiany.items():
+            params = self._params_for(path) or default_params_for(path)
+            params.latitude, params.longitude = location if location else (None, None)
+            self.edits[path] = params
+            self._store_edits(path)
+            # Po usunieciu naszej lokalizacji mapa ma pokazac te z aparatu,
+            # a nie zgubic pinezke, ktora przeciez w pliku nadal jest.
+            changed[path] = self._widoczna_lokalizacja(path)
+            self.filmstrip.set_located(path, self._has_location(path))
+
+        if self.map_view is not None:
+            self.map_view.apply_locations(changed)
+        if self.current_path in changed:
+            self.info_panel.set_metadata(
+                self.metadata.get(self.current_path),
+                self._own_location(self.current_path),
+            )
+        self._odswiez_historie()
+
+    def _cofnij_lokalizacje(self) -> None:
+        zmiany = self.historia_mapy.cofnij()
+        if zmiany is not None:
+            self._ustaw_lokalizacje(zmiany)
+            self.status.showMessage(mnoga(len(zmiany), "Cofnięto zmianę lokalizacji {n} zdjęcia|"
+                      "Cofnięto zmianę lokalizacji {n} zdjęć|Cofnięto zmianę lokalizacji {n} zdjęć"))
+
+    def _ponow_lokalizacje(self) -> None:
+        zmiany = self.historia_mapy.ponow()
+        if zmiany is not None:
+            self._ustaw_lokalizacje(zmiany)
+            self.status.showMessage(mnoga(len(zmiany), "Ponowiono zmianę lokalizacji {n} zdjęcia|"
+                      "Ponowiono zmianę lokalizacji {n} zdjęć|Ponowiono zmianę lokalizacji {n} zdjęć"))
 
     def _open_from_map(self, path: str) -> None:
         """Dwuklik na liscie w mapie: wroc do edycji tego zdjecia."""
@@ -999,8 +1104,10 @@ class MainWindow(QMainWindow):
     def open_photo(self, path: str) -> None:
         if path == self.current_path:
             return
+        self._zatwierdz_krok(sila=True)  # ostatnia zmiana nalezy do starego zdjecia
         self.remember_current_edits()
         self.current_path = path
+        self._odswiez_historie()
         self.full_raw = self.proxy = None
         self.before_image = self.current_image = None
         self.orientation, self.crop = 0, FULL_CROP
@@ -1054,6 +1161,11 @@ class MainWindow(QMainWindow):
             self.orientation, self.crop = saved.orientation, saved.crop
         self.edit_panel.load_params(saved if saved is not None else default_params_for(path))
         self.view.set_crop_fractions(self.crop)
+        # Stan wyjsciowy zdjecia jako pierwszy krok - od niego zaczyna sie
+        # cofanie. Przy powrocie do zdjecia nic nie dochodzi (stan ten sam).
+        self.history_timer.stop()
+        self.historia.zapamietaj(path, self._stan_edycji())
+        self._odswiez_historie()
 
         # Do pamieci karty wgrywamy PELNA rozdzielczosc, nie proxy. Dzieki temu
         # z jednej tekstury powstaje i podglad dopasowany do okna, i ostry
@@ -1115,11 +1227,82 @@ class MainWindow(QMainWindow):
 
     def _on_params_changed(self) -> None:
         self.debounce.start()
+        self.history_timer.start()
 
     def _on_reset_all(self) -> None:
         self.orientation, self.crop = 0, FULL_CROP
         self.view.set_crop_fractions(FULL_CROP)
         self.edit_panel.reset_all()
+
+    # ------------------------------------------------------ cofnij / ponow
+
+    def _stan_edycji(self) -> EditParams:
+        """Stan do historii: suwaki, orientacja i kadr - bez lokalizacji
+        i metadanych. Te dwie maja wlasne miejsca (Mapa, panel EXIF), a ich
+        cofanie z Edycji kasowaloby prace zrobiona gdzie indziej."""
+        return self.edit_panel.params(self.orientation, self.crop)
+
+    def _zatwierdz_krok(self, sila: bool = False) -> None:
+        """Zmiana po chwili spokoju staje sie krokiem historii.
+
+        Dopoki przycisk myszy jest wcisniety, krok czeka: przeciagniecie
+        suwaka, ramki kadru czy obrot myszka to jeden ruch, choc po drodze
+        przychodza setki zmian.
+        """
+        if not sila and QApplication.mouseButtons() != Qt.NoButton:
+            self.history_timer.start()
+            return
+        self.history_timer.stop()
+        if self.current_path and self.full_raw is not None:
+            self.historia.zapamietaj(self.current_path, self._stan_edycji())
+        self._odswiez_historie()
+
+    def _odswiez_historie(self) -> None:
+        path = self.current_path if self.full_raw is not None else None
+        self.edit_panel.set_history_state(
+            self.historia.mozna_cofnac(path), self.historia.mozna_ponowic(path)
+        )
+        if self.map_view is not None:
+            self.map_view.set_history_state(
+                self.historia_mapy.mozna_cofnac(), self.historia_mapy.mozna_ponowic()
+            )
+
+    def _w_mapie(self) -> bool:
+        return self.map_view is not None and self.tabs.currentWidget() is self.map_tab
+
+    def _cofnij(self) -> None:
+        self._cofnij_lokalizacje() if self._w_mapie() else self._cofnij_edycje()
+
+    def _ponow(self) -> None:
+        self._ponow_lokalizacje() if self._w_mapie() else self._ponow_edycje()
+
+    def _cofnij_edycje(self) -> None:
+        if self.current_path is None or self.full_raw is None:
+            return
+        # Zmiana sprzed chwili, ktora jeszcze nie zdazyla stac sie krokiem,
+        # musi nim zostac - inaczej Ctrl+Z tuz po ruchu suwaka cofaloby
+        # o krok za daleko.
+        self._zatwierdz_krok(sila=True)
+        self._przywroc_stan(self.historia.cofnij(self.current_path))
+
+    def _ponow_edycje(self) -> None:
+        if self.current_path is None or self.full_raw is None:
+            return
+        self._zatwierdz_krok(sila=True)
+        self._przywroc_stan(self.historia.ponow(self.current_path))
+
+    def _przywroc_stan(self, stan: EditParams | None) -> None:
+        if stan is None:
+            return
+        self.orientation, self.crop = stan.orientation, stan.crop
+        self.edit_panel.load_params(stan)
+        self.view.set_crop_fractions(self.crop)
+        self.view.set_rotation(stan.rotation)
+        # load_params nie zglasza zmian, a zegar mogl wystartowac od
+        # set_crop_fractions - krok z samego przywrocenia bylby pusty.
+        self.history_timer.stop()
+        self._odswiez_historie()
+        self._render_preview()
 
     # ----------------------------------------------------------- przeliczanie
 
@@ -1285,10 +1468,12 @@ class MainWindow(QMainWindow):
 
     def _on_crop_changed(self, crop: tuple) -> None:
         self.crop = crop
+        self.history_timer.start()
 
     def _on_rotation_dragged(self, degrees: float) -> None:
         self.edit_panel.set_rotation_silently(degrees)
         self.debounce.start()
+        self.history_timer.start()
 
     def _rotate_orientation(self, step: int) -> None:
         if self.full_raw is None:
@@ -1297,6 +1482,7 @@ class MainWindow(QMainWindow):
         self.crop = FULL_CROP  # po obrocie o 90° stary kadr nie ma juz sensu
         self.view.set_crop_fractions(FULL_CROP)
         self._render_preview()
+        self.history_timer.start()
 
     def _reset_crop(self) -> None:
         self.crop = FULL_CROP
@@ -1304,6 +1490,7 @@ class MainWindow(QMainWindow):
         self.edit_panel.set_rotation_silently(0.0)
         self.view.set_rotation(0.0)
         self._render_preview()
+        self.history_timer.start()
 
     def keyPressEvent(self, event) -> None:
         if self.crop_mode and event.key() in (Qt.Key_Return, Qt.Key_Enter, Qt.Key_Escape):

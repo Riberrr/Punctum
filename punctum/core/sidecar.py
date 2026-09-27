@@ -309,13 +309,36 @@ def read_sidecar(photo_path: str) -> EditParams | None:
             sharpen_masking=number("SharpenMasking", 0.0),
             latitude=coordinate("Latitude"),
             longitude=coordinate("Longitude"),
-            metadata={
+            metadata=_bez_falszywej_orientacji(photo_path, {
                 name[len(meta_prefix):]: text
                 for name, text in found.items()
                 if name.startswith(meta_prefix)
-            },
+            }),
         )
     return None
+
+
+def _bez_falszywej_orientacji(photo_path: str, metadata: dict[str, str]) -> dict[str, str]:
+    """Pomija `Orientation=1` z sidecara, gdy plik ma inna orientacje.
+
+    Do 2026-09-23 panel metadanych nie rozpoznawal orientacji z pliku,
+    pokazywal "Normalna" i przy zmianie dowolnego innego pola zapisywal do
+    sidecara 1. Po "Zapisz do oryginalu" obrocony JPEG stanalby bokiem.
+    Wartosc 1 wpisana przez uzytkownika na zdjeciu, ktore naprawde lezy
+    bokiem, jest nie do odroznienia - ale tez prawie sie nie zdarza, a pole
+    mozna ustawic ponownie. Plik czytamy tylko w tym jednym przypadku.
+    """
+    if metadata.get("Orientation", "").strip() != "1":
+        return metadata
+    from .exif_edit import current_values  # leniwie: exifread tylko gdy trzeba
+
+    try:
+        in_file = current_values(photo_path).get("Orientation", "1").strip()
+    except Exception:  # noqa: BLE001 - odczyt pomocniczy nie moze zablokowac nastaw
+        return metadata
+    if in_file not in ("", "1"):
+        metadata = {key: value for key, value in metadata.items() if key != "Orientation"}
+    return metadata
 
 
 def edited_photos(paths: list[str]) -> set[str]:

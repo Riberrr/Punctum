@@ -199,6 +199,8 @@ class EditPanel(QObject):
     crop_mode_toggled = Signal(bool)
     orientation_step = Signal(int)  # obrot o wielokrotnosc 90 stopni
     crop_reset_requested = Signal()
+    undo_requested = Signal()
+    redo_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -220,10 +222,11 @@ class EditPanel(QObject):
         podpowiedz(self.crop_button, "edycja.kadrowanie")
         self.crop_button.toggled.connect(self.crop_mode_toggled.emit)
 
+        # Jeden wiersz: obroty, a za nimi kadrowanie i jego zerowanie. Wszystko
+        # na ikonach, wiec miesci sie w najwezszym panelu, a suwak kata i dalsze
+        # sekcje podjezdzaja o wiersz wyzej.
         rotate_row = QHBoxLayout()
         rotate_row.setSpacing(4)
-        rotate_row.addWidget(self.crop_button)
-        rotate_row.addSpacing(6)
         for nazwa, step, tip in (
             ("rotate-left", -90, "edycja.obrot_lewo"),
             ("rotate-180", 180, "edycja.obrot_180"),
@@ -236,14 +239,17 @@ class EditPanel(QObject):
             podpowiedz(button, tip)
             button.clicked.connect(lambda _=False, s=step: self.orientation_step.emit(s))
             rotate_row.addWidget(button, 1)
+        rotate_row.addSpacing(6)
+        rotate_row.addWidget(self.crop_button, 1)
+        self.crop_reset_button = QPushButton()
+        self.crop_reset_button.setIcon(ikona("crop-reset"))
+        self.crop_reset_button.setIconSize(QSize(18, 18))
+        podpowiedz(self.crop_reset_button, "edycja.wyzeruj_kadr")
+        self.crop_reset_button.clicked.connect(self.crop_reset_requested.emit)
+        rotate_row.addWidget(self.crop_reset_button, 1)
         crop.addLayout(rotate_row)
 
         self._add(crop, "rotation", t("Kąt"), -45, 45, 0, 1, "°")
-
-        self.crop_reset_button = QPushButton(t("Wyzeruj kadr"))
-        podpowiedz(self.crop_reset_button, "edycja.wyzeruj_kadr")
-        self.crop_reset_button.clicked.connect(self.crop_reset_requested.emit)
-        crop.addWidget(self.crop_reset_button)
 
         # Automat i zerowanie dzialaja na cale zdjecie, nie na jedna sekcje,
         # dlatego stoja na stale u gory panelu, poza przewijana lista.
@@ -259,6 +265,20 @@ class EditPanel(QObject):
         action_row.setSpacing(4)
         action_row.addWidget(self.auto_button, 1)
         action_row.addWidget(self.reset_button, 1)
+        # Cofnij/ponow obok zerowania: to ten sam rodzaj ruchu ("wroc do
+        # wczesniejszego stanu"), tylko o krok zamiast do zera.
+        self.undo_button = QPushButton()
+        self.redo_button = QPushButton()
+        for button, nazwa, tip, sygnal in (
+            (self.undo_button, "undo", "edycja.cofnij", self.undo_requested),
+            (self.redo_button, "redo", "edycja.ponow", self.redo_requested),
+        ):
+            button.setIcon(ikona(nazwa))
+            button.setIconSize(QSize(18, 18))
+            button.setEnabled(False)  # nic jeszcze nie zrobiono
+            podpowiedz(button, tip)
+            button.clicked.connect(sygnal.emit)
+            action_row.addWidget(button)
 
         layout = self._tresc("balans")
         self._add(layout, "temperature", t("Temperatura"), 2000, 15000, 5500, 0, " K",
@@ -402,6 +422,10 @@ class EditPanel(QObject):
             sharpen_detail=get("sharpen_detail"),
             sharpen_masking=get("sharpen_masking"),
         )
+
+    def set_history_state(self, can_undo: bool, can_redo: bool) -> None:
+        self.undo_button.setEnabled(can_undo)
+        self.redo_button.setEnabled(can_redo)
 
     def set_rotation_silently(self, degrees: float) -> None:
         self._loading = True

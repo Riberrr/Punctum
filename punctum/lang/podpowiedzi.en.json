@@ -11,6 +11,8 @@
   "edycja.wyzeruj_kadr": {"tytul": "Reset crop", "opis": "Restores the full frame and zeroes the straightening angle. The 90° rotation and other edits stay."},
   "edycja.automatycznie": {"tytul": "Auto", "opis": "Sets exposure, contrast, highlights, shadows, whites, blacks and vibrance from the histogram. White balance is left alone. Tip: treat the result as a starting point and refine it with the sliders.", "uwaga": "Ctrl+U"},
   "edycja.wyzeruj": {"tytul": "Reset all", "opis": "Returns every edit of this photo to its default, including crop and rotation."},
+  "edycja.cofnij": {"tytul": "Undo", "opis": "Goes back to the previous state of this photo's edits. Every photo has its own history; one slider drag is one step.", "uwaga": "Ctrl+Z"},
+  "edycja.ponow": {"tytul": "Redo", "opis": "Brings back the edit you just undid. A new change after undo discards the steps to redo.", "uwaga": "Ctrl+Y"},
 
   "suwak.rotation": {"tytul": "Angle", "opis": "Straightens a tilted horizon by rotating the photo by any angle up to ±45°. Tip: it is easier to hit by dragging outside the frame in crop mode."},
   "suwak.temperature": {"tytul": "Temperature", "opis": "Warms or cools the colors. The starting point is the white balance recorded by the camera. Tip: shots in shade or under clouds usually gain from a warmer tone, shots under light bulbs from a cooler one.", "uwaga_suwaka": "Double-click returns to the camera setting · the mouse wheel changes the value"},
@@ -45,6 +47,13 @@
   "mapa.przypisz": {"tytul": "Assign to selected", "opis": "Turns on assign mode: select photos in the list and click a place on the map, and all selected photos get those coordinates. Click the button again to leave the mode.", "uwaga": "Coordinates go into the sidecar, and into the file only on export"},
   "mapa.usun": {"tytul": "Remove location", "opis": "Removes the coordinates from the selected photos. The photo file stays untouched."},
   "mapa.pokaz_wszystkie": {"tytul": "Show all", "opis": "Pans and zooms the map so that all pins are visible."},
+  "mapa.cofnij": {"tytul": "Undo", "opis": "Undoes the last assignment, removal or restoring of a location — for all the photos it touched.", "uwaga": "Ctrl+Z"},
+  "mapa.ponow": {"tytul": "Redo", "opis": "Brings back the location change you just undid.", "uwaga": "Ctrl+Y"},
+  "mapa.przywroc": {"tytul": "Restore camera location", "opis": "For selected photos that had coordinates from the camera and got different ones on the map: removes the assigned location and keeps the original."},
+  "mapa.zaznacz_wszystkie": {"tytul": "Select all", "opis": "Selects all photos visible in the list."},
+  "mapa.zaznacz_geotag": {"tytul": "Select with location", "opis": "Selects visible photos that have coordinates — from the camera or assigned on the map."},
+  "mapa.zaznacz_bez_geotagu": {"tytul": "Select without location", "opis": "Selects visible photos that have no coordinates yet."},
+  "mapa.filtr": {"tytul": "List filter", "opis": "Chooses which photos the list shows. Hidden photos lose their selection so they can't get a location unnoticed.", "uwaga": "A pressed button means the filter is on"},
 
   "exif.Artist": {"tytul": "Author", "opis": "Who took the photo.", "uwaga": "EXIF: Artist"},
   "exif.Copyright": {"tytul": "Copyright", "opis": "Information about the rights to the photo.", "uwaga": "EXIF: Copyright · e.g. © 2026 First Last"},

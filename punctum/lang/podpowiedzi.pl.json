@@ -10,6 +10,8 @@
   "edycja.wyzeruj_kadr": {"tytul": "Wyzeruj kadr", "opis": "Przywraca pełny kadr i zeruje kąt prostowania. Obrót o 90° i pozostałe korekty zostają."},
   "edycja.automatycznie": {"tytul": "Automatycznie", "opis": "Dobiera ekspozycję, kontrast, podświetlenia, cienie, biele, czernie i jaskrawość na podstawie histogramu. Balansu bieli nie rusza. Rada: traktuj wynik jako punkt wyjścia i dopracuj suwakami.", "uwaga": "Ctrl+U"},
   "edycja.wyzeruj": {"tytul": "Wyzeruj wszystko", "opis": "Przywraca wszystkie korekty tego zdjęcia do wartości domyślnych, łącznie z kadrem i obrotem."},
+  "edycja.cofnij": {"tytul": "Cofnij", "opis": "Wraca do poprzedniego stanu korekt tego zdjęcia. Każde zdjęcie ma własną historię; przeciągnięcie suwaka to jeden krok.", "uwaga": "Ctrl+Z"},
+  "edycja.ponow": {"tytul": "Ponów", "opis": "Przywraca korektę cofniętą przed chwilą. Nowa zmiana po cofnięciu kasuje kroki do ponowienia.", "uwaga": "Ctrl+Y"},
 
   "suwak.rotation": {"tytul": "Kąt", "opis": "Prostuje przechylony horyzont, obracając zdjęcie o dowolny kąt do ±45°. Rada: łatwiej trafić, ciągnąc myszą poza ramką w trybie kadrowania."},
   "suwak.temperature": {"tytul": "Temperatura", "opis": "Ociepla lub ochładza barwy. Punktem wyjścia jest balans bieli zapisany przez aparat. Rada: zdjęcia z cienia i przy zachmurzeniu zwykle zyskują na cieplejszej barwie, zdjęcia przy żarówkach — na chłodniejszej.", "uwaga_suwaka": "Dwuklik wraca do ustawienia aparatu · kółko myszy zmienia wartość"},
@@ -44,6 +46,13 @@
   "mapa.przypisz": {"tytul": "Przypisz zaznaczonym", "opis": "Włącza tryb przypisywania: zaznacz zdjęcia na liście i kliknij miejsce na mapie, a wszystkie zaznaczone dostaną te współrzędne. Kliknij przycisk ponownie, żeby wyjść z trybu.", "uwaga": "Współrzędne trafiają do sidecara, a do pliku dopiero przy eksporcie"},
   "mapa.usun": {"tytul": "Usuń lokalizację", "opis": "Zdejmuje współrzędne z zaznaczonych zdjęć. Plik zdjęcia zostaje nietknięty."},
   "mapa.pokaz_wszystkie": {"tytul": "Pokaż wszystkie", "opis": "Przesuwa i powiększa mapę tak, żeby było widać wszystkie pinezki."},
+  "mapa.cofnij": {"tytul": "Cofnij", "opis": "Cofa ostatnie przypisanie, usunięcie albo przywrócenie lokalizacji — dla wszystkich zdjęć, których dotyczyło.", "uwaga": "Ctrl+Z"},
+  "mapa.ponow": {"tytul": "Ponów", "opis": "Przywraca zmianę lokalizacji cofniętą przed chwilą.", "uwaga": "Ctrl+Y"},
+  "mapa.przywroc": {"tytul": "Przywróć lokalizację z aparatu", "opis": "Dla zaznaczonych zdjęć, które miały współrzędne z aparatu, a dostały na mapie inne: usuwa nadaną lokalizację i zostawia oryginalną."},
+  "mapa.zaznacz_wszystkie": {"tytul": "Zaznacz wszystkie", "opis": "Zaznacza wszystkie zdjęcia widoczne na liście."},
+  "mapa.zaznacz_geotag": {"tytul": "Zaznacz z lokalizacją", "opis": "Zaznacza widoczne zdjęcia, które mają współrzędne — z aparatu albo nadane na mapie."},
+  "mapa.zaznacz_bez_geotagu": {"tytul": "Zaznacz bez lokalizacji", "opis": "Zaznacza widoczne zdjęcia, które nie mają jeszcze współrzędnych."},
+  "mapa.filtr": {"tytul": "Filtr listy", "opis": "Wybiera, które zdjęcia pokazać na liście. Ukryte zdjęcia tracą zaznaczenie, żeby nie dostały lokalizacji niepostrzeżenie.", "uwaga": "Wciśnięty przycisk oznacza, że filtr działa"},
 
   "exif.Artist": {"tytul": "Autor", "opis": "Kto zrobił zdjęcie.", "uwaga": "EXIF: Artist"},
   "exif.Copyright": {"tytul": "Prawa autorskie", "opis": "Informacja o prawach do zdjęcia.", "uwaga": "EXIF: Copyright · np. © 2026 Imię Nazwisko"},

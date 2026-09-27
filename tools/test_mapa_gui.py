@@ -68,6 +68,10 @@ for source in sys.argv[1:]:
 print(f"katalog testowy: {len(os.listdir(workspace))} zdjec")
 
 window = MainWindow()
+# Zapis ustawien zablokowany: przy przerwanym tescie przywrocenie kopii
+# w finally nie dochodzilo do skutku i ostatni katalog uzytkownika
+# wskazywal potem katalog tymczasowy tego testu.
+window.settings.save = lambda *a, **k: True
 window.resize(1500, 950)
 window.show()
 # Filtr formatow pamieta wybor miedzy uruchomieniami, a test ma pokazac
@@ -167,6 +171,7 @@ def stage_slider_check() -> None:
 
 def stage_reopen() -> None:
     fresh = MainWindow()
+    fresh.settings.save = lambda *a, **k: True
     fresh.resize(1500, 950)
     fresh.show()
     fresh.load_folder(workspace)

@@ -192,6 +192,12 @@ print(f"  {'logo-512.png':<28} 512x512 (README)")
 KOLOR_IKON = "#c8c8cc"
 IKONY = {
     "crop": '<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M2 6h14a2 2 0 0 1 2 2v14"/>',
+    # Kadr pomniejszony do lewego gornego rogu i ta sama strzalka powrotu co
+    # przy geotagu - "cofnij do oryginalu" wyglada w calym programie tak samo.
+    "crop-reset": (
+        '<path d="M5.5 2v9.5a1.5 1.5 0 0 0 1.5 1.5h6"/><path d="M2 5.5h9.5a1.5 1.5 0 0 1 1.5 1.5v3"/>'
+        '<path d="M14 18a3.6 3.6 0 1 0 1.1-2.6L14 16.5"/><path d="M14 13.8v2.7h2.7"/>'
+    ),
     "rotate-left": '<path d="M4 12a8 8 0 1 0 2.34-5.66L4 8.5"/><path d="M4 4v4.5h4.5"/>',
     "rotate-right": '<path d="M20 12a8 8 0 1 1-2.34-5.66L20 8.5"/><path d="M20 4v4.5h-4.5"/>',
     "rotate-180": '<path d="M4 15a8 8 0 0 1 16 0"/><path d="M17 12.5l3 3 3-3"/><path d="M8 20h8"/>',

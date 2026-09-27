@@ -32,6 +32,10 @@ except Exception:  # noqa: BLE001 - strumien przekierowany do pliku
 
 PELNY = "--pelny" in sys.argv
 
+# Etapy, ktore wywrocily sie wyjatkiem. `wypisz` liczy je jako bledy - inaczej
+# test z polowa etapow niewykonanych konczyl sie raportem "19 / 19".
+WYJATKI: list[str] = []
+
 
 def zdjecia() -> list[str]:
     """Sciezki zdjec podane w wierszu polecen, bez flag."""
@@ -40,6 +44,9 @@ def zdjecia() -> list[str]:
 
 def wypisz(wyniki: list[tuple[str, bool, str]], szerokosc: int = 52) -> int:
     """Raport z serii sprawdzen. Zwraca liczbe bledow (0 = wszystko gra)."""
+    wyniki = list(wyniki) + [
+        (f"etap {nazwa} bez wyjatku", False, "Traceback powyzej") for nazwa in WYJATKI
+    ]
     bledy = [(nazwa, detal) for nazwa, ok, detal in wyniki if not ok]
     if PELNY:
         print(f"\n{'test':<{szerokosc}}{'wynik':>8}   szczegoly", flush=True)
@@ -85,7 +92,8 @@ def lancuch(app, etapy: list, koniec) -> None:
         try:
             etap()
         except Exception:  # noqa: BLE001 - raport wazniejszy niz traceback w gore
-            print(f"\nWYJATEK w {getattr(etap, '__name__', etap)}:", flush=True)
+            WYJATKI.append(getattr(etap, "__name__", str(etap)))
+            print(f"\nWYJATEK w {WYJATKI[-1]}:", flush=True)
             traceback.print_exc()
             sys.stdout.flush()
             koniec()
