@@ -44,6 +44,20 @@ ROTATE_BAND_PX = 70  # jak daleko poza kadrem lapie kursor obrotu
 MIN_CROP_PX = 32  # najmniejszy dopuszczalny kadr
 
 
+def draw_badge(painter: QPainter, text: str, x: float, top: float,
+               right_aligned: bool = False) -> None:
+    """Podpis "Przed" / "Po" na ciemnym tle, w pikselach okna. `x` to lewa
+    krawedz podpisu albo - przy `right_aligned` - prawa."""
+    metrics = painter.fontMetrics()
+    width = metrics.horizontalAdvance(text) + 14.0
+    box = QRectF(x - width if right_aligned else x, top, width, metrics.height() + 6.0)
+    painter.setPen(Qt.NoPen)
+    painter.setBrush(QColor(28, 28, 32, 190))
+    painter.drawRoundedRect(box, 4.0, 4.0)
+    painter.setPen(QColor(235, 235, 240))
+    painter.drawText(box, Qt.AlignCenter, text)
+
+
 def numpy_to_pixmap(rgb8: np.ndarray) -> QPixmap:
     """Konwersja tablicy RGB uint8 na QPixmap."""
     rgb8 = np.ascontiguousarray(rgb8)
@@ -102,6 +116,8 @@ class ImageView(QGraphicsView):
         self._split_on = False
         self._split = 0.5  # polozenie linii jako ulamek szerokosci zdjecia
         self._split_hover = False
+        # podpis "Po" w rogu, gdy obok stoi widok "przed" (tryb obok siebie)
+        self._after_badge = False
 
         self.setScene(self._scene)
 
@@ -154,7 +170,9 @@ class ImageView(QGraphicsView):
         self._image_size = (width, height)
         self._scene.setSceneRect(0.0, 0.0, float(width), float(height))
 
-        self.clear_detail()
+        # Tylko fragment "po": ruch suwaka nie zmienia strony "przed", wiec
+        # jej ostry fragment zostaje (zmiane geometrii zalatwia set_before_image).
+        self._detail.hide()
         if first or resized:
             if not self._crop_mode or first:
                 self._crop = QRectF(0.0, 0.0, float(width), float(height))
@@ -237,6 +255,10 @@ class ImageView(QGraphicsView):
         self._before_detail.setScale(1.0 / scale if scale else 1.0)
         self._before_detail.setPos(float(rect.x()), float(rect.y()))
         self._before_detail.show()
+
+    def detail_visible(self) -> bool:
+        """Czy ostry fragment strony "przed" jest na miejscu."""
+        return self._before_detail.isVisible()
 
     def _update_split(self) -> None:
         width, height = self._image_size
@@ -366,6 +388,39 @@ class ImageView(QGraphicsView):
     def zoom(self) -> float:
         return self._zoom
 
+    def zoom_about(self, factor: float, position: QPointF) -> None:
+        """Powiekszenie wokol punktu okna - dla kolka nad widokiem "przed".
+
+        Kotwica "pod mysza" liczy sie z polozenia kursora nad TYM widokiem,
+        a kursor stoi wtedy nad sasiednim, wiec punkt trzymamy sami.
+        """
+        if self._base.pixmap().isNull():
+            return
+        factor = max(self.MIN_ZOOM, min(self.MAX_ZOOM, factor))
+        point = self.mapToScene(position.toPoint())
+        anchor = self.transformationAnchor()
+        self.setTransformationAnchor(QGraphicsView.NoAnchor)
+        self.scale(factor / self._zoom, factor / self._zoom)
+        self.setTransformationAnchor(anchor)
+        centre = QPointF(self.viewport().rect().center())
+        self.centerOn(point + (centre - position) / factor)
+        self._zoom = factor
+        self._fitted = False
+        self.zoom_changed.emit(factor)
+        self._after_view_change()
+
+    def pan_by(self, dx: float, dy: float) -> None:
+        """Przesuniecie o piksele okna, jak przeciagniecie dlonia."""
+        self.horizontalScrollBar().setValue(round(self.horizontalScrollBar().value() - dx))
+        self.verticalScrollBar().setValue(round(self.verticalScrollBar().value() - dy))
+
+    def toggle_fit(self) -> None:
+        self.zoom_actual() if self._fitted else self.fit_to_window()
+
+    def set_after_badge(self, shown: bool) -> None:
+        self._after_badge = shown
+        self.viewport().update()
+
     def centre_on_normalised(self, x: float, y: float) -> None:
         width, height = self._image_size
         if width and height:
@@ -418,7 +473,7 @@ class ImageView(QGraphicsView):
         super().scrollContentsBy(dx, dy)
         # Kolko i podpisy podzialu stoja w miejscu okna, a nie zdjecia -
         # przesuniete kopiowaniem pikseli zostawialyby smuge.
-        if self._split_clip.isVisible():
+        if self._split_clip.isVisible() or self._after_badge:
             self.viewport().update()
         self._emit_view_rect()
         self._schedule_detail()
@@ -701,21 +756,17 @@ class ImageView(QGraphicsView):
             painter.drawPolyline([QPointF(back, cy - 4.0), QPointF(tip, cy), QPointF(back, cy + 4.0)])
 
         # podpisy u gory, po obu stronach linii
-        metrics = painter.fontMetrics()
-        top = y0 + 10.0
-        for text, right_aligned in ((t("Przed"), True), (t("Po"), False)):
-            width = metrics.horizontalAdvance(text) + 14.0
-            left = x - 10.0 - width if right_aligned else x + 10.0
-            box = QRectF(left, top, width, metrics.height() + 6.0)
-            painter.setPen(Qt.NoPen)
-            painter.setBrush(QColor(28, 28, 32, 190))
-            painter.drawRoundedRect(box, 4.0, 4.0)
-            painter.setPen(QColor(235, 235, 240))
-            painter.drawText(box, Qt.AlignCenter, text)
+        draw_badge(painter, t("Przed"), x - 10.0, y0 + 10.0, right_aligned=True)
+        draw_badge(painter, t("Po"), x + 10.0, y0 + 10.0)
         painter.restore()
 
     def drawForeground(self, painter: QPainter, rect: QRectF) -> None:
         self._draw_split(painter)
+        if self._after_badge and not self._crop_mode:
+            painter.save()
+            painter.resetTransform()
+            draw_badge(painter, t("Po"), 10.0, 10.0)
+            painter.restore()
         if not self._crop_mode or self._crop.isNull():
             return
 
@@ -756,3 +807,127 @@ class ImageView(QGraphicsView):
             painter.drawRect(QRectF(point.x() - size / 2, point.y() - size / 2, size, size))
 
         painter.restore()
+
+
+class BeforeView(QGraphicsView):
+    """Widok "przed" w trybie porownania obok siebie.
+
+    Nie ma wlasnego powiekszenia ani polozenia: przepisuje je z glownego
+    widoku przy kazdej jego zmianie (`follow`), a kolko i przeciaganie
+    przekazuje glownemu. Dzieki temu jedno zrodlo prawdy zostaje w ImageView,
+    razem z nawigatorem, suwakiem powiekszenia i liczeniem ostrego fragmentu -
+    oba widoki maja ten sam rozmiar, wiec pokazuja ten sam wycinek zdjecia.
+    """
+
+    def __init__(self, main: ImageView, parent=None):
+        super().__init__(parent)
+        self._main = main
+        self._scene = QGraphicsScene(self)
+        self._base = QGraphicsPixmapItem()
+        self._base.setTransformationMode(Qt.SmoothTransformation)
+        self._base.setCacheMode(QGraphicsPixmapItem.DeviceCoordinateCache)
+        self._detail = QGraphicsPixmapItem()
+        self._detail.setTransformationMode(Qt.SmoothTransformation)
+        self._detail.setZValue(1)
+        self._detail.hide()
+        self._scene.addItem(self._base)
+        self._scene.addItem(self._detail)
+        self.setScene(self._scene)
+
+        self.setRenderHints(QPainter.SmoothPixmapTransform)
+        self.setTransformationAnchor(QGraphicsView.NoAnchor)
+        self.setResizeAnchor(QGraphicsView.NoAnchor)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setBackgroundBrush(QColor(18, 18, 20))
+        self.setFrameShape(QGraphicsView.NoFrame)
+        self.viewport().setCursor(Qt.OpenHandCursor)
+        self._drag_from: QPointF | None = None
+
+        main.view_rect_changed.connect(lambda _rect: self.follow())
+
+    # ----------------------------------------------------------- obrazy
+
+    def set_before_image(self, rgb8: np.ndarray) -> None:
+        width, height = self._main.image_size
+        pixmap = numpy_to_pixmap(rgb8)
+        self._base.setPixmap(pixmap)
+        self._base.setScale(width / float(max(pixmap.width(), 1)))
+        self._detail.hide()
+        self._scene.setSceneRect(0.0, 0.0, float(width), float(height))
+        self.follow()
+        # ostry fragment liczy sie z widocznego wycinka glownego widoku
+        self._main._schedule_detail()
+
+    def set_before_detail(self, rgb8: np.ndarray, rect: QRect, scale: float) -> None:
+        if self._base.pixmap().isNull():
+            return
+        self._detail.setPixmap(numpy_to_pixmap(rgb8))
+        self._detail.setScale(1.0 / scale if scale else 1.0)
+        self._detail.setPos(float(rect.x()), float(rect.y()))
+        self._detail.show()
+
+    def clear(self) -> None:
+        self._base.setPixmap(QPixmap())
+        self._detail.hide()
+
+    def has_image(self) -> bool:
+        return not self._base.pixmap().isNull()
+
+    def detail_visible(self) -> bool:
+        return self._detail.isVisible()
+
+    # -------------------------------------------------- za glownym widokiem
+
+    def follow(self) -> None:
+        if not self.isVisible():
+            return
+        main = self._main
+        width, height = main.image_size
+        self._scene.setSceneRect(0.0, 0.0, float(width), float(height))
+        self.setTransform(main.transform())
+        self.centerOn(main.mapToScene(main.viewport().rect().center()))
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self.follow()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self.follow()
+
+    # ----------------------------------------------- przekazywanie gestow
+
+    def wheelEvent(self, event: QWheelEvent) -> None:
+        step = 1.0015 ** event.angleDelta().y()
+        self._main.zoom_about(self._main.zoom * step, QPointF(event.position()))
+
+    def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.LeftButton:
+            self._drag_from = QPointF(event.position())
+            self.viewport().setCursor(Qt.ClosedHandCursor)
+
+    def mouseMoveEvent(self, event) -> None:
+        if self._drag_from is None:
+            return
+        position = QPointF(event.position())
+        delta = position - self._drag_from
+        self._drag_from = position
+        self._main.pan_by(delta.x(), delta.y())
+
+    def mouseReleaseEvent(self, event) -> None:
+        self._drag_from = None
+        self.viewport().setCursor(Qt.OpenHandCursor)
+
+    def mouseDoubleClickEvent(self, event) -> None:
+        self._main.toggle_fit()
+
+    def drawForeground(self, painter: QPainter, rect: QRectF) -> None:
+        painter.save()
+        painter.resetTransform()
+        draw_badge(painter, t("Przed"), 10.0, 10.0)
+        painter.restore()
+
+    def scrollContentsBy(self, dx: int, dy: int) -> None:
+        super().scrollContentsBy(dx, dy)
+        self.viewport().update()  # podpis stoi w miejscu okna

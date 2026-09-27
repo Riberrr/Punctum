@@ -37,7 +37,8 @@
   "podglad.dopasuj": {"tytul": "Fit to window", "opis": "Shows the whole photo in the window.", "uwaga": "Ctrl+0"},
   "podglad.sto": {"tytul": "Zoom 100 %", "opis": "One photo pixel is one screen pixel. Sharpness and noise show best at this zoom.", "uwaga": "Ctrl+1"},
   "podglad.przed_po": {"tytul": "Before / after", "opis": "Hold to see the photo without edits; release to return."},
-  "podglad.podzial": {"tytul": "Before / after split", "opis": "Splits the preview with a line: the photo without edits on the left, with edits on the right. Drag the line with the mouse; zoom and panning work as usual.", "uwaga": "Y toggles"},
+  "podglad.podzial": {"tytul": "Before / after split", "opis": "Splits the preview with a line: the photo without edits on the left, with edits on the right. Drag the line with the mouse; zoom and panning work as usual.", "uwaga": "Shift+Y toggles"},
+  "podglad.obok": {"tytul": "Before / after side by side", "opis": "Shows two views: the photo without edits on the left, with edits on the right. Zoom and panning act on both at once, from either of them.", "uwaga": "Y toggles"},
   "podglad.metadane_rozwin": {"tytul": "Metadata", "opis": "Expands the panel with all the photo's metadata (EXIF), which can also be corrected here."},
   "podglad.metadane_zwin": {"tytul": "Collapse metadata", "opis": "Collapses the metadata panel."},
 

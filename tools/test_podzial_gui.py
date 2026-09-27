@@ -3,7 +3,9 @@
 Wlacza podzial z menu i przyciskiem, sprawdza, ze po lewej stronie linii
 jest zdjecie bez korekt, a po prawej z korektami, przeciaga linie mysza,
 przycina kadr (obie polowki musza miec te sama geometrie), przytrzymuje
-"Przed / po", wchodzi w kadrowanie i powieksza do 100 %.
+"Przed / po", wchodzi w kadrowanie i powieksza do 100 %. Potem to samo dla
+trybu obok siebie: oba widoki maja to samo powiekszenie i wycinek, kolko
+i przeciaganie nad widokiem "przed" ruszaja oboma.
 
 Uzycie:  python tools/test_podzial_gui.py <plik.rw2> [wiecej...] [--pelny]
 """
@@ -15,7 +17,8 @@ import shutil
 import sys
 import tempfile
 
-from PySide6.QtCore import QPoint, Qt
+from PySide6.QtCore import QPoint, QPointF, Qt
+from PySide6.QtGui import QWheelEvent
 from PySide6.QtTest import QTest
 from PySide6.QtWidgets import QApplication
 
@@ -89,8 +92,11 @@ def stage_start() -> None:
           not window.split_button.isChecked() and not view.split_visible)
     check("przycisk podzialu ma ikone i dymek",
           not window.split_button.icon().isNull() and bool(window.split_button.toolTip()))
-    check("akcja w menu ma skrot Y", window.split_action.shortcut().toString() == "Y",
-          window.split_action.shortcut().toString())
+    skroty = (window.side_action.shortcut().toString(),
+              window.split_action.shortcut().toString())
+    check("skroty jak w LR: Y obok siebie, Shift+Y podzial", skroty == ("Y", "Shift+Y"),
+          str(skroty))
+    check("widok przed jest ukryty", not window.before_view.isVisible())
 
 
 def stage_wlacz() -> None:
@@ -176,6 +182,91 @@ def stage_detal() -> None:
     view.fit_to_window()
 
 
+def srodek_sceny(widok) -> QPointF:
+    return widok.mapToScene(widok.viewport().rect().center())
+
+
+def srednia(widok) -> float:
+    obraz = widok.viewport().grab().toImage()
+    w, h = obraz.width(), obraz.height()
+    suma, n = 0.0, 0
+    for y in range(h // 3, h * 9 // 10, 6):
+        for x in range(w // 5, w * 4 // 5, 6):
+            kolor = obraz.pixelColor(x, y)
+            suma += kolor.red() + kolor.green() + kolor.blue()
+            n += 1
+    return suma / max(1, n) / 3.0
+
+
+def stage_obok() -> None:
+    przed_widok = window.before_view
+    view.fit_to_window()
+    window.side_action.trigger()
+    czekaj(app, lambda: przed_widok.isVisible() and przed_widok.has_image(), "widok przed")
+    pomaluj()
+    check("tryb obok siebie wylacza podzial",
+          window.side_button.isChecked() and not window.split_button.isChecked()
+          and not window.split_action.isChecked() and not view.split_visible)
+    check("dwa widoki rownej szerokosci",
+          abs(przed_widok.width() - view.width()) <= 2,
+          f"{przed_widok.width()} / {view.width()}")
+    check("przed ma geometrie kadru",
+          przed_widok._base.pixmap().size() == view._base.pixmap().size(),
+          f"{przed_widok._base.pixmap().size()} / {view._base.pixmap().size()}")
+    check("po lewej zdjecie bez korekt (ciemniejsze)", srednia(przed_widok) + 10 < srednia(view),
+          f"{srednia(przed_widok):.0f} / {srednia(view):.0f}")
+
+    view.zoom_actual()
+    pomaluj()
+    a, b = srodek_sceny(przed_widok), srodek_sceny(view)
+    check("powiekszenie glownego dziala na oba",
+          abs(przed_widok.transform().m11() - view.zoom) < 1e-6
+          and abs(a.x() - b.x()) < 2 and abs(a.y() - b.y()) < 2,
+          f"{przed_widok.transform().m11():.3f} / {view.zoom:.3f}, {a.x():.0f},{a.y():.0f} / {b.x():.0f},{b.y():.0f}")
+
+    zoom = view.zoom
+    pozycja = QPointF(przed_widok.viewport().rect().center())
+    kolko = QWheelEvent(pozycja, przed_widok.viewport().mapToGlobal(pozycja), QPoint(0, 0),
+                        QPoint(0, 240), Qt.NoButton, Qt.NoModifier, Qt.NoScrollPhase, False)
+    QApplication.sendEvent(przed_widok.viewport(), kolko)
+    pomaluj()
+    a, b = srodek_sceny(przed_widok), srodek_sceny(view)
+    check("kolko nad widokiem przed powieksza oba", view.zoom > zoom * 1.2
+          and abs(przed_widok.transform().m11() - view.zoom) < 1e-6
+          and abs(a.x() - b.x()) < 2, f"{zoom:.2f} -> {view.zoom:.2f}")
+
+    przed_srodek = srodek_sceny(view)
+    vp = przed_widok.viewport()
+    start = vp.rect().center()
+    QTest.mousePress(vp, Qt.LeftButton, Qt.NoModifier, start)
+    QTest.mouseMove(vp, start + QPoint(40, 0))
+    QTest.mouseMove(vp, start + QPoint(80, 30))
+    QTest.mouseRelease(vp, Qt.LeftButton, Qt.NoModifier, start + QPoint(80, 30))
+    pomaluj()
+    po_srodek, a = srodek_sceny(view), srodek_sceny(przed_widok)
+    check("przeciagniecie w widoku przed przesuwa oba",
+          po_srodek.x() < przed_srodek.x() - 20 and abs(a.x() - po_srodek.x()) < 2
+          and abs(a.y() - po_srodek.y()) < 2,
+          f"{przed_srodek.x():.0f} -> {po_srodek.x():.0f}")
+
+    czekaj(app, lambda: przed_widok.detail_visible(), "ostry fragment obok")
+    check("ostry fragment ma tez widok przed", przed_widok.detail_visible())
+
+    panel.crop_button.setChecked(True)
+    pomaluj()
+    check("w kadrowaniu widoku przed nie ma", not przed_widok.isVisible())
+    panel.crop_button.setChecked(False)
+    czekaj(app, lambda: przed_widok.isVisible() and przed_widok.has_image(), "po kadrowaniu")
+    check("po kadrowaniu widok przed wraca", przed_widok.isVisible())
+
+    window.split_button.click()
+    czekaj(app, lambda: view.split_visible, "powrot do podzialu")
+    check("przelaczenie na podzial chowa widok przed",
+          view.split_visible and not przed_widok.isVisible()
+          and not window.side_button.isChecked())
+    view.fit_to_window()
+
+
 def stage_wylacz() -> None:
     window.split_button.click()
     pomaluj()
@@ -198,6 +289,7 @@ def report() -> None:
 
 
 lancuch(app, [stage_start, stage_wlacz, stage_strony, stage_przeciaganie, stage_kadr,
-              stage_przytrzymanie, stage_kadrowanie, stage_detal, stage_wylacz], report)
+              stage_przytrzymanie, stage_kadrowanie, stage_detal, stage_obok, stage_wylacz],
+        report)
 app.exec()
 sys.exit(KOD)

@@ -211,6 +211,12 @@ IKONY = {
         '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M12 4v5M12 15v5"/>'
         '<circle cx="12" cy="12" r="3"/><path d="M7.5 10.5 6 12l1.5 1.5M16.5 10.5 18 12l-1.5 1.5"/>'
     ),
+    # Dwie ramki obok siebie, lewa przyciemniona jak "przed" w ikonie
+    # "przed / po" - dwa widoki porownania.
+    "side-by-side": (
+        '<rect x="2" y="5" width="9" height="14" rx="1.5"/><rect x="13" y="5" width="9" height="14" rx="1.5"/>'
+        f'<rect x="2" y="5" width="9" height="14" rx="1.5" fill="{KOLOR_IKON}" fill-opacity=".35" stroke="none"/>'
+    ),
     "undo": '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
     "redo": '<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',
     "fit": '<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>',

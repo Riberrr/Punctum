@@ -36,7 +36,8 @@
   "podglad.dopasuj": {"tytul": "Dopasuj do okna", "opis": "Pokazuje całe zdjęcie w oknie.", "uwaga": "Ctrl+0"},
   "podglad.sto": {"tytul": "Powiększenie 100 %", "opis": "Jeden piksel zdjęcia to jeden piksel ekranu. Przy tym powiększeniu najlepiej widać ostrość i szum.", "uwaga": "Ctrl+1"},
   "podglad.przed_po": {"tytul": "Przed / po", "opis": "Przytrzymaj, żeby zobaczyć zdjęcie bez korekt; puść, żeby wrócić."},
-  "podglad.podzial": {"tytul": "Podział przed / po", "opis": "Dzieli podgląd linią: po lewej zdjęcie bez korekt, po prawej z korektami. Linię przesuwasz myszą, powiększenie i przesuwanie działają jak zwykle.", "uwaga": "Y włącza i wyłącza"},
+  "podglad.podzial": {"tytul": "Podział przed / po", "opis": "Dzieli podgląd linią: po lewej zdjęcie bez korekt, po prawej z korektami. Linię przesuwasz myszą, powiększenie i przesuwanie działają jak zwykle.", "uwaga": "Shift+Y włącza i wyłącza"},
+  "podglad.obok": {"tytul": "Przed / po obok siebie", "opis": "Pokazuje dwa widoki: po lewej zdjęcie bez korekt, po prawej z korektami. Powiększenie i przesuwanie działają na oba naraz, z każdego z nich.", "uwaga": "Y włącza i wyłącza"},
   "podglad.metadane_rozwin": {"tytul": "Metadane", "opis": "Rozwija panel ze wszystkimi metadanymi zdjęcia (EXIF), które można tu też poprawić."},
   "podglad.metadane_zwin": {"tytul": "Zwiń metadane", "opis": "Zwija panel metadanych."},
 
