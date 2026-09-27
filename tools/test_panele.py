@@ -19,7 +19,7 @@ sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 from wspolne import wypisz  # noqa: E402
 
 from punctum.app.panele import (  # noqa: E402
-    LEWY, PRAWY, SCHOWEK, TYTULY, UKLAD_DOMYSLNY, przenies, uporzadkuj,
+    LEWY, PRAWY, SCHOWEK, TYTULY, UKLAD_DOMYSLNY, przenies, uporzadkuj, wstaw_domyslnie,
 )
 from punctum.core.settings import Settings  # noqa: E402
 
@@ -39,14 +39,14 @@ domyslny = uporzadkuj({})
 check("pusty zapis = uklad domyslny",
       domyslny[LEWY] == UKLAD_DOMYSLNY[LEWY] and domyslny[PRAWY] == UKLAD_DOMYSLNY[PRAWY]
       and domyslny[SCHOWEK] == [], str(domyslny))
-check("domyslnie nic zwiniete, ukryte ani odblokowane",
-      domyslny["zwiniete"] == domyslny["ukryte"] == domyslny["odblokowane"] == [])
+check("domyslnie nic zwiniete ani odblokowane, bez stanu ukrycia",
+      domyslny["zwiniete"] == domyslny["odblokowane"] == [] and "ukryte" not in domyslny)
 
 for nazwa, smiec in (("None", None), ("napis", "x"), ("lista", [1, 2]),
                      ("zle typy pol", {LEWY: "nawigator", "ukryte": "dane", "zwiniete": 5})):
     stan = uporzadkuj(smiec)
     check(f"smieci ({nazwa}) = uklad domyslny",
-          stan[LEWY] == UKLAD_DOMYSLNY[LEWY] and stan["ukryte"] == [], str(stan))
+          stan[LEWY] == UKLAD_DOMYSLNY[LEWY] and stan[SCHOWEK] == [], str(stan))
 
 stan = uporzadkuj({LEWY: ["dane", "nieznana", "dane", "nawigator"], PRAWY: ["dane", "histogram"]})
 check("nieznane klucze i powtorki odpadaja", komplet(stan), str(stan))
@@ -70,10 +70,11 @@ check("brak poprzednika = na poczatek panelu", stan[PRAWY][0] == "histogram", st
 
 stan = uporzadkuj({SCHOWEK: ["szum"], PRAWY: ["histogram"], "ukryte": ["dane", "obca"],
                    "zwiniete": ["ton"], "odblokowane": [PRAWY, "srodek"]})
-check("sekcja ze schowka zostaje w schowku", stan[SCHOWEK] == ["szum"] and "szum" not in stan[PRAWY])
-check("ukryte, zwiniete, blokada: tylko znane klucze",
-      stan["ukryte"] == ["dane"] and stan["zwiniete"] == ["ton"] and stan["odblokowane"] == [PRAWY],
-      str(stan))
+check("sekcja ze schowka zostaje w schowku", stan[SCHOWEK][0] == "szum" and "szum" not in stan[PRAWY])
+check("dawne 'ukryte' trafiaja do schowka, obce odpadaja",
+      stan[SCHOWEK] == ["szum", "dane"] and "dane" not in stan[LEWY] and komplet(stan), str(stan))
+check("zwiniete, blokada: tylko znane klucze",
+      stan["zwiniete"] == ["ton"] and stan["odblokowane"] == [PRAWY], str(stan))
 check("uporzadkowanie jest stale", uporzadkuj(stan) == stan)
 
 stan = uporzadkuj({})
@@ -84,6 +85,15 @@ przenies(stan, "obecnosc", SCHOWEK)
 check("przeniesienie na koniec (schowek)", stan[SCHOWEK] == ["obecnosc"] and komplet(stan))
 przenies(stan, "histogram", PRAWY, "nieznana")
 check("nieznany cel wstawienia = koniec panelu", stan[PRAWY][-1] == "histogram", str(stan[PRAWY]))
+
+stan = uporzadkuj({})
+przenies(stan, "balans", SCHOWEK)
+przenies(stan, "ton", LEWY)
+wstaw_domyslnie(stan, "balans")
+check("wlaczenie wraca za domyslnego poprzednika",
+      stan[PRAWY][:3] == ["histogram", "kadrowanie", "balans"] and stan[SCHOWEK] == [], str(stan))
+wstaw_domyslnie(stan, "histogram")
+check("wlaczenie bez poprzednika = na poczatek", stan[PRAWY][0] == "histogram", str(stan[PRAWY]))
 
 check("ustawienia: uklad inny niz slownik zerowany",
       Settings(panel_layout="x").normalised().panel_layout == {})

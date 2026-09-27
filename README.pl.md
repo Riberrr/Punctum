@@ -4,7 +4,7 @@
 
 *Dla tego jednego szczegółu.*
 
-Nieniszczący edytor zdjęć — RAW (RW2, CR2/CR3, NEF, ARW, DNG) oraz JPEG,
+Edytor zdjęć — RAW (RW2, CR2/CR3, NEF, ARW, DNG) oraz JPEG,
 z podglądem liczonym na karcie graficznej i geotagowaniem na mapie.
 
 > English version: [README.md](README.md). Program działa po polsku i po

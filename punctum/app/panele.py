@@ -8,7 +8,7 @@ i zmiana jezyka rozsypalaby zapisany uklad.
 
 from __future__ import annotations
 
-from PySide6.QtCore import QMimeData, QObject, QSize, Qt, QTimer, Signal
+from PySide6.QtCore import QMimeData, QObject, QSize, Qt, Signal
 from PySide6.QtGui import QAction, QDrag
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -75,7 +75,7 @@ def uporzadkuj(stan) -> dict:
     uzytkownika zostaje nietknieta.
     """
     stan = stan if isinstance(stan, dict) else {}
-    wynik: dict[str, list[str]] = {m: [] for m in MIEJSCA}
+    wynik: dict[str, list] = {m: [] for m in MIEJSCA}
     widziane: set[str] = set()
     for miejsce in MIEJSCA:
         lista = stan.get(miejsce)
@@ -86,18 +86,20 @@ def uporzadkuj(stan) -> dict:
                 widziane.add(klucz)
                 wynik[miejsce].append(klucz)
 
-    for miejsce in PANELE:
-        domyslne = UKLAD_DOMYSLNY[miejsce]
-        for i, klucz in enumerate(domyslne):
-            if klucz in widziane:
-                continue
+    for klucz in TYTULY:
+        if klucz not in widziane:
             widziane.add(klucz)
-            pozycja = 0
-            for poprzedni in reversed(domyslne[:i]):
-                if poprzedni in wynik[miejsce]:
-                    pozycja = wynik[miejsce].index(poprzedni) + 1
-                    break
-            wynik[miejsce].insert(pozycja, klucz)
+            wstaw_domyslnie(wynik, klucz)
+
+    # Pierwsza wersja punktu 23 znala sekcje "ukryte w miejscu". Uzytkownik
+    # zdecydowal, ze wylaczenie sekcji to odlozenie jej do schowka - stary
+    # zapis przenosimy tam, zamiast gubic. Dopiero po uzupelnieniu brakow,
+    # bo ukryta mogla byc tez sekcja, ktorej w zapisie nie ma w zadnym panelu.
+    stare_ukryte = stan.get("ukryte")
+    if isinstance(stare_ukryte, list):
+        for klucz in stare_ukryte:
+            if klucz in TYTULY and klucz not in wynik[SCHOWEK]:
+                przenies(wynik, klucz, SCHOWEK)
 
     def zbior(nazwa: str, dozwolone) -> list[str]:
         wartosc = stan.get(nazwa)
@@ -105,10 +107,29 @@ def uporzadkuj(stan) -> dict:
             return []
         return sorted({k for k in wartosc if isinstance(k, str) and k in dozwolone})
 
-    wynik["ukryte"] = zbior("ukryte", TYTULY)
     wynik["zwiniete"] = zbior("zwiniete", TYTULY)
     wynik["odblokowane"] = zbior("odblokowane", PANELE)
     return wynik
+
+
+def wstaw_domyslnie(stan: dict, klucz: str) -> None:
+    """Stawia sekcje w jej domyslnym panelu, zaraz za najblizszym poprzednikiem
+    z ukladu domyslnego, ktory tam lezy (brak poprzednika = na poczatek).
+
+    Tak wraca sekcja wlaczona z menu i tak laduje sekcja dodana w nowej
+    wersji - reszta ukladu uzytkownika zostaje nietknieta.
+    """
+    for miejsce in MIEJSCA:
+        if klucz in stan[miejsce]:
+            stan[miejsce].remove(klucz)
+    miejsce = next(m for m in PANELE if klucz in UKLAD_DOMYSLNY[m])
+    domyslne = UKLAD_DOMYSLNY[miejsce]
+    pozycja = 0
+    for poprzedni in reversed(domyslne[: domyslne.index(klucz)]):
+        if poprzedni in stan[miejsce]:
+            pozycja = stan[miejsce].index(poprzedni) + 1
+            break
+    stan[miejsce].insert(pozycja, klucz)
 
 
 def przenies(stan: dict, klucz: str, cel: str, przed: str | None = None) -> None:
@@ -378,7 +399,7 @@ class PanelSekcji(QWidget):
         self.klodka.blockSignals(False)
         self.klodka.setIcon(ikona("unlock" if on else "lock"))
 
-    def uloz(self, sekcje: list[Sekcja], ukryte: set[str]) -> None:
+    def uloz(self, sekcje: list[Sekcja]) -> None:
         """Wklada sekcje w podanej kolejnosci; widgetow nie niszczy."""
         uklad = self.lista.uklad_pionowy
         while uklad.count():
@@ -389,7 +410,7 @@ class PanelSekcji(QWidget):
             if sekcja.parentWidget() is not self.lista:
                 sekcja.setParent(self.lista)
             uklad.addWidget(sekcja)
-            sekcja.setVisible(sekcja.klucz not in ukryte)
+            sekcja.show()
         uklad.addStretch(1)
         self.rozloz_miejsce()
 
@@ -404,8 +425,8 @@ class PanelSekcji(QWidget):
 
 
 class UkladPaneli(QObject):
-    """Wlasciciel stanu ukladu: kto lezy w ktorym panelu, co zwiniete, co
-    ukryte, ktory panel odblokowany. Widzety tylko go pokazuja."""
+    """Wlasciciel stanu ukladu: kto lezy w ktorym panelu (albo w schowku),
+    co zwiniete, ktory panel odblokowany. Widzety tylko go pokazuja."""
 
     zmieniony = Signal()
 
@@ -445,8 +466,15 @@ class UkladPaneli(QObject):
     def przelacz_zwiniecie(self, klucz: str) -> None:
         self._przelacz("zwiniete", klucz)
 
-    def przelacz_ukrycie(self, klucz: str) -> None:
-        self._przelacz("ukryte", klucz)
+    def przelacz_widocznosc(self, klucz: str) -> None:
+        """Wylaczenie = odlozenie do schowka; wlaczenie = powrot na domyslne
+        miejsce. Jedna zasada dla menu i okna ukladu - bez osobnego stanu
+        "ukryta, ale w panelu", ktory w oknie wymagal pol wyboru."""
+        if klucz in self.stan[SCHOWEK]:
+            wstaw_domyslnie(self.stan, klucz)
+        else:
+            przenies(self.stan, klucz, SCHOWEK)
+        self._zmiana()
 
     def ustaw_blokade(self, miejsce: str, odblokowany: bool) -> None:
         zbior = set(self.stan["odblokowane"])
@@ -475,7 +503,6 @@ class UkladPaneli(QObject):
         self.zmieniony.emit()
 
     def _odswiez(self) -> None:
-        ukryte = set(self.stan["ukryte"])
         zwiniete = set(self.stan["zwiniete"])
         for miejsce, panel in self.panele.items():
             odblokowany = miejsce in self.stan["odblokowane"]
@@ -483,7 +510,7 @@ class UkladPaneli(QObject):
             for sekcja in sekcje:
                 sekcja.set_zwinieta(sekcja.klucz in zwiniete)
                 sekcja.set_przesuwalna(odblokowany)
-            panel.uloz(sekcje, ukryte)
+            panel.uloz(sekcje)
             panel.set_odblokowany(odblokowany)
         for klucz in self.stan[SCHOWEK]:
             sekcja = self.sekcje.get(klucz)
@@ -499,16 +526,17 @@ class UkladPaneli(QObject):
     def wypelnij_menu(self, menu: QMenu, okno: QWidget | None = None) -> None:
         """Widok > Panele: codzienne pokaz/ukryj jednym kliknieciem."""
         menu.clear()
-        ukryte = set(self.stan["ukryte"])
-        for miejsce in PANELE:
+        for miejsce in MIEJSCA:
+            if not self.stan[miejsce]:
+                continue
             naglowek = QAction(t(TYTULY_MIEJSC[miejsce]), menu)
             naglowek.setEnabled(False)
             menu.addAction(naglowek)
             for klucz in self.stan[miejsce]:
                 akcja = QAction(t(TYTULY[klucz]), menu)
                 akcja.setCheckable(True)
-                akcja.setChecked(klucz not in ukryte)
-                akcja.triggered.connect(lambda _=False, k=klucz: self.przelacz_ukrycie(k))
+                akcja.setChecked(miejsce != SCHOWEK)
+                akcja.triggered.connect(lambda _=False, k=klucz: self.przelacz_widocznosc(k))
                 menu.addAction(akcja)
             menu.addSeparator()
         dostosuj = QAction(t("Dostosuj układ…"), menu)
@@ -541,7 +569,8 @@ class UkladPaneli(QObject):
 
 class OknoUkladu(QDialog):
     """Trzy kolumny: schowek | panel lewy | panel prawy. Pozycje przeciaga
-    sie miedzy kolumnami i w ich obrebie; pole wyboru pokazuje sekcje."""
+    sie miedzy kolumnami i w ich obrebie. Wylaczenie sekcji = przeniesienie
+    do schowka; pol wyboru celowo nie ma (decyzja uzytkownika)."""
 
     def __init__(self, stan: dict, parent=None):
         super().__init__(parent)
@@ -564,11 +593,6 @@ class OknoUkladu(QDialog):
             lista.setSelectionMode(QAbstractItemView.SingleSelection)
             lista.setMinimumSize(190, 300)
             podpowiedz(lista, dymek)
-            # Qt wstawia upuszczona pozycje przed wpisaniem jej danych,
-            # wiec pola wyboru poprawiamy dopiero po biezacym obiegu petli.
-            lista.model().rowsInserted.connect(
-                lambda *_: QTimer.singleShot(0, self._popraw_pola)
-            )
             self.listy[miejsce] = lista
             siatka.addWidget(tytul, 0, kolumna)
             siatka.addWidget(lista, 1, kolumna)
@@ -591,41 +615,18 @@ class OknoUkladu(QDialog):
         self.wypelnij(stan)
 
     def wypelnij(self, stan: dict) -> None:
-        ukryte = set(stan.get("ukryte", []))
         for miejsce, lista in self.listy.items():
             lista.clear()
             for klucz in stan[miejsce]:
                 pozycja = QListWidgetItem(t(TYTULY[klucz]))
                 pozycja.setData(Qt.UserRole, klucz)
+                # QListWidgetItem ma domyslnie flage "do zaznaczania"
+                pozycja.setFlags(pozycja.flags() & ~Qt.ItemIsUserCheckable)
                 lista.addItem(pozycja)
-                if miejsce != SCHOWEK:
-                    pozycja.setFlags(pozycja.flags() | Qt.ItemIsUserCheckable)
-                    pozycja.setCheckState(Qt.Unchecked if klucz in ukryte else Qt.Checked)
-        self._popraw_pola()
-
-    def _popraw_pola(self) -> None:
-        """W schowku pole wyboru nic nie znaczy; w panelu musi byc."""
-        for miejsce, lista in self.listy.items():
-            for i in range(lista.count()):
-                pozycja = lista.item(i)
-                ma_pole = bool(pozycja.flags() & Qt.ItemIsUserCheckable)
-                if miejsce == SCHOWEK and ma_pole:
-                    pozycja.setFlags(pozycja.flags() & ~Qt.ItemIsUserCheckable)
-                    pozycja.setData(Qt.CheckStateRole, None)
-                elif miejsce != SCHOWEK and not ma_pole:
-                    pozycja.setFlags(pozycja.flags() | Qt.ItemIsUserCheckable)
-                    pozycja.setCheckState(Qt.Checked)
 
     def wynik(self) -> dict:
-        self._popraw_pola()
         stan: dict[str, list[str]] = {m: [] for m in MIEJSCA}
-        ukryte: list[str] = []
         for miejsce, lista in self.listy.items():
             for i in range(lista.count()):
-                pozycja = lista.item(i)
-                klucz = pozycja.data(Qt.UserRole)
-                stan[miejsce].append(klucz)
-                if miejsce != SCHOWEK and pozycja.checkState() == Qt.Unchecked:
-                    ukryte.append(klucz)
-        stan["ukryte"] = ukryte
+                stan[miejsce].append(lista.item(i).data(Qt.UserRole))
         return stan

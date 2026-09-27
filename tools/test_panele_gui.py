@@ -108,14 +108,17 @@ def stage_menu() -> None:
                                       "Przywróć układ domyślny")), str(list(akcje)))
     akcje[t("Histogram")].trigger()
     app.processEvents()
-    check("odhaczenie ukrywa sekcje", not window.histogram_widget.isVisible()
-          and "histogram" in window.settings.panel_layout["ukryte"])
+    check("odhaczenie odklada sekcje do schowka", not window.histogram_widget.isVisible()
+          and window.settings.panel_layout[SCHOWEK] == ["histogram"])
     menu.aboutToShow.emit()
-    akcja = {a.text(): a for a in menu.actions()}[t("Histogram")]
-    check("menu pokazuje stan", akcja.isCheckable() and not akcja.isChecked())
+    akcje = {a.text(): a for a in menu.actions()}
+    akcja = akcje[t("Histogram")]
+    check("menu pokazuje schowek i stan", t("Nieużywane") in akcje
+          and akcja.isCheckable() and not akcja.isChecked())
     akcja.trigger()
     app.processEvents()
-    check("ponowne zaznaczenie pokazuje", window.histogram_widget.isVisible())
+    check("ponowne zaznaczenie wraca na domyslne miejsce",
+          window.histogram_widget.isVisible() and klucze(PRAWY)[0] == "histogram")
 
 
 def stage_klodka() -> None:
@@ -154,26 +157,21 @@ def stage_okno() -> None:
     dialog = OknoUkladu(u.stan, window)
     listy = dialog.listy
     check("okno: schowek z jedna sekcja", listy[SCHOWEK].count() == 1)
-    pozycja = listy[SCHOWEK].takeItem(0)
-    listy[PRAWY].insertItem(0, pozycja)
-    app.processEvents()
+    check("okno: bez pol wyboru",
+          all(not (lista.item(i).flags() & Qt.ItemIsUserCheckable)
+              for lista in listy.values() for i in range(lista.count())))
+    listy[PRAWY].insertItem(0, listy[SCHOWEK].takeItem(0))
+    listy[SCHOWEK].addItem(listy[LEWY].takeItem(0))  # nawigator do schowka
     wynik = dialog.wynik()
-    check("okno: z schowka do panelu, pokazana", wynik[PRAWY][0] == "szum"
-          and "szum" not in wynik["ukryte"] and bool(pozycja.flags() & Qt.ItemIsUserCheckable),
-          str(wynik[PRAWY]))
-    listy[LEWY].item(0).setCheckState(Qt.Unchecked)
-    listy[LEWY].takeItem(1)  # powiekszenie do schowka
-    listy[SCHOWEK].addItem("x")
-    listy[SCHOWEK].takeItem(0)
-    wynik = dialog.wynik()
-    check("okno: odhaczone = ukryte", "nawigator" in wynik["ukryte"])
+    check("okno: przeniesienia w wyniku",
+          wynik[PRAWY][0] == "szum" and wynik[SCHOWEK] == ["nawigator"] and "ukryte" not in wynik,
+          str(wynik))
     dialog.deleteLater()
-    u.przyjmij({LEWY: ["nawigator", "dane"], PRAWY: wynik[PRAWY], SCHOWEK: ["przed_po", "obecnosc"],
-                "ukryte": ["nawigator"]})
+    u.przyjmij(wynik)
     app.processEvents()
     check("przyjety uklad z okna widac w oknie",
           klucze(PRAWY)[0] == "szum" and not window.navigator.isVisible()
-          and not window.edit_panel.sliders["vibrance"].isVisible())
+          and window.edit_panel.sliders["vibrance"].isVisible())
     check("uklad sie nie gubi (komplet sekcji)",
           sorted(klucze(LEWY) + klucze(PRAWY) + u.stan[SCHOWEK]) == sorted(u.sekcje))
 

@@ -130,8 +130,8 @@ class Settings:
     left_panel_width: int = 260
     right_panel_width: int = 340
     filmstrip_height: int = 150
-    # Uklad sekcji w panelach (punkt 23): miejsca, kolejnosc, zwiniete,
-    # ukryte, blokada. Sprawdza go app/panele.py - tu tylko pilnujemy typu.
+    # Uklad sekcji w panelach (punkt 23): miejsca (z schowkiem), kolejnosc,
+    # zwiniete, blokada. Sprawdza go app/panele.py - tu tylko pilnujemy typu.
     panel_layout: dict = field(default_factory=dict)
 
     # ---------------------------------------------------------- walidacja

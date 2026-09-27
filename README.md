@@ -4,7 +4,7 @@
 
 *For that one detail.*
 
-A non-destructive photo editor for RAW (RW2, CR2/CR3, NEF, ARW, DNG) and JPEG,
+A photo editor for RAW (RW2, CR2/CR3, NEF, ARW, DNG) and JPEG,
 with a preview computed on the graphics card and geotagging on a map.
 
 > Wersja polska: [README.pl.md](README.pl.md). The program runs in English and

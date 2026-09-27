@@ -122,7 +122,7 @@
   "panele.sekcja": {"tytul": "Zwiń / rozwiń", "opis": "Zwija sekcję do samego nagłówka albo ją rozwija. To samo robi kliknięcie w nagłówek.", "uwaga": "Prawy przycisk na nagłówku: pokaż i ukryj sekcje, dostosuj układ"},
   "panele.klodka": {"tytul": "Przesuwanie sekcji", "opis": "Odblokowana kłódka pozwala przeciągać sekcje za nagłówki: w górę i w dół panelu albo do drugiego panelu. Zablokuj, gdy układ jest gotowy, żeby niczego nie przestawić przypadkiem."},
   "panele.okno_schowek": {"tytul": "Nieużywane", "opis": "Sekcje, których nie ma w żadnym panelu. Przeciągnij sekcję tutaj, żeby ją odłożyć, albo stąd do panelu, żeby ją przywrócić."},
-  "panele.okno_lewy": {"tytul": "Panel lewy", "opis": "Sekcje lewego panelu w kolejności od góry. Przeciągaj, żeby zmienić kolejność; pole wyboru pokazuje lub ukrywa sekcję bez zmiany jej miejsca."},
-  "panele.okno_prawy": {"tytul": "Panel prawy", "opis": "Sekcje prawego panelu w kolejności od góry. Przeciągaj, żeby zmienić kolejność; pole wyboru pokazuje lub ukrywa sekcję bez zmiany jej miejsca."},
-  "panele.okno_domyslny": {"tytul": "Przywróć układ domyślny", "opis": "Ustawia sekcje tak jak przy pierwszym uruchomieniu i pokazuje wszystkie ukryte. Zmiana wchodzi po OK."}
+  "panele.okno_lewy": {"tytul": "Panel lewy", "opis": "Sekcje lewego panelu w kolejności od góry. Przeciągaj, żeby zmienić kolejność; przeciągnięcie do „Nieużywane” wyłącza sekcję."},
+  "panele.okno_prawy": {"tytul": "Panel prawy", "opis": "Sekcje prawego panelu w kolejności od góry. Przeciągaj, żeby zmienić kolejność; przeciągnięcie do „Nieużywane” wyłącza sekcję."},
+  "panele.okno_domyslny": {"tytul": "Przywróć układ domyślny", "opis": "Ustawia sekcje tak jak przy pierwszym uruchomieniu, także te odłożone do „Nieużywane”. Zmiana wchodzi po OK."}
 }

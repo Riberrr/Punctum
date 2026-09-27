@@ -1,6 +1,6 @@
 # Punctum — zasady pracy nad tym repozytorium
 
-Nieniszczący edytor zdjęć RAW i JPEG. Python 3.14 + PySide6, venv w `.venv`.
+Edytor zdjęć RAW i JPEG. Python 3.14 + PySide6, venv w `.venv`.
 Pełny opis programu jest w `README.pl.md` (po angielsku `README.md`); poniżej tylko to, czego trzeba się
 trzymać przy zmianach w kodzie.
 

@@ -1,6 +1,6 @@
-"""Punctum - program do obrobki zdjec RAW.
+"""Punctum - edytor zdjec RAW i JPEG.
 
-Nieniszczacy edytor: plik zrodlowy nigdy nie jest zmieniany, a komplet nastaw
+Edycja nieniszczaca: plik zrodlowy nigdy nie jest zmieniany, a komplet nastaw
 opisuje `core.params.EditParams`.
 """
 
