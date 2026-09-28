@@ -552,6 +552,9 @@ class MainWindow(QMainWindow):
         )
 
         help_menu = self.menuBar().addMenu(t("Pomo&c"))
+        ai_help_action = QAction(t("Sterowanie przez AI (MCP)…"), self)
+        ai_help_action.triggered.connect(self._pomoc_mcp)
+        help_menu.addAction(ai_help_action)
         about_action = QAction(t("O programie"), self)
         about_action.triggered.connect(lambda: self.open_settings(PAGE_ABOUT))
         help_menu.addAction(about_action)
@@ -657,16 +660,20 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------- sterowanie przez AI
 
     mcp = None
+    _mcp_katalog: str | None = None  # None = katalog ustawien; testy podaja wlasny
     _ostatni_eksport: dict | None = None
 
     def uruchom_mcp(self, port: int | None = None, katalog: str | None = None) -> None:
         """Serwer MCP dla agentow AI (punkt 6). Wolany z __main__, nie
         z konstruktora - testy buduja okno dziesiatki razy i nie powinny
         zajmowac portu."""
+        if katalog is not None:
+            self._mcp_katalog = katalog
         if not self.settings.mcp_enabled or self.mcp is not None:
             return
         from .mcp_polecenia import PoleceniaMCP
 
+        katalog = self._mcp_katalog
         self.mcp = PoleceniaMCP(self)
         blad = self.mcp.uruchom(self.settings.mcp_port if port is None else port, katalog)
         if blad:
@@ -678,6 +685,23 @@ class MainWindow(QMainWindow):
         if self.mcp is not None:
             self.mcp.zatrzymaj()
             self.mcp = None
+
+    def nowy_token_mcp(self) -> None:
+        """Nowy token dziala od razu - takze dla serwera, ktory juz slucha.
+        Mostki klientow czytaja go z pliku przy kazdym komunikacie."""
+        from ..mcp.protokol import nowy_token, zapisz_polaczenie
+
+        token = nowy_token()
+        dziala = self.mcp is not None and self.mcp.serwer is not None
+        port = self.mcp.serwer.port if dziala else self.settings.mcp_port
+        zapisz_polaczenie(port, token, self._mcp_katalog)
+        if dziala:
+            self.mcp.serwer.token = token
+
+    def _pomoc_mcp(self) -> None:
+        from .pomoc import pokaz_pomoc_mcp
+
+        pokaz_pomoc_mcp(self)
 
     # ------------------------------------------------------------ ustawienia
 
@@ -725,6 +749,10 @@ class MainWindow(QMainWindow):
         self.settings = nowe
         self.settings.save()
         self._apply_settings()
+        # Wlacznik i port serwera AI dzialaja od razu, bez restartu programu.
+        if (nowe.mcp_enabled, nowe.mcp_port) != (previous.mcp_enabled, previous.mcp_port):
+            self.zatrzymaj_mcp()
+            self.uruchom_mcp()
 
         # rozmiar podgladu zmienia dane wejsciowe, wiec wymaga przeliczenia
         if self.settings.preview_size != previous.preview_size and self.full_raw is not None:

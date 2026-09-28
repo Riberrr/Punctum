@@ -207,4 +207,96 @@ check("statystyki: polowa w czerni, polowa w bieli",
       abs(s["clipped_shadows_percent"] - 50) < 0.1 and abs(s["clipped_highlights_percent"] - 50) < 0.1)
 check("statystyki: 16 przedzialow po 100 %", abs(sum(s["histogram_16_bins_percent"]) - 100) < 0.5)
 
+
+
+# --- konfigurator klientow ----------------------------------------------------
+
+import tomllib  # noqa: E402
+
+from punctum.mcp import klienci  # noqa: E402
+
+with tempfile.TemporaryDirectory() as baza:
+    appdata, local, home = (os.path.join(baza, n) for n in ("appdata", "local", "home"))
+    for k in (appdata, local, home):
+        os.makedirs(k)
+    klienci.ustaw_katalogi(appdata, local, home)
+    K = klienci.KLIENCI_PO_KLUCZU
+    check("klient bez katalogu = brak", klienci.stan(K["cursor"]) == klienci.BRAK)
+    check("zed, jetbrains, chatgpt = recznie",
+          all(klienci.stan(K[k]) == klienci.RECZNY for k in ("zed", "jetbrains", "chatgpt")))
+
+    # Claude Desktop ze Sklepu: plik z ustawieniami aplikacji juz istnieje.
+    msix = os.path.join(local, "Packages", "Claude_abc123", "LocalCache", "Roaming", "Claude")
+    os.makedirs(msix)
+    plik_msix = os.path.join(msix, "claude_desktop_config.json")
+    with open(plik_msix, "w", encoding="utf-8") as f:
+        json.dump({"sidebarMode": "open", "mcpServers": {"inny": {"command": "x"}}}, f)
+    os.makedirs(os.path.join(appdata, "Claude"))
+    cd = K["claude_desktop"]
+    check("Claude Desktop wykryty, niepolaczony", klienci.stan(cd) == klienci.NIEPOLACZONY)
+    zmienione = klienci.polacz(cd)
+    check("zapis do obu plikow Claude Desktop", len(zmienione) == 2, str(len(zmienione)))
+    dane = json.load(open(plik_msix, encoding="utf-8"))
+    check("cudze wpisy nietkniete", dane.get("sidebarMode") == "open"
+          and "inny" in dane["mcpServers"])
+    wpis = dane["mcpServers"].get("punctum", {})
+    check("wpis: interpreter + modul + PYTHONPATH", wpis.get("args") == ["-m", "punctum.mcp"]
+          and os.path.isfile(wpis.get("command", "")) and "PYTHONPATH" in wpis.get("env", {}))
+    check("kopia zapasowa przed zmiana", os.path.exists(plik_msix + klienci.KOPIA))
+    check("stan po polaczeniu", klienci.stan(cd) == klienci.POLACZONY)
+    klienci.odlacz(cd)
+    dane = json.load(open(plik_msix, encoding="utf-8"))
+    check("odlaczenie usuwa tylko nasz wpis", "punctum" not in dane["mcpServers"]
+          and "inny" in dane["mcpServers"])
+
+    # VS Code: sekcja "servers" i typ stdio.
+    os.makedirs(os.path.join(appdata, "Code", "User"))
+    klienci.polacz(K["vscode"])
+    dane = json.load(open(os.path.join(appdata, "Code", "User", "mcp.json"), encoding="utf-8"))
+    check("VS Code: servers + type stdio", dane["servers"]["punctum"].get("type") == "stdio")
+
+    # Plik z komentarzami: zostaje nietkniety.
+    os.makedirs(os.path.join(home, ".cursor"))
+    zepsuty = os.path.join(home, ".cursor", "mcp.json")
+    with open(zepsuty, "w", encoding="utf-8") as f:
+        f.write('{ // komentarz\n "mcpServers": {} }')
+    przed = open(zepsuty, encoding="utf-8").read()
+    try:
+        klienci.polacz(K["cursor"])
+        kod = None
+    except klienci.BladKonfiguracji as exc:
+        kod = exc.kod
+    check("zepsuty JSON: blad i plik bez zmian", kod == "zepsuty"
+          and open(zepsuty, encoding="utf-8").read() == przed)
+
+    # Codex: TOML z komentarzem uzytkownika.
+    os.makedirs(os.path.join(home, ".codex"))
+    toml = os.path.join(home, ".codex", "config.toml")
+    with open(toml, "w", encoding="utf-8") as f:
+        f.write('# moje ustawienia\nmodel = "gpt"\n\n[mcp_servers.inny]\ncommand = "x"\n')
+    klienci.polacz(K["codex"])
+    klienci.polacz(K["codex"])  # drugi raz nie dubluje tabeli
+    tekst_toml = open(toml, encoding="utf-8").read()
+    dane = tomllib.loads(tekst_toml)
+    check("Codex: poprawny TOML z wpisem", dane["mcp_servers"]["punctum"]["args"]
+          == ["-m", "punctum.mcp"] and "PYTHONPATH" in dane["mcp_servers"]["punctum"]["env"])
+    check("Codex: komentarz i cudzy serwer zostaja", tekst_toml.startswith("# moje ustawienia")
+          and "inny" in dane["mcp_servers"] and tekst_toml.count("[mcp_servers.punctum]") == 1)
+    klienci.odlacz(K["codex"])
+    dane = tomllib.loads(open(toml, encoding="utf-8").read())
+    check("Codex: odlaczenie", "punctum" not in dane["mcp_servers"] and dane["model"] == "gpt")
+    check("konfiguracja do wklejenia to JSON", "punctum" in json.loads(
+        klienci.konfiguracja_do_wklejenia())["mcpServers"])
+klienci._KATALOGI.clear()
+
+# --- pomoc --------------------------------------------------------------------
+
+from punctum.app.pomoc import plik_pomocy, tekst_pomocy  # noqa: E402
+
+pl, en = tekst_pomocy("mcp", "pl"), tekst_pomocy("mcp", "en")
+check("pomoc MCP po polsku i angielsku", plik_pomocy("mcp", "pl").endswith(".pl.html")
+      and plik_pomocy("mcp", "en").endswith(".en.html"))
+check("pomoc: te same rozdzialy w obu jezykach", pl.count("<h3>") == en.count("<h3>") >= 4)
+check("jezyk bez pomocy -> angielska", plik_pomocy("mcp", "xx").endswith(".en.html"))
+
 sys.exit(wypisz(results))

@@ -398,6 +398,25 @@ katalogów, ostatnie opcje eksportu oraz rozmiary paneli i paska miniatur
 dopuszczalnych zakresów są przy odczycie przycinane, więc ręcznie popsuty plik
 nie zostawi panelu, w którym nie mieści się żaden przycisk.
 
+## Sterowanie przez AI (MCP)
+
+Punctum można obsługiwać przez asystenta AI uruchomionego obok (Claude
+Desktop, Claude Code, Codex, Cursor, VS Code, LM Studio, Gemini CLI i inne
+programy obsługujące MCP). Otwarty Punctum uruchamia mały serwer MCP na
+`127.0.0.1` (chroniony tokenem); asystent widzi otwarty katalog, ogląda
+podglądy (przed/po, wycinki 1:1), rusza suwakami, uruchamia automat i
+presety, kadruje, dopisuje metadane i lokalizację, eksportuje. Każda zmiana
+idzie tą samą drogą co praca ręczna — do sidecarów XMP, z cofaniem — a pliki
+zdjęć nie są ruszane.
+
+**Ustawienia ▸ Asystent AI** łączy Punctum jednym kliknięciem z programami AI
+znalezionymi na komputerze (plik konfiguracji jest scalany, zostaje kopia),
+kopiuje konfigurację dla innych programów i trzyma włącznik, port i token.
+**Pomoc ▸ Sterowanie przez AI (MCP)** opisuje całość z przykładami poleceń.
+Programy uruchamiające serwery same korzystają z mostka stdio
+`python -m punctum.mcp`. ChatGPT łączy się tylko z serwerami w internecie,
+więc nie jest łączony automatycznie; użytkownicy OpenAI mogą użyć Codex.
+
 ## Podpowiedzi
 
 Każdy przycisk, suwak i pole w programie ma dymek: pogrubiony tytuł, opis

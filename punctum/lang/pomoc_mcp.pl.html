@@ -1,0 +1,61 @@
+<h2>Sterowanie przez AI (MCP)</h2>
+<p>Punctum można obsługiwać poleceniami wydawanymi asystentowi AI — na przykład
+Claude Desktop — uruchomionemu obok programu. Asystent widzi otwarty katalog,
+ogląda podgląd zdjęć i zmienia suwaki, a Ty widzisz każdą zmianę w oknie
+Punctum na żywo. Połączenie korzysta z otwartego standardu <b>MCP</b>
+(Model Context Protocol), więc działa z wieloma programami AI, nie tylko z Claude.</p>
+
+<h3>Jak połączyć</h3>
+<ol>
+<li>Otwórz <b>Ustawienia ▸ Asystent AI</b> i upewnij się, że sterowanie jest włączone.</li>
+<li>Na liście programów AI kliknij <b>Połącz</b> przy swoim programie. Punctum dopisze
+się do jego konfiguracji (poprzednia wersja pliku zostaje jako kopia
+<code>.punctum-kopia</code>).</li>
+<li>Uruchom ponownie program AI. W jego liście narzędzi pojawi się „punctum”.</li>
+<li>Punctum musi być otwarty, kiedy wydajesz polecenia. Jeśli jest zamknięty,
+asystent dostanie prośbę o jego uruchomienie.</li>
+</ol>
+<p>Programu spoza listy? Użyj <b>Kopiuj konfigurację</b> i wklej wpis do jego
+ustawień serwerów MCP. Programy łączące się przez HTTP dostaną adres i token
+z tej samej strony ustawień.</p>
+<p><b>ChatGPT</b> łączy się tylko z serwerami w internecie (HTTPS), nie z programami
+na Twoim komputerze. Punctum dałoby się udostępnić przez tunel, ale oznacza to
+wystawienie edytora do sieci — nie robimy tego automatycznie. Użytkownicy OpenAI
+mogą zamiast tego użyć <b>Codex</b>, który łączy się lokalnie.</p>
+
+<h3>Co asystent może zrobić</h3>
+<ul>
+<li><b>Rozejrzeć się:</b> stan programu, lista zdjęć z datą, aparatem i ISO,
+dane EXIF i nastawy, podgląd (przed, po, obok siebie, wycinek 1:1), statystyki
+jasności.</li>
+<li><b>Poruszać się:</b> otworzyć katalog i zdjęcie, zaznaczyć zdjęcia według daty,
+ISO, aparatu, formatu, tego, czy są poprawione lub mają lokalizację.</li>
+<li><b>Edytować:</b> każdy suwak (wartością albo „o ile”), automat, zerowanie,
+presety (także zapis nowego), monochrom z filtrem, obrót, kadr z proporcjami,
+kopiowanie nastaw na inne zdjęcia, cofnij i ponów.</li>
+<li><b>Opisać:</b> tytuł, komentarz, słowa kluczowe, temat, autor, prawa autorskie,
+data; lokalizacja ze współrzędnych albo z nazwy miejsca.</li>
+<li><b>Wyeksportować:</b> zaznaczone zdjęcia, z opcjami jak w oknie eksportu.</li>
+</ul>
+
+<h3>Przykłady poleceń</h3>
+<ul>
+<li>„Zaznacz zdjęcia z wczorajszego wieczoru, zrób automat i podnieś trochę cienie.”</li>
+<li>„Pokaż mi przed i po dla tego zdjęcia. Jest za zimne?”</li>
+<li>„Obejrzyj wycinek 1:1 na twarzy i dobierz odszumianie.”</li>
+<li>„Nałóż Stonowany na wszystkie zaznaczone i dopisz słowo kluczowe Tatry.”</li>
+<li>„Nadaj lokalizację Morskie Oko zdjęciom z 12 sierpnia.”</li>
+<li>„Wyeksportuj zaznaczone jako JPEG 2048 px ze znakiem wodnym do katalogu Publikacja.”</li>
+</ul>
+
+<h3>Bezpieczeństwo</h3>
+<ul>
+<li><b>Oryginały są nietknięte.</b> Zmiany trafiają do plików XMP obok zdjęć, tak jak
+przy pracy ręcznej, i każdą można cofnąć. „Zapisz do oryginału”, usuwanie plików
+i zmiana ustawień programu nie są dostępne dla asystenta.</li>
+<li>Serwer przyjmuje połączenia wyłącznie z tego komputera (127.0.0.1) i wymaga
+tokenu. Nowy token wygenerujesz w ustawieniach — połączone programy dostaną go
+automatycznie.</li>
+<li>Podglądy, które ogląda asystent, trafiają do usługi AI, z której korzystasz.</li>
+<li>Szukanie miejsca po nazwie wysyła tę nazwę do OpenStreetMap.</li>
+</ul>

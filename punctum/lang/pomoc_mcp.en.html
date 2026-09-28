@@ -1,0 +1,61 @@
+<h2>AI control (MCP)</h2>
+<p>Punctum can be operated by commands you give an AI assistant — for example
+Claude Desktop — running next to it. The assistant sees the open folder, looks
+at photo previews and moves the sliders, and you see every change live in the
+Punctum window. The connection uses the open <b>MCP</b> standard (Model Context
+Protocol), so it works with many AI apps, not only Claude.</p>
+
+<h3>How to connect</h3>
+<ol>
+<li>Open <b>Settings ▸ AI assistant</b> and make sure AI control is on.</li>
+<li>In the list of AI apps, click <b>Connect</b> next to yours. Punctum adds itself
+to that app's configuration (the previous file is kept as a
+<code>.punctum-kopia</code> copy).</li>
+<li>Restart the AI app. "punctum" appears in its list of tools.</li>
+<li>Punctum must be open while you give commands. If it is closed, the assistant
+is asked to have it started.</li>
+</ol>
+<p>App not on the list? Use <b>Copy configuration</b> and paste the entry into its
+MCP server settings. Apps that connect over HTTP get the address and token from
+the same settings page.</p>
+<p><b>ChatGPT</b> only connects to servers on the internet (HTTPS), not to programs
+on your computer. Punctum could be exposed through a tunnel, but that means
+putting the editor on the network — this is not done automatically. OpenAI users
+can use <b>Codex</b> instead, which connects locally.</p>
+
+<h3>What the assistant can do</h3>
+<ul>
+<li><b>Look around:</b> program state, list of photos with date, camera and ISO,
+EXIF data and adjustments, preview (before, after, side by side, 1:1 crop),
+brightness statistics.</li>
+<li><b>Navigate:</b> open a folder and a photo, select photos by date, ISO, camera,
+format, whether they are edited or have a location.</li>
+<li><b>Edit:</b> every slider (a value or "by how much"), auto, reset, presets
+(including saving a new one), black &amp; white with a filter, rotation, crop with
+an aspect ratio, copying adjustments to other photos, undo and redo.</li>
+<li><b>Describe:</b> title, comment, keywords, subject, author, copyright, date;
+location from coordinates or a place name.</li>
+<li><b>Export:</b> selected photos, with the options of the Export dialog.</li>
+</ul>
+
+<h3>Example commands</h3>
+<ul>
+<li>"Select the photos from last evening, run auto and lift the shadows a bit."</li>
+<li>"Show me before and after for this photo. Is it too cold?"</li>
+<li>"Look at a 1:1 crop of the face and choose the noise reduction."</li>
+<li>"Apply Muted to all selected photos and add the keyword Tatras."</li>
+<li>"Set the location Morskie Oko on the photos from 12 August."</li>
+<li>"Export the selected photos as 2048 px JPEG with the watermark to the Publish folder."</li>
+</ul>
+
+<h3>Safety</h3>
+<ul>
+<li><b>Originals are never touched.</b> Changes go into XMP files next to the photos,
+just like manual work, and every change can be undone. "Save to original",
+deleting files and changing program settings are not available to the assistant.</li>
+<li>The server only accepts connections from this computer (127.0.0.1) and requires
+a token. You can generate a new token in the settings — connected apps pick it up
+automatically.</li>
+<li>Previews the assistant looks at are sent to the AI service you use.</li>
+<li>Looking up a place by name sends that name to OpenStreetMap.</li>
+</ul>

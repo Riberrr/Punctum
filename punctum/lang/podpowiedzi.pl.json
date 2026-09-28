@@ -179,5 +179,14 @@
   "znak.margines": {"tytul": "Margines", "opis": "Odstęp znaku od krawędzi w procentach krótszego boku zdjęcia."},
   "znak.podglad": {"tytul": "Podgląd znaku", "opis": "Bieżące zdjęcie ze znakiem, liczone tak samo jak przy eksporcie, tylko w mniejszej skali."},
   "eksport.znak": {"tytul": "Znak wodny", "opis": "Nakłada znak na każdy plik z tego eksportu. Zdjęcia źródłowe i ich korekty zostają bez znaku."},
-  "eksport.wzor_znaku": {"tytul": "Wzór znaku", "opis": "Tekst albo obraz, położenie, rozmiar i krycie. Wzór zostaje zapamiętany do kolejnych eksportów; ten sam jest w Ustawieniach ▸ Eksport."}
+  "eksport.wzor_znaku": {"tytul": "Wzór znaku", "opis": "Tekst albo obraz, położenie, rozmiar i krycie. Wzór zostaje zapamiętany do kolejnych eksportów; ten sam jest w Ustawieniach ▸ Eksport."},
+  "ustawienia.strona_ai": {"tytul": "Asystent AI", "opis": "Sterowanie programem przez asystenta AI (Claude, Codex, Cursor i inne) - serwer MCP i podłączanie programów AI."},
+  "ustawienia.mcp_wlacz": {"tytul": "Sterowanie przez AI", "opis": "Uruchamia w tle serwer MCP, przez który asystent AI obok programu może oglądać zdjęcia, zmieniać suwaki i eksportować. Oryginały zostają nietknięte, każdą zmianę można cofnąć."},
+  "ustawienia.mcp_port": {"tytul": "Port serwera", "opis": "Numer portu na tym komputerze (127.0.0.1). Zmień tylko wtedy, gdy inny program zajmuje domyślny."},
+  "ustawienia.mcp_token": {"tytul": "Token", "opis": "Hasło, którego wymaga serwer. Programy połączone przyciskiem Połącz czytają go same - wpisuje się go tylko w programach łączących się przez HTTP."},
+  "ustawienia.mcp_token_pokaz": {"tytul": "Pokaż token", "opis": "Pokazuje albo ukrywa token."},
+  "ustawienia.mcp_token_nowy": {"tytul": "Nowy token", "opis": "Unieważnia dotychczasowy token i tworzy nowy. Przydaje się, gdy token trafił w niepowołane ręce."},
+  "ustawienia.mcp_klient": {"tytul": "Połącz z programem AI", "opis": "Dopisuje Punctum do konfiguracji wybranego programu AI albo go z niej usuwa. Poprzednia wersja pliku zostaje jako kopia .punctum-kopia. Po połączeniu uruchom program AI ponownie."},
+  "ustawienia.mcp_kopiuj": {"tytul": "Kopiuj konfigurację", "opis": "Kopiuje do schowka wpis serwera MCP w formacie mcpServers - do wklejenia w programie AI spoza listy."},
+  "ustawienia.mcp_pomoc": {"tytul": "Jak to działa?", "opis": "Otwiera pomoc: jak połączyć programy AI, co asystent może zrobić, przykłady poleceń i bezpieczeństwo."}
 }

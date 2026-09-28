@@ -398,6 +398,25 @@ last export options and the sizes of the panels and the strip
 the allowed ranges are clamped on reading, so a hand-broken file will not leave
 a panel in which no button fits.
 
+## AI control (MCP)
+
+Punctum can be driven by an AI assistant running next to it (Claude Desktop,
+Claude Code, Codex, Cursor, VS Code, LM Studio, Gemini CLI and other MCP
+clients). While Punctum is open it runs a small MCP server on `127.0.0.1`
+(token-protected); the assistant sees the open folder, looks at previews
+(before/after, 1:1 crops), moves sliders, applies auto correction and
+presets, crops, adds metadata and locations, and exports. Every change goes
+the same way as manual work — into XMP sidecars, with undo — and the photo
+files are never modified.
+
+**Settings ▸ AI assistant** connects Punctum to the AI apps found on the
+computer with one click (the app's config file is merged, a backup is kept),
+copies the configuration for other apps, and holds the switch, port and
+token. **Help ▸ AI control (MCP)** explains everything, with example
+commands. Clients that start servers themselves use the stdio bridge
+`python -m punctum.mcp`. ChatGPT only connects to servers on the internet,
+so it is not connected automatically; OpenAI users can use Codex.
+
 ## Tooltips
 
 Every button, slider and field in the program has a tooltip: a bold title,

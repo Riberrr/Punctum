@@ -73,6 +73,10 @@ def zapisz_polaczenie(port: int, token: str, katalog: str | None = None) -> None
     os.replace(tymczasowy, sciezka)
 
 
+def nowy_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
 def token_z_pliku(katalog: str | None = None) -> str:
     """Token z poprzedniej sesji albo nowy - staly token pozwala klientom HTTP
     (wpisanym recznie) dzialac po ponownym uruchomieniu programu."""

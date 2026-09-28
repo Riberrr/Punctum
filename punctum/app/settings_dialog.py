@@ -22,12 +22,14 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QFormLayout,
     QFrame,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QListWidget,
     QListWidgetItem,
+    QMessageBox,
     QPushButton,
     QRadioButton,
     QScrollArea,
@@ -76,6 +78,7 @@ PAGE_PERFORMANCE = "wydajnosc"
 PAGE_PREVIEW = "podglad"
 PAGE_INTERFACE = "interfejs"
 PAGE_EXPORT = "eksport"
+PAGE_AI = "asystent_ai"
 PAGE_ABOUT = "o_programie"
 
 PAGES = (
@@ -84,8 +87,26 @@ PAGES = (
     (PAGE_PREVIEW, N_("Podgląd"), "ustawienia.strona_podglad"),
     (PAGE_INTERFACE, N_("Interfejs"), "ustawienia.strona_interfejs"),
     (PAGE_EXPORT, N_("Eksport"), "ustawienia.strona_eksport"),
+    (PAGE_AI, N_("Asystent AI"), "ustawienia.strona_ai"),
     (PAGE_ABOUT, N_("O programie"), "ustawienia.strona_o_programie"),
 )
+
+# Stan klienta AI -> (opis, napis na przycisku). Klucze z mcp/klienci.py.
+STANY_KLIENTA = {
+    "brak": (N_("nie znaleziono na tym komputerze"), N_("Połącz")),
+    "niepolaczony": (N_("nie połączony"), N_("Połącz")),
+    "polaczony": (N_("połączony"), N_("Odłącz")),
+    "reczny": (N_("łączenie ręczne"), N_("Jak połączyć?")),
+}
+UWAGI_KLIENTA = {
+    "zed": N_("Zed: wpis ze schowka wklej do sekcji „context_servers” w pliku "
+              "ustawień Zed (settings.json)."),
+    "jetbrains": N_("JetBrains AI Assistant: Ustawienia ▸ Tools ▸ AI Assistant ▸ "
+                    "Model Context Protocol ▸ dodaj serwer i wklej wpis ze schowka."),
+    "chatgpt": N_("ChatGPT łączy się tylko z serwerami w internecie (HTTPS), nie "
+                  "z programami na tym komputerze. Użytkownicy OpenAI mogą połączyć "
+                  "Punctum przez Codex. Szczegóły w pomocy."),
+}
 
 # Ostatnio ogladana strona - tylko w pamieci, do konca uruchomienia. Kto
 # wraca do ustawien w tej samej sesji, zwykle poprawia to samo; po restarcie
@@ -128,6 +149,7 @@ class SettingsDialog(QDialog):
             PAGE_PREVIEW: self._preview_page,
             PAGE_INTERFACE: self._interface_page,
             PAGE_EXPORT: self._export_page,
+            PAGE_AI: self._ai_page,
             PAGE_ABOUT: self._about_page,
         }
         self.categories = QListWidget()
@@ -536,6 +558,182 @@ class SettingsDialog(QDialog):
         self.znak_edytor.ustaw_domyslny_tekst(domyslny_tekst_znaku(
             self.copyright_edit.text(), self.author_edit.text()))
 
+    def _ai_page(self) -> QWidget:
+        """Sterowanie przez AI (punkt 6): serwer MCP i podlaczanie klientow."""
+        from ..mcp import klienci
+
+        # Dwanascie wierszy klientow - strona przewija sie jak Eksport, zeby
+        # okno ustawien nie roslo ponad ekran laptopa.
+        page = QWidget()
+        page_layout = QVBoxLayout(page)
+        scroll = _PrzewijanaWPionie()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        page_layout.addWidget(scroll)
+        inner = QWidget()
+        layout = QVBoxLayout(inner)
+        marginesy(layout, 0, 0, 10, 0)
+        odstep(layout, 10)
+
+        serwer = QGroupBox(t("Serwer MCP"))
+        serwer_layout = QVBoxLayout(serwer)
+        self.mcp_box = QCheckBox(t("Pozwól asystentom AI sterować programem"))
+        podpowiedz(self.mcp_box, "ustawienia.mcp_wlacz")
+        serwer_layout.addWidget(self.mcp_box)
+        form = QFormLayout()
+        self.mcp_port_box = QSpinBox()
+        self.mcp_port_box.setRange(1024, 65535)
+        form.addRow(t("Port:"), self.mcp_port_box)
+        podpowiedz_wiersza(form, self.mcp_port_box, "ustawienia.mcp_port")
+        self.mcp_stan_label = QLabel()
+        self.mcp_stan_label.setWordWrap(True)
+        self.mcp_stan_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        form.addRow(t("Stan:"), self.mcp_stan_label)
+        token_row = QHBoxLayout()
+        self.mcp_token_edit = QLineEdit()
+        self.mcp_token_edit.setReadOnly(True)
+        self.mcp_token_edit.setEchoMode(QLineEdit.Password)
+        podpowiedz(self.mcp_token_edit, "ustawienia.mcp_token")
+        self.mcp_pokaz_button = QPushButton(t("Pokaż"))
+        self.mcp_pokaz_button.setCheckable(True)
+        self.mcp_pokaz_button.toggled.connect(
+            lambda on: self.mcp_token_edit.setEchoMode(
+                QLineEdit.Normal if on else QLineEdit.Password))
+        podpowiedz(self.mcp_pokaz_button, "ustawienia.mcp_token_pokaz")
+        self.mcp_nowy_button = QPushButton(t("Nowy token"))
+        self.mcp_nowy_button.clicked.connect(self._mcp_nowy_token)
+        podpowiedz(self.mcp_nowy_button, "ustawienia.mcp_token_nowy")
+        token_row.addWidget(self.mcp_token_edit, 1)
+        token_row.addWidget(self.mcp_pokaz_button)
+        token_row.addWidget(self.mcp_nowy_button)
+        form.addRow(t("Token:"), token_row)
+        serwer_layout.addLayout(form)
+        serwer_layout.addWidget(_hint(t(
+            "Serwer przyjmuje połączenia tylko z tego komputera. Włącznik i port "
+            "działają po zatwierdzeniu ustawień, nowy token — od razu.")))
+        layout.addWidget(serwer)
+
+        programy = QGroupBox(t("Programy AI"))
+        programy_layout = QVBoxLayout(programy)
+        siatka = QGridLayout()
+        odstep(siatka, 6)
+        self._mcp_wiersze: dict[str, tuple[QLabel, QPushButton]] = {}
+        for wiersz, klient in enumerate(klienci.KLIENCI):
+            stan = QLabel()
+            stan.setObjectName("metaLabel")
+            przycisk = QPushButton()
+            podpowiedz(przycisk, "ustawienia.mcp_klient")
+            przycisk.clicked.connect(lambda _=False, k=klient: self._mcp_klient(k))
+            siatka.addWidget(QLabel(klient.nazwa), wiersz, 0)
+            siatka.addWidget(stan, wiersz, 1)
+            siatka.addWidget(przycisk, wiersz, 2)
+            self._mcp_wiersze[klient.klucz] = (stan, przycisk)
+        siatka.setColumnStretch(1, 1)
+        programy_layout.addLayout(siatka)
+        self.mcp_wynik_label = _hint("")
+        self.mcp_wynik_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        programy_layout.addWidget(self.mcp_wynik_label)
+        przyciski = QHBoxLayout()
+        kopiuj = QPushButton(t("Kopiuj konfigurację"))
+        kopiuj.clicked.connect(self._mcp_kopiuj)
+        podpowiedz(kopiuj, "ustawienia.mcp_kopiuj")
+        pomoc = QPushButton(t("Jak to działa?"))
+        pomoc.clicked.connect(self._mcp_pomoc)
+        podpowiedz(pomoc, "ustawienia.mcp_pomoc")
+        przyciski.addWidget(kopiuj)
+        przyciski.addWidget(pomoc)
+        przyciski.addStretch(1)
+        programy_layout.addLayout(przyciski)
+        layout.addWidget(programy)
+        layout.addStretch(1)
+        scroll.setWidget(inner)
+        return page
+
+    def _okno_glowne(self):
+        # Okno ustawien dziala tez bez okna glownego (testy) - wtedy strona
+        # AI pokazuje tylko ustawienia, bez stanu serwera.
+        return self.parent() if hasattr(self.parent(), "nowy_token_mcp") else None
+
+    def _odswiez_mcp(self) -> None:
+        from ..mcp import klienci
+        from ..mcp.protokol import wczytaj_polaczenie
+
+        okno = self._okno_glowne()
+        dziala = okno is not None and okno.mcp is not None and okno.mcp.serwer is not None
+        polaczenie = wczytaj_polaczenie(okno._mcp_katalog if okno else None)
+        if dziala:
+            self.mcp_stan_label.setText(t("Działa: {adres}", adres=polaczenie.get("url", "")))
+        elif not self.settings.mcp_enabled:
+            self.mcp_stan_label.setText(t("Wyłączony"))
+        else:
+            self.mcp_stan_label.setText(t("Nie działa — port zajęty albo serwer jeszcze "
+                                          "nie wystartował."))
+        self.mcp_token_edit.setText(polaczenie.get("token", ""))
+        self.mcp_nowy_button.setEnabled(okno is not None)
+        for klient in klienci.KLIENCI:
+            stan_label, przycisk = self._mcp_wiersze[klient.klucz]
+            try:
+                stan = klienci.stan(klient)
+            except Exception:
+                stan = klienci.NIEPOLACZONY
+            opis, napis = STANY_KLIENTA[stan]
+            stan_label.setText(t(opis))
+            przycisk.setText(t(napis))
+            przycisk.setEnabled(stan != klienci.BRAK)
+
+    def _mcp_nowy_token(self) -> None:
+        okno = self._okno_glowne()
+        if okno is not None:
+            okno.nowy_token_mcp()
+            self._odswiez_mcp()
+            self.mcp_wynik_label.setText(t("Wygenerowano nowy token. Połączone programy "
+                                           "dostaną go same."))
+
+    def _mcp_kopiuj(self) -> None:
+        from PySide6.QtGui import QGuiApplication
+        from ..mcp import klienci
+
+        QGuiApplication.clipboard().setText(klienci.konfiguracja_do_wklejenia())
+        self.mcp_wynik_label.setText(t("Skopiowano wpis konfiguracji do schowka."))
+
+    def _mcp_pomoc(self) -> None:
+        from .pomoc import pokaz_pomoc_mcp
+
+        pokaz_pomoc_mcp(self)
+
+    def _mcp_klient(self, klient) -> None:
+        from ..mcp import klienci
+
+        stan = klienci.stan(klient)
+        if stan == klienci.RECZNY:
+            if klient.uwaga != "chatgpt":
+                self._mcp_kopiuj()
+            QMessageBox.information(self, klient.nazwa, t(UWAGI_KLIENTA[klient.uwaga]))
+            return
+        try:
+            if stan == klienci.POLACZONY:
+                klienci.odlacz(klient)
+                wynik = t("{program}: odłączono.", program=klient.nazwa)
+            else:
+                klienci.polacz(klient)
+                wynik = t("{program}: połączono. Uruchom program ponownie, żeby zobaczył "
+                          "Punctum.", program=klient.nazwa)
+        except klienci.BladKonfiguracji as blad:
+            if blad.kod == "zepsuty":
+                self._mcp_kopiuj()
+                wynik = t("Nie udało się odczytać {plik} — plik ma błąd albo komentarze, "
+                          "więc zostaje nietknięty. Wpis do wklejenia skopiowano do "
+                          "schowka.", plik=blad.sciezka)
+            elif blad.kod == "zapis":
+                wynik = t("Nie udało się zapisać {plik}: {blad}", plik=blad.sciezka,
+                          blad=blad.szczegoly)
+            else:
+                wynik = t("Program {program} zgłosił błąd: {blad}", program=klient.nazwa,
+                          blad=blad.szczegoly)
+        self.mcp_wynik_label.setText(wynik)
+        self._odswiez_mcp()
+
     def _about_page(self) -> QWidget:
         from .. import __version__
 
@@ -646,6 +844,9 @@ class SettingsDialog(QDialog):
             max(0, self.language_box.findData(s.language or jezyk())))
         self.reopen_box.setChecked(s.reopen_last_folder)
         self.store_edits_box.setChecked(s.store_edits)
+        self.mcp_box.setChecked(s.mcp_enabled)
+        self.mcp_port_box.setValue(s.mcp_port)
+        self._odswiez_mcp()
 
     def _collect_from_widgets(self) -> Settings:
         s = self.settings.copy()
@@ -674,6 +875,8 @@ class SettingsDialog(QDialog):
         s.language = self.language_box.currentData()
         s.reopen_last_folder = self.reopen_box.isChecked()
         s.store_edits = self.store_edits_box.isChecked()
+        s.mcp_enabled = self.mcp_box.isChecked()
+        s.mcp_port = self.mcp_port_box.value()
         return s.normalised()
 
     # ------------------------------------------------------------ akcje

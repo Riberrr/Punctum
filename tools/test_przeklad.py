@@ -54,6 +54,7 @@ BEZ_INTERFEJSU = {
     "core/sidecar.py",  # zapis XMP - nic z tego nie trafia na ekran
     # Odpowiedzi dla modelu AI (MCP) - celowo po angielsku, nie na ekran.
     "app/mcp_polecenia.py", "mcp/narzedzia.py", "mcp/protokol.py", "mcp/most.py",
+    "mcp/klienci.py",  # komunikaty sklada okno ustawien z kodow bledow
 }
 # Napisy, ktore celowo zostaja jak sa: nazwy wlasne, formaty, jednostki.
 STALE = re.compile(r"^(\s*(px|ms|K|%|×|°|mm)\s*|(Ctrl|Shift|Alt)\+.*|Punctum|OpenCV|Pillow|"

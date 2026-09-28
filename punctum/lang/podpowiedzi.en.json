@@ -180,5 +180,14 @@
   "znak.margines": {"tytul": "Margin", "opis": "Distance from the edge as a percentage of the photo's shorter side."},
   "znak.podglad": {"tytul": "Watermark preview", "opis": "The current photo with the watermark, computed the same way as on export, just smaller."},
   "eksport.znak": {"tytul": "Watermark", "opis": "Puts the watermark on every file of this export. Source photos and their edits stay without it."},
-  "eksport.wzor_znaku": {"tytul": "Watermark design", "opis": "Text or image, position, size and opacity. The design is remembered for later exports; the same one is in Settings ▸ Export."}
+  "eksport.wzor_znaku": {"tytul": "Watermark design", "opis": "Text or image, position, size and opacity. The design is remembered for later exports; the same one is in Settings ▸ Export."},
+  "ustawienia.strona_ai": {"tytul": "AI assistant", "opis": "Controlling the program through an AI assistant (Claude, Codex, Cursor and others) - the MCP server and connecting AI apps."},
+  "ustawienia.mcp_wlacz": {"tytul": "AI control", "opis": "Runs an MCP server in the background, through which an AI assistant next to the program can look at photos, move sliders and export. Originals stay untouched, every change can be undone."},
+  "ustawienia.mcp_port": {"tytul": "Server port", "opis": "Port number on this computer (127.0.0.1). Change it only if another program uses the default one."},
+  "ustawienia.mcp_token": {"tytul": "Token", "opis": "The password the server requires. Apps connected with the Connect button read it themselves - you only type it into apps that connect over HTTP."},
+  "ustawienia.mcp_token_pokaz": {"tytul": "Show token", "opis": "Shows or hides the token."},
+  "ustawienia.mcp_token_nowy": {"tytul": "New token", "opis": "Revokes the current token and creates a new one. Useful when the token got into the wrong hands."},
+  "ustawienia.mcp_klient": {"tytul": "Connect to an AI app", "opis": "Adds Punctum to the configuration of the chosen AI app or removes it. The previous file is kept as a .punctum-kopia copy. Restart the AI app after connecting."},
+  "ustawienia.mcp_kopiuj": {"tytul": "Copy configuration", "opis": "Copies the MCP server entry in the mcpServers format to the clipboard - for pasting into an AI app not on the list."},
+  "ustawienia.mcp_pomoc": {"tytul": "How does it work?", "opis": "Opens the help: how to connect AI apps, what the assistant can do, example commands and safety."}
 }

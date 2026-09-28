@@ -279,6 +279,49 @@ def stage_eksport() -> None:
     check("sciezka wzgledna -> blad", o.get("isError") is True)
 
 
+def stage_ustawienia() -> None:
+    from punctum.app.pomoc import OknoPomocy
+    from punctum.app.settings_dialog import PAGE_AI, SettingsDialog
+
+    # Port 0 = wolny, wybrany przez system: ponowny start serwera nie moze
+    # trafic na port uzywany przez prawdziwy Punctum uzytkownika.
+    window.settings.mcp_port = 0
+    dialog = SettingsDialog(window.settings, window.system, window)
+    dialog.show_page(PAGE_AI)
+    check("strona Asystent AI", dialog.current_page() == PAGE_AI)
+    pol = protokol.wczytaj_polaczenie(polaczenie)
+    check("stan serwera z adresem", pol["url"] in dialog.mcp_stan_label.text(),
+          dialog.mcp_stan_label.text())
+    check("token w polu, ukryty", dialog.mcp_token_edit.text() == pol["token"]
+          and dialog.mcp_token_edit.echoMode() != dialog.mcp_token_edit.EchoMode.Normal)
+    check("wszyscy klienci na liscie", len(dialog._mcp_wiersze) >= 10)
+    stary = pol["token"]
+    dialog.mcp_nowy_button.click()
+    nowy = protokol.wczytaj_polaczenie(polaczenie)["token"]
+    check("nowy token w pliku i w polu", nowy != stary and dialog.mcp_token_edit.text() == nowy)
+    o = wolaj("get_status")
+    check("serwer przyjmuje nowy token", not o.get("isError"), blad(o))
+
+    wylaczone = window.settings.copy()
+    wylaczone.mcp_enabled = False
+    window._przyjmij_ustawienia(wylaczone)
+    check("wylaczenie w ustawieniach zatrzymuje serwer", window.mcp is None)
+    wlaczone = window.settings.copy()
+    wlaczone.mcp_enabled = True
+    window._przyjmij_ustawienia(wlaczone)
+    check("wlaczenie uruchamia go od razu", window.mcp is not None)
+    o = wolaj("get_status")
+    check("...i odpowiada", not o.get("isError"), blad(o))
+    dialog.close()
+
+    pomoc = OknoPomocy("mcp", "MCP", window)
+    check("okno pomocy ma tresc", "MCP" in pomoc.przegladarka.toPlainText())
+    pomoc.close()
+    akcje = [a.text() for m in window.menuBar().actions() if m.menu()
+             for a in m.menu().actions()]
+    check("pomoc MCP w menu Pomoc", any("MCP" in a for a in akcje))
+
+
 def stage_nawigacja() -> None:
     o = wolaj("open_photo", {"photo": os.path.basename(state["p1"])})
     check("open_photo czeka na wczytanie", window.current_path == state["p1"]
@@ -311,6 +354,7 @@ def report() -> None:
 
 
 lancuch(app, [stage_start, stage_odczyt, stage_edycja, stage_wiele, stage_wyglad,
-              stage_podglad, stage_metadane, stage_eksport, stage_nawigacja], report)
+              stage_podglad, stage_metadane, stage_eksport, stage_ustawienia,
+              stage_nawigacja], report)
 app.exec()
 sys.exit(KOD)
