@@ -61,7 +61,7 @@ def main() -> None:
             continue
         print(f"{name}: {time.perf_counter() - t:.2f} s")
         named.append((name, pl._to_uint8(pl.apply_tone(lin, raw, EditParams(exposure=ev)))))
-    named.append(("LR 50", ref_img))
+    named.append(("wzorzec 50", ref_img))
     print_curves(named)
     for key, rect in CROPS.items():
         cv2.imwrite(os.path.join(out_dir, f"demozaik_{key}.png"), mosaic(named, rect)[..., ::-1])

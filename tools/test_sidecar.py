@@ -53,7 +53,7 @@ with tempfile.TemporaryDirectory() as tmp:
     jpeg = touch(os.path.join(tmp, "P1170926.jpg"))
 
     # --- 1. nazewnictwo ----------------------------------------------------
-    check("RAW dostaje sidecara w konwencji Adobe",
+    check("RAW dostaje sidecara w konwencji nazwa.xmp",
           os.path.basename(sidecar_path(raw)) == "P1170926.xmp",
           os.path.basename(sidecar_path(raw)))
     check("JPEG nie bije sie z RAW-em o ten sam plik",
@@ -72,7 +72,7 @@ with tempfile.TemporaryDirectory() as tmp:
     # --- 3. pola dla innych programow --------------------------------------
     with open(written, encoding="utf-8") as handle:
         text = handle.read()
-    check("plik zawiera pola Camera Raw", "crs:Exposure2012" in text)
+    check("plik zawiera pola crs:", "crs:Exposure2012" in text)
     check("plik zawiera nasza przestrzen nazw", PUNCTUM_NS in text)
 
     # --- 4. zdjecie bez korekt nie zasmieca katalogu -----------------------
@@ -112,17 +112,17 @@ with tempfile.TemporaryDirectory() as tmp:
           str(read_sidecar(other).temperature))
 
     # --- 7. cudzy plik XMP --------------------------------------------------
-    foreign = touch(os.path.join(tmp, "z_lightrooma.RW2"))
-    lightroom = os.path.join(tmp, "z_lightrooma.xmp")
-    touch(lightroom, '<?xpacket begin="" ?><x:xmpmeta xmlns:x="adobe:ns:meta/">'
+    foreign = touch(os.path.join(tmp, "z_innego.RW2"))
+    cudzy = os.path.join(tmp, "z_innego.xmp")
+    touch(cudzy, '<?xpacket begin="" ?><x:xmpmeta xmlns:x="adobe:ns:meta/">'
                      '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">'
                      '<rdf:Description crs:Exposure2012="+2.00" '
                      'xmlns:crs="http://ns.adobe.com/camera-raw-settings/1.0/"/>'
                      "</rdf:RDF></x:xmpmeta>")
-    original = open(lightroom, encoding="utf-8").read()
+    original = open(cudzy, encoding="utf-8").read()
     ours = write_sidecar(foreign, FULL)
     check("cudzego sidecara nie nadpisujemy",
-          open(lightroom, encoding="utf-8").read() == original,
+          open(cudzy, encoding="utf-8").read() == original,
           os.path.basename(ours or "-"))
     check("nasze nastawy ida obok", ours is not None and ours.endswith(".punctum.xmp"),
           os.path.basename(ours or "-"))

@@ -1,14 +1,14 @@
 """Zapis nastaw edycji obok zdjecia - plik XMP.
 
 Zasada nieniszczaca dotyczy takze zapisu: **pliku ze zdjeciem nie ruszamy**.
-Nastawy ida do osobnego pliku XMP lezacego obok, tak jak robi to Lightroom
-i darktable.
+Nastawy ida do osobnego pliku XMP lezacego obok, tak jak robia to inne programy do RAW-ow
+(np. darktable).
 
 W srodku sa dwa komplety wartosci i to jest celowe.
 
-**Przestrzen `crs:`** - te same nazwy pol, ktorych uzywa Camera Raw. Dzieki
+**Przestrzen `crs:`** - te same nazwy pol, ktorych uzywaja inne programy do RAW-ow. Dzieki
 temu inny program cos z naszego pliku odczyta. Zgodnosc jest jednak tylko
-czesciowa: nasze suwaki nie odpowiadaja jeden do jednego lightroomowym, bo
+czesciowa: nasze suwaki nie odpowiadaja jeden do jednego tamtejszym, bo
 inaczej liczymy maski swiatel i cieni, a suwak bieli dziala u nas na samym
 szczycie histogramu. Traktujemy te pola jako grzecznosc wobec innych
 programow, nie jako zrodlo prawdy.
@@ -55,10 +55,10 @@ _MONO_XMP = {
 
 
 def _standard_path(photo_path: str) -> str:
-    """Miejsce, w ktorym sidecara szuka Lightroom albo darktable.
+    """Miejsce, w ktorym sidecara szukaja inne programy (np. darktable).
 
     Przy RAW to nazwa bez rozszerzenia (`P1170926.xmp`) - taka jest konwencja
-    Adobe. Przy JPEG-u zostawiamy pelna nazwe (`foto.jpg.xmp`), bo inaczej RAW
+    powszechna. Przy JPEG-u zostawiamy pelna nazwe (`foto.jpg.xmp`), bo inaczej RAW
     i JPEG o tej samej nazwie w jednym katalogu bilyby sie o ten sam plik.
     """
     if is_raw(photo_path):
@@ -247,7 +247,7 @@ def write_sidecar(photo_path: str, params: EditParams) -> str | None:
 def _values(path: str) -> dict[str, str]:
     """Wyciaga pola z rdf:Description - i z atrybutow, i z elementow.
 
-    Camera Raw zapisuje czesc pol jako atrybuty, a czesc jako elementy
+    Inne programy zapisuja czesc pol jako atrybuty, a czesc jako elementy
     potomne. Nasze pliki maja same atrybuty, ale czytamy oba warianty, zeby
     dalo sie otworzyc plik napisany gdzie indziej.
     """
@@ -265,7 +265,7 @@ def _values(path: str) -> dict[str, str]:
 def read_sidecar(photo_path: str) -> EditParams | None:
     """Wczytuje nasze nastawy. None, gdy ich nie ma albo plik jest nie nasz.
 
-    Pol `crs:` celowo nie czytamy jako zamiennika. Sidecar z Lightrooma opisuje
+    Pol `crs:` celowo nie czytamy jako zamiennika. Sidecar z innego programu opisuje
     suwaki, ktore u nas licza sie inaczej - wczytanie go wygladaloby jak
     przeniesienie edycji, a po cichu zmienialoby zdjecie. Lepiej zostawic
     czysty panel niz podstawic wartosci, ktore znacza co innego.

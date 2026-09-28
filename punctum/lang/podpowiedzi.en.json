@@ -26,7 +26,7 @@
   "suwak.blacks": {"tytul": "Blacks", "opis": "Moves the darkest tones of the photo. Tip: slightly negative values add depth, positive ones turn black into matte grey."},
   "suwak.vibrance": {"tytul": "Vibrance", "opis": "Boosts mainly the muted colors and barely touches those already strong. Tip: gentler than saturation; +10 to +30 is usually enough."},
   "suwak.saturation": {"tytul": "Saturation", "opis": "Strengthens or weakens all colors equally; −100 gives a black-and-white image. Tip: with positive values watch skin and reds, they oversaturate first."},
-  "suwak.sharpen_amount": {"tytul": "Sharpening amount", "opis": "Strength of sharpening. RAW starts at 40, as in Lightroom; JPEG at 0, because the camera has already sharpened it. Tip: judge the effect at 100 % zoom."},
+  "suwak.sharpen_amount": {"tytul": "Sharpening amount", "opis": "Strength of sharpening. RAW starts at 40; JPEG at 0, because the camera has already sharpened it. Tip: judge the effect at 100 % zoom."},
   "suwak.sharpen_radius": {"tytul": "Radius", "opis": "Width of the sharpened edges in pixels. Tip: for fine detail (leaves, hair) use 0.5–1, for portraits and soft edges above 1.5."},
   "suwak.sharpen_detail": {"tytul": "Detail", "opis": "How strongly fine textures are sharpened compared with clear edges. Tip: high values bring out texture, but also noise, so keep them low at high ISO."},
   "suwak.sharpen_masking": {"tytul": "Masking", "opis": "Limits sharpening to clear edges and spares smooth areas such as sky or skin. Tip: for portraits and high ISO try 30–60."},

@@ -529,7 +529,7 @@ class MainWindow(QMainWindow):
             action.setShortcut(QKeySequence(shortcut))
             action.triggered.connect(slot)
             view_menu.addAction(action)
-        # Skroty jak w Lightroomie: Y obok siebie, Shift+Y podzial. Akcje
+        # Skroty zwyczajowe w edytorach zdjec: Y obok siebie, Shift+Y podzial. Akcje
         # i przyciski pilnuja sie nawzajem; setChecked z tym samym stanem nie
         # wysyla sygnalu, wiec bez petli.
         view_menu.addSeparator()

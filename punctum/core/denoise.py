@@ -14,9 +14,9 @@ Tor:
    (drobne ziarno wyglada naturalniej niz plastik) i lekkie odzyskanie konturu.
 4. Kolor: falki a trous na kilku skalach, w polowie rozdzielczosci.
 
-Kalibracja (zdjecie ISO 6400, porownanie z eksportami Lightrooma): suwak
-jasnosci 50 daje szum resztkowy jak Lightroom 50, a kolor 25 usuwa barwne
-iskry w stopniu podobnym do jego domyslnego 25.
+Kalibracja (zdjecie ISO 6400, porownanie z eksportami wzorcowymi): suwak
+jasnosci 50 daje szum resztkowy jak wzorzec przy 50, a kolor 25 usuwa barwne
+iskry w stopniu podobnym do domyslnego 25 wzorca.
 """
 
 from __future__ import annotations
@@ -148,7 +148,7 @@ def _denoise_luma(y: np.ndarray, t: float, quality: str) -> np.ndarray:
     yd = np.interp(zd, f, np.arange(256, dtype=np.float32)).astype(np.float32)
     # Szum TLUMIMY, nie wygladzamy: czesc oryginalu wraca jako drobne ziarno
     # (30 -> ok. 30 %, 50 -> 15 %, od 70 nic). Porownanie z eksportami
-    # Lightrooma pokazalo, ze przy 30-40 zostawia on wyrazne ziarno i wlasnie
+    # wzorcowymi pokazalo, ze przy 30-40 zostaje w nich wyrazne ziarno i wlasnie
     # to uzytkownik uznal za dobre; pelne wygladzenie dawalo efekt wosku.
     # Kontur odzyskuje wyostrzanie (sharpen.py), liczone zaraz potem.
     weight = min(1.0, t * 4.0) * min(1.0, 0.45 + 0.8 * t)

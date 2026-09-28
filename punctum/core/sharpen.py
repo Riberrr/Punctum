@@ -10,7 +10,7 @@ Cztery suwaki w znaczeniu przyjetym w programach do obrobki RAW:
 
 Tylko luminancja: wyostrzanie kanalow barwnych daje kolorowe obwodki.
 Kalibracja domyslnych wartosci (40 / 1,0 / 25 / 0): energia krawedzi zdjecia
-testowego zbliza sie do eksportu z Lightrooma przy jego domyslnym
+testowego zbliza sie do eksportu wzorcowego przy jego domyslnym
 wyostrzaniu RAW, z lekkim zapasem na korzysc detalu (zyczenie uzytkownika).
 """
 

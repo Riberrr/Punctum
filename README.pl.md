@@ -254,7 +254,7 @@ było, gdzie się skończyło — a przy geotagowaniu nie widać by było, któr
 wciąż czekają na pinezkę.
 
 W pliku XMP są dwa komplety wartości. Pola `crs:` to te same nazwy, których
-używa Camera Raw — inny program coś z nich odczyta. Zgodność jest jednak tylko
+używają inne programy do RAW-ów — inny program coś z nich odczyta. Zgodność jest jednak tylko
 częściowa, bo nasze suwaki nie odpowiadają jeden do jednego tamtym, więc
 traktujemy je jako grzeczność, a nie źródło prawdy. Pola `punctum:` to nasze
 dokładne wartości i to z nich czytamy.
@@ -526,7 +526,7 @@ kanałów barwnych dawałoby kolorowe obwódki. *Szczegóły* miękko ograniczaj
 amplitudę maski (`tanh`): mocna krawędź, która daje aureolę, zostaje ścięta,
 a drobna faktura przechodzi. *Maskowanie* ogranicza wyostrzanie do krawędzi,
 zostawiając gładkie powierzchnie. Domyślne 40 / 1,0 / 25 / 0 dla RAW
-dobrane pomiarem wobec eksportu z Lightrooma przy jego domyślnym
+dobrane pomiarem wobec eksportu wzorcowego przy jego domyślnym
 wyostrzaniu (stosunek energii pasm 0,7–1,5 px i 1,5–4 px, `tools/ostrosc_lab.py`):
 nasze 40 daje 106 % wzorca — celowo odrobinę więcej detalu.
 
@@ -550,17 +550,17 @@ w cieniach i w światłach, dla RAW-a i JPEG-a.
 3. **Jasność.** Non-local means na danych po VST z `h` wyrażonym
    w wielokrotnościach zmierzonej sigmy (50 → 2σ). Szum jest **tłumiony,
    nie wygładzany**: część oryginału wraca jako drobne ziarno (30 → ok. 30 %,
-   50 → 15 %). Lightroom przy 30–40 zostawia wyraźne ziarno i tak wygląda
+   50 → 15 %). Wzorzec przy 30–40 zostawia wyraźne ziarno i tak wygląda
    to lepiej niż gładki „wosk”; kontur odzyskuje wyostrzanie.
 4. **Kolor.** Falki à trous na pięciu skalach, w połowie rozdzielczości
    (tak jak JPEG 4:2:0 i tak zapisuje chrominancję). Szum koloru siedzi
    zarówno w drobnych iskrach, jak i w większych plamach, więc tłumimy
    wszystkie skale.
 
-Kalibracja na zdjęciu ISO 6400 wobec eksportów Lightrooma: jasność 50 daje
-szum resztkowy zbliżony do jego 50, kolor 25 usuwa barwne iskry podobnie jak
-jego domyślne 25. Dawny tor (NLM na obrazie po krzywej tonalnej, stałe `h`)
-usuwał przy 50 ok. 20 % szumu, a Lightroom już przy 30 ok. 85 %.
+Kalibracja na zdjęciu ISO 6400 wobec eksportów wzorcowych: jasność 50 daje
+szum resztkowy zbliżony do wzorca przy 50, kolor 25 usuwa barwne iskry podobnie jak
+domyślne 25 wzorca. Dawny tor (NLM na obrazie po krzywej tonalnej, stałe `h`)
+usuwał przy 50 ok. 20 % szumu, a wzorzec już przy 30 ok. 85 %.
 
 Koszt przy eksporcie zdjęcia 20 MP: 3,6 s przy 50/25 (dawniej 5,1 s),
 0,8 s przy samym kolorze. Podgląd dopasowany do okna: 0,2 s.

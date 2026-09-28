@@ -252,7 +252,7 @@ a folder you would not know where you had stopped — and when geotagging you
 would not see which shots are still waiting for a pin.
 
 The XMP file holds two sets of values. The `crs:` fields use the same names
-as Camera Raw — another program will read something from them. The match is
+as other RAW editors — another program will read something from them. The match is
 only partial, though, because our sliders do not correspond one-to-one to
 theirs, so we treat them as a courtesy, not as the source of truth. The
 `punctum:` fields are our exact values and are what we read.
@@ -528,7 +528,7 @@ channels would give colored fringes. *Detail* softly limits the mask amplitude
 (`tanh`): a strong edge that would produce a halo is clipped, while fine
 texture passes. *Masking* limits sharpening to edges, leaving smooth surfaces
 alone. The RAW defaults 40 / 1.0 / 25 / 0 were chosen by measurement against a
-Lightroom export at its default sharpening (band energy ratio 0.7–1.5 px and
+reference export at its default sharpening (band energy ratio 0.7–1.5 px and
 1.5–4 px, `tools/ostrosc_lab.py`): our 40 gives 106 % of the reference —
 deliberately a little more detail.
 
@@ -553,16 +553,16 @@ in shadows and highlights, for RAW and JPEG.
 3. **Luminance.** Non-local means on the VST data with `h` expressed in
    multiples of the measured sigma (50 → 2σ). Noise is **suppressed, not
    smoothed**: part of the original returns as fine grain (30 → about 30 %,
-   50 → 15 %). Lightroom at 30–40 leaves visible grain and that looks better
+   50 → 15 %). Reference exports at 30–40 leave visible grain and that looks better
    than a smooth "wax"; sharpening recovers the contour.
 4. **Color.** À trous wavelets on five scales, at half resolution (as JPEG 4:2:0
    stores chrominance). Color noise sits both in fine sparks and in larger
    blotches, so all scales are suppressed.
 
-Calibration on an ISO 6400 photo against Lightroom exports: luminance 50 gives
-residual noise close to its 50, color 25 removes colored sparks much like its
+Calibration on an ISO 6400 photo against reference exports: luminance 50 gives
+residual noise close to theirs at 50, color 25 removes colored sparks much like their
 default 25. The old pipeline (NLM on the image after the tone curve, fixed `h`)
-removed about 20 % of the noise at 50, while Lightroom removed about 85 % at 30.
+removed about 20 % of the noise at 50, while the reference removed about 85 % at 30.
 
 Cost when exporting a 20 MP photo: 3.6 s at 50/25 (formerly 5.1 s), 0.8 s for
 color alone. Fit-to-window preview: 0.2 s.

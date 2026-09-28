@@ -25,7 +25,7 @@
   "suwak.blacks": {"tytul": "Czernie", "opis": "Przesuwa najciemniejsze tony zdjęcia. Rada: lekko ujemne wartości dodają głębi, dodatnie zamieniają czerń w matową szarość."},
   "suwak.vibrance": {"tytul": "Jaskrawość", "opis": "Wzmacnia przede wszystkim kolory słabo nasycone, a te już mocne rusza niewiele. Rada: łagodniejsza od nasycenia; zwykle wystarcza +10 do +30."},
   "suwak.saturation": {"tytul": "Nasycenie", "opis": "Wzmacnia lub osłabia wszystkie kolory jednakowo; −100 daje obraz czarno-biały. Rada: przy wartościach dodatnich uważaj na skórę i czerwienie, bo najszybciej się przesycają."},
-  "suwak.sharpen_amount": {"tytul": "Ilość wyostrzania", "opis": "Siła wyostrzania. RAW zaczyna od 40, tak jak w Lightroomie; JPEG od 0, bo wyostrzył go już aparat. Rada: efekt oceniaj przy powiększeniu 100 %."},
+  "suwak.sharpen_amount": {"tytul": "Ilość wyostrzania", "opis": "Siła wyostrzania. RAW zaczyna od 40; JPEG od 0, bo wyostrzył go już aparat. Rada: efekt oceniaj przy powiększeniu 100 %."},
   "suwak.sharpen_radius": {"tytul": "Promień", "opis": "Szerokość wyostrzanych krawędzi w pikselach. Rada: przy drobnych szczegółach (liście, włosy) ustaw 0,5–1, przy portretach i miękkich krawędziach powyżej 1,5."},
   "suwak.sharpen_detail": {"tytul": "Szczegóły", "opis": "Jak mocno wyostrzać drobne faktury w porównaniu z wyraźnymi krawędziami. Rada: wysokie wartości podbijają fakturę, ale też szum, więc przy wysokim ISO trzymaj je nisko."},
   "suwak.sharpen_masking": {"tytul": "Maskowanie", "opis": "Ogranicza wyostrzanie do wyraźnych krawędzi i oszczędza gładkie płaszczyzny, jak niebo czy skóra. Rada: przy portretach i wysokim ISO spróbuj 30–60."},

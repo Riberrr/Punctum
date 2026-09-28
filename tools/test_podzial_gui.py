@@ -94,7 +94,7 @@ def stage_start() -> None:
           not window.split_button.icon().isNull() and bool(window.split_button.toolTip()))
     skroty = (window.side_action.shortcut().toString(),
               window.split_action.shortcut().toString())
-    check("skroty jak w LR: Y obok siebie, Shift+Y podzial", skroty == ("Y", "Shift+Y"),
+    check("skroty: Y obok siebie, Shift+Y podzial", skroty == ("Y", "Shift+Y"),
           str(skroty))
     check("widok przed jest ukryty", not window.before_view.isVisible())
 

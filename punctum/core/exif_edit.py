@@ -274,7 +274,7 @@ def layer_metadata(camera: dict[str, str], photo: dict[str, str],
     """
     result = {key: value for key, value in camera.items() if key in FIELDS_BY_KEY}
     if software:
-        # Program, ktory zapisal plik, to my - nie aparat i nie Lightroom,
+        # Program, ktory zapisal plik, to my - nie aparat i nie program,
         # ktory wyeksportowal JPEG-a zrodlowego.
         result["Software"] = software
     for key, value in photo.items():
