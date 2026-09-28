@@ -26,8 +26,11 @@ from typing import Any, Callable
 import numpy as np
 from PySide6.QtCore import QObject, Qt, Signal, Slot
 
-from ..core import auto_tone, default_params_for, geometry_size, is_jpeg, load_photo
+from ..core import (
+    auto_tone, default_params_for, develop, develop_region, geometry_size, is_jpeg, load_photo,
+)
 from ..core import presety
+from ..core.denoise import apply_detail
 from ..core.params import MONO_FIELDS, EditParams
 from ..mcp import narzedzia
 from ..mcp.protokol import (
@@ -343,17 +346,50 @@ class PoleceniaMCP:
         return self._czekaj(gotowy, 30, "the photo to load")
 
     def n_get_preview(self, arg: dict) -> list[dict]:
-        from PIL import Image
-
         bok = min(2048, max(256, int(arg.get("max_size", 1200))))
-        rgb = self._obraz_biezacy()
-        nazwa = self.w_gui(lambda: os.path.basename(self.okno.current_path))
-        zdjecie = Image.fromarray(rgb)
-        zdjecie.thumbnail((bok, bok), Image.LANCZOS)
-        bufor = io.BytesIO()
-        zdjecie.save(bufor, "JPEG", quality=85)
-        opis = f"{nazwa} - preview {zdjecie.width}x{zdjecie.height} with current adjustments."
-        return [tekst(opis), obraz(base64.b64encode(bufor.getvalue()).decode("ascii"))]
+        widok = arg.get("view", "after")
+        if widok not in ("after", "before", "side_by_side"):
+            raise BladNarzedzia("view must be after, before or side_by_side.")
+        podglad = self._obraz_biezacy()
+
+        def stan() -> tuple:
+            o = self.okno
+            return (os.path.basename(o.current_path), o.full_raw, o.proxy,
+                    o.display_params(), o._before_params(), o.settings.preview_noise_quality)
+        nazwa, raw, proxy, nastawy, przed_nastawy, jakosc = self.w_gui(stan)
+        if raw is None:
+            raise BladNarzedzia("The open photo is still loading.")
+        szer, wys = geometry_size(raw, nastawy)
+        wycinek = arg.get("crop_100")
+
+        if wycinek:
+            bok_w = int(min(1024, max(128, int(wycinek.get("size", 600))), szer, wys))
+            x = int(float(wycinek.get("x", 0.5)) * szer) - bok_w // 2
+            y = int(float(wycinek.get("y", 0.5)) * wys) - bok_w // 2
+            prostokat = (min(max(0, x), szer - bok_w), min(max(0, y), wys - bok_w), bok_w, bok_w)
+            po = develop_region(raw, nastawy, prostokat, 1.0, denoise=True, quality="balanced")
+            przed = (develop_region(raw, przed_nastawy, prostokat, 1.0, denoise=False)
+                     if widok != "after" else None)
+            opis = f"{nazwa} - 1:1 crop {bok_w}x{bok_w} px at ({prostokat[0]}, {prostokat[1]})"
+        else:
+            # Podglad w oknie liczy odszumianie i wyostrzanie z opoznieniem
+            # (osobny przebieg) - tu dokladamy je od razu, zeby model widzial
+            # to samo co uzytkownik po chwili.
+            po = podglad
+            skala = po.shape[1] / float(max(1, szer))
+            if nastawy.needs_detail_pass(skala):
+                po = apply_detail(po, nastawy, jakosc, skala)
+            przed = develop(proxy, przed_nastawy, denoise=False) if widok != "after" else None
+            opis = f"{nazwa} - whole frame ({szer}x{wys} px full size)"
+
+        if widok == "before":
+            wynik, opis = przed, opis + ", BEFORE adjustments."
+        elif widok == "side_by_side":
+            wynik, opis = _obok_siebie(przed, po), opis + ", left = before, right = after."
+        else:
+            wynik, opis = po, opis + ", with current adjustments."
+        return [tekst(opis), obraz(_jpeg(wynik, min(2048, bok * 2) if widok == "side_by_side"
+                                         else bok))]
 
     def n_get_image_stats(self, arg: dict) -> list[dict]:
         return [dane(statystyki(self._obraz_biezacy()))]
@@ -686,6 +722,266 @@ class PoleceniaMCP:
 
     def n_redo(self, arg: dict) -> list[dict]:
         return self._historia(ponow=True)
+
+    # ------------------------------------------------ 4. metadane i mapa
+
+    def _zapisz_biezace(self, sciezki: list[str]) -> None:
+        """Suwaki biezacego zdjecia do `edits`, zanim metadane albo lokalizacja
+        przepisza jego nastawy - inaczej sidecar dostalby stan sprzed ostatnich
+        ruchow suwakow."""
+        o = self.okno
+        if o.current_path in sciezki:
+            o.remember_current_edits()
+
+    def n_set_metadata(self, arg: dict) -> list[dict]:
+        from ..core.exif_edit import current_values, merge_keywords, normalise_datetime, validate
+
+        pola = dict(arg.get("fields") or {})
+        obce = [k for k in pola if k not in narzedzia.POLA_METADANYCH]
+        if obce or not pola:
+            raise BladNarzedzia("fields must contain some of: "
+                                + ", ".join(narzedzia.POLA_METADANYCH) + ".")
+        tryb = arg.get("keywords_mode", "replace")
+        wartosci: dict[str, str] = {}
+        for nazwa, tekst_pola in pola.items():
+            klucz = narzedzia.POLA_METADANYCH[nazwa]
+            tekst_pola = str(tekst_pola).strip()
+            if klucz == "DateTimeOriginal" and tekst_pola:
+                tekst_pola = normalise_datetime(tekst_pola) or tekst_pola
+            problem = validate(klucz, tekst_pola) if tekst_pola else None
+            if problem:
+                raise BladNarzedzia(f"{nazwa}: {problem}")
+            wartosci[klucz] = tekst_pola
+        sciezki = self.w_gui(lambda: self._cele(arg))
+        # Slowa dopisywane albo usuwane licza sie od tego, co zdjecie juz ma -
+        # z naszego sidecara albo, gdy tam nic nie ma, z samego pliku.
+        z_pliku: dict[str, str] = {}
+        if "XPKeywords" in wartosci and tryb != "replace":
+            nadpisane = self.w_gui(lambda: {s: self._nastawy(s).metadata for s in sciezki})
+            for s in sciezki:
+                if "XPKeywords" not in nadpisane[s]:
+                    try:
+                        z_pliku[s] = current_values(s).get("XPKeywords", "")
+                    except Exception:
+                        z_pliku[s] = ""
+
+        def zmien() -> list[str]:
+            o = self.okno
+            self._zapisz_biezace(sciezki)
+            for s in sciezki:
+                p = o._params_for(s) or default_params_for(s)
+                meta = dict(p.metadata)
+                for klucz, tekst_pola in wartosci.items():
+                    if klucz == "XPKeywords" and tryb != "replace":
+                        stare = meta.get(klucz, z_pliku.get(s, ""))
+                        if tryb == "add":
+                            tekst_pola = merge_keywords(stare, tekst_pola)
+                        else:
+                            usun = {w.strip().lower() for w in tekst_pola.split(";") if w.strip()}
+                            tekst_pola = ";".join(w.strip() for w in stare.split(";")
+                                                  if w.strip() and w.strip().lower() not in usun)
+                    if tekst_pola:
+                        meta[klucz] = tekst_pola
+                    else:
+                        meta.pop(klucz, None)
+                p.metadata = meta
+                o.edits[s] = p
+                o._store_edits(s)
+            if o.current_path in sciezki:
+                o._show_metadata(o.current_path)
+            return [os.path.basename(s) for s in sciezki]
+        return [dane({"changed": self.w_gui(zmien)})]
+
+    def n_find_place(self, arg: dict) -> list[dict]:
+        miejsca = szukaj_miejsca(str(arg.get("query", "")), 5)
+        if not miejsca:
+            raise BladNarzedzia("Nothing found for that name.")
+        return [dane(miejsca)]
+
+    def _lokalizacje(self, sciezki: list[str], nowa: tuple[float, float] | None) -> None:
+        o = self.okno
+        self._zapisz_biezace(sciezki)
+        # Jak na mapie: caly ruch to jeden krok historii Mapy.
+        o.historia_mapy.zapamietaj({s: (o._nadana_lokalizacja(s), nowa) for s in sciezki})
+        o._ustaw_lokalizacje({s: nowa for s in sciezki})
+
+    def n_set_location(self, arg: dict) -> list[dict]:
+        miejsce = None
+        if arg.get("place"):
+            znalezione = szukaj_miejsca(str(arg["place"]), 1)
+            if not znalezione:
+                raise BladNarzedzia(f"Place not found: {arg['place']}")
+            miejsce = znalezione[0]
+            wsp = (miejsce["latitude"], miejsce["longitude"])
+        elif arg.get("latitude") is not None and arg.get("longitude") is not None:
+            wsp = (float(arg["latitude"]), float(arg["longitude"]))
+            if not (-90 <= wsp[0] <= 90 and -180 <= wsp[1] <= 180):
+                raise BladNarzedzia("Coordinates out of range.")
+        else:
+            raise BladNarzedzia("Give `latitude` and `longitude`, or `place`.")
+        sciezki = self.w_gui(lambda: self._cele(arg))
+        self.w_gui(lambda: self._lokalizacje(sciezki, wsp))
+        wynik = {"changed": [os.path.basename(s) for s in sciezki],
+                 "latitude": round(wsp[0], 6), "longitude": round(wsp[1], 6)}
+        if miejsce:
+            wynik["place"] = miejsce["name"]
+        return [dane(wynik)]
+
+    def n_remove_location(self, arg: dict) -> list[dict]:
+        sciezki = self.w_gui(lambda: self._cele(arg))
+        self.w_gui(lambda: self._lokalizacje(sciezki, None))
+        return [dane({"changed": [os.path.basename(s) for s in sciezki]})]
+
+    # ---------------------------------------------------------- 5. eksport
+
+    FORMATY = {"jpeg": ".jpg", "png": ".png", "tiff": ".tif"}
+
+    def n_export_photos(self, arg: dict) -> list[dict]:
+        from ..core.export import (
+            ON_EXISTING_OVERWRITE, ON_EXISTING_SKIP, ON_EXISTING_UNIQUE, plan_export,
+        )
+
+        polityka = {"unique": ON_EXISTING_UNIQUE, "skip": ON_EXISTING_SKIP,
+                    "overwrite": ON_EXISTING_OVERWRITE}.get(arg.get("on_existing", "unique"))
+        if polityka is None:
+            raise BladNarzedzia("on_existing must be unique, skip or overwrite.")
+
+        def start() -> tuple:
+            o = self.okno
+            if o.export_task is not None:
+                raise BladNarzedzia("An export is already running (see get_export_status).")
+            sciezki = self._cele(arg)
+            o.remember_current_edits()
+            # Opcje z ostatniego eksportu uzytkownika; zmiany z polecenia sa
+            # jednorazowe i nie trafiaja do jego ustawien.
+            opcje = o._export_options()
+            if arg.get("folder"):
+                opcje.folder = str(arg["folder"])
+            if "subfolder" in arg:
+                opcje.subfolder = str(arg["subfolder"] or "").strip()
+                opcje.use_subfolder = bool(opcje.subfolder)
+            if arg.get("format"):
+                if arg["format"] not in self.FORMATY:
+                    raise BladNarzedzia("format must be jpeg, png or tiff.")
+                opcje.file_format = self.FORMATY[arg["format"]]
+            for pole, klucz in (("quality", "quality"), ("max_side", "max_side"),
+                                ("start_number", "start_number")):
+                if arg.get(klucz) is not None:
+                    setattr(opcje, pole, int(arg[klucz]))
+            for pole, klucz in (("naming", "naming"), ("custom_name", "custom_name"),
+                                ("keywords", "keywords"), ("subject", "subject"),
+                                ("comment", "comment")):
+                if arg.get(klucz) is not None:
+                    setattr(opcje, pole, str(arg[klucz]))
+            for pole, klucz in (("add_watermark", "watermark"), ("add_author", "add_author"),
+                                ("add_copyright", "add_copyright")):
+                if arg.get(klucz) is not None:
+                    setattr(opcje, pole, bool(arg[klucz]))
+            if not opcje.folder:
+                raise BladNarzedzia("No export folder is set yet - pass `folder`.")
+            if not os.path.isabs(opcje.folder):
+                raise BladNarzedzia("`folder` must be an absolute path.")
+            blad = o.uruchom_eksport(plan_export(sciezki, opcje), opcje, polityka)
+            if blad == "katalog":
+                raise BladNarzedzia(f"Cannot create folder {opcje.target_folder()}.")
+            return len(sciezki), opcje.target_folder(), blad
+
+        ile, katalog, blad = self.w_gui(start)
+        if blad == "pusto":
+            return [dane({"folder": katalog, **(self.okno._ostatni_eksport or {})})]
+        if arg.get("wait") is False:
+            return [tekst(f"Export of {ile} photo(s) to {katalog} started. "
+                          "Use get_export_status to follow it.")]
+        self._czekaj(lambda: self.okno.export_task is None, 3600, "the export")
+        return [dane({"folder": katalog, **(self.okno._ostatni_eksport or {})})]
+
+    def n_get_export_status(self, arg: dict) -> list[dict]:
+        def stan() -> dict:
+            o = self.okno
+            if o.export_task is not None:
+                return {"running": True, "done": o.progress_bar.value(),
+                        "total": o.progress_bar.maximum()}
+            return {"running": False, "last_export": o._ostatni_eksport}
+        return [dane(self.w_gui(stan))]
+
+    def n_cancel_export(self, arg: dict) -> list[dict]:
+        def przerwij() -> str:
+            o = self.okno
+            if o.export_task is None:
+                return "No export is running."
+            o._cancel_export()
+            return "Export is being cancelled."
+        return [tekst(self.w_gui(przerwij))]
+
+
+# ------------------------------------------------------------- pomocnicze
+
+def _jpeg(rgb: np.ndarray, bok: int) -> str:
+    from PIL import Image
+
+    zdjecie = Image.fromarray(np.ascontiguousarray(rgb))
+    zdjecie.thumbnail((bok, bok), Image.LANCZOS)
+    bufor = io.BytesIO()
+    zdjecie.save(bufor, "JPEG", quality=85)
+    return base64.b64encode(bufor.getvalue()).decode("ascii")
+
+
+def _obok_siebie(lewy: np.ndarray, prawy: np.ndarray) -> np.ndarray:
+    """Dwa obrazy w jednym, na tej samej wysokosci, z szara przerwa."""
+    from PIL import Image
+
+    wys = min(lewy.shape[0], prawy.shape[0])
+
+    def do_wysokosci(a: np.ndarray) -> np.ndarray:
+        if a.shape[0] == wys:
+            return a
+        szer = max(1, round(a.shape[1] * wys / a.shape[0]))
+        return np.asarray(Image.fromarray(a).resize((szer, wys), Image.LANCZOS))
+
+    przerwa = np.full((wys, 8, 3), 128, dtype=np.uint8)
+    return np.hstack([do_wysokosci(lewy), przerwa, do_wysokosci(prawy)])
+
+
+def szukaj_miejsca(zapytanie: str, ile: int) -> list[dict]:
+    """Nazwa miejsca -> wspolrzedne (Nominatim, OpenStreetMap).
+
+    Ta sama usluga, z ktorej korzysta wyszukiwarka na mapie. Zasady Nominatim
+    wymagaja przedstawienia sie programu (User-Agent) i najwyzej jednego
+    zapytania na sekunde - model moze wolac to narzedzie seriami, stad
+    odstep pilnowany tutaj.
+    """
+    import json
+    import urllib.parse
+    import urllib.request
+
+    from ..przeklad import jezyk
+
+    zapytanie = zapytanie.strip()
+    if not zapytanie:
+        raise BladNarzedzia("Give a place name.")
+    with _NOMINATIM:
+        odstep = 1.1 - (time.monotonic() - _NOMINATIM_OSTATNIO[0])
+        if odstep > 0:
+            time.sleep(odstep)
+        url = ("https://nominatim.openstreetmap.org/search?format=jsonv2&limit="
+               f"{ile}&q={urllib.parse.quote(zapytanie)}")
+        zadanie = urllib.request.Request(url, headers={
+            "User-Agent": "Punctum photo editor (github.com/Riberrr/Punctum)",
+            "Accept-Language": jezyk() or "en",
+        })
+        try:
+            with urllib.request.urlopen(zadanie, timeout=15) as odp:
+                wyniki = json.loads(odp.read())
+        except Exception as exc:
+            raise BladNarzedzia(f"Place search failed (internet?): {exc}")
+        finally:
+            _NOMINATIM_OSTATNIO[0] = time.monotonic()
+    return [{"name": w.get("display_name"), "latitude": float(w["lat"]),
+             "longitude": float(w["lon"]), "type": w.get("type")} for w in wyniki]
+
+
+_NOMINATIM = threading.Lock()
+_NOMINATIM_OSTATNIO = [0.0]
 
 
 def statystyki(rgb: np.ndarray) -> dict:

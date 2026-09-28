@@ -148,9 +148,22 @@ NARZEDZIA: list[dict] = [
     _narzedzie(
         "get_preview",
         "Rendered preview of the photo open in the editor, with all current "
-        "adjustments, as an image you can look at. Use it to judge results.",
-        _schemat({"max_size": {"type": "integer", "minimum": 256, "maximum": 2048,
-                               "default": 1200, "description": "Longer side in pixels."}}),
+        "adjustments (including noise reduction and sharpening), as an image you can "
+        "look at. Use it to judge results. `view`: after (default), before (no "
+        "adjustments, same crop) or side_by_side. `crop_100`: a 1:1 pixel crop around "
+        "a point - use it to judge noise and sharpness.",
+        _schemat({
+            "max_size": {"type": "integer", "minimum": 256, "maximum": 2048,
+                         "default": 1200, "description": "Longer side in pixels."},
+            "view": {"type": "string", "enum": ["after", "before", "side_by_side"],
+                     "default": "after"},
+            "crop_100": {"type": "object", "description": "1:1 crop instead of the whole "
+                         "frame. x, y = centre as fractions 0..1 of the (cropped) image.",
+                         "properties": {"x": {"type": "number", "minimum": 0, "maximum": 1},
+                                        "y": {"type": "number", "minimum": 0, "maximum": 1},
+                                        "size": {"type": "integer", "minimum": 128,
+                                                 "maximum": 1024, "default": 600}}},
+        }),
         tylko_odczyt=True),
     _narzedzie(
         "get_image_stats",
@@ -255,7 +268,90 @@ NARZEDZIA: list[dict] = [
         "redo",
         "Redo the last undone change of the photo open in the editor.",
         _schemat()),
+    # --- 4. metadane i mapa ---------------------------------------------
+    _narzedzie(
+        "set_metadata",
+        "Set descriptive metadata. Saved next to the photo and written into exported "
+        "files (the original is not modified). An empty string removes Punctum's "
+        "value and falls back to what the file itself contains.",
+        _schemat({
+            **_CEL,
+            "fields": {"type": "object", "additionalProperties": False, "properties": {
+                "title": {"type": "string", "description": "Title / description."},
+                "comment": {"type": "string"},
+                "keywords": {"type": "string",
+                             "description": "Keywords separated by semicolons."},
+                "subject": {"type": "string"},
+                "author": {"type": "string"},
+                "copyright": {"type": "string"},
+                "date_taken": {"type": "string", "description": "YYYY-MM-DD HH:MM:SS"},
+            }},
+            "keywords_mode": {"type": "string", "enum": ["replace", "add", "remove"],
+                              "default": "replace"},
+        }, ["fields"])),
+    _narzedzie(
+        "find_place",
+        "Look up a place name (OpenStreetMap) and return candidate coordinates. "
+        "Needs internet.",
+        _schemat({"query": {"type": "string"}}, ["query"]), tylko_odczyt=True),
+    _narzedzie(
+        "set_location",
+        "Assign a location to photos: `latitude` + `longitude`, or `place` (a name "
+        "looked up in OpenStreetMap, first match). One undo step in the Map tab.",
+        _schemat({**_CEL, "latitude": {"type": "number", "minimum": -90, "maximum": 90},
+                  "longitude": {"type": "number", "minimum": -180, "maximum": 180},
+                  "place": {"type": "string"}})),
+    _narzedzie(
+        "remove_location",
+        "Remove the location assigned in Punctum (GPS written by the camera stays "
+        "in the file and becomes visible again).",
+        _schemat(dict(_CEL))),
+    # --- 5. eksport -----------------------------------------------------
+    _narzedzie(
+        "export_photos",
+        "Export photos with their adjustments to image files, like the Export "
+        "dialog. Options not given come from the user's last export settings. "
+        "By default waits until the export finishes.",
+        _schemat({
+            **_CEL,
+            "folder": {"type": "string", "description": "Target folder (absolute)."},
+            "subfolder": {"type": "string",
+                          "description": "Subfolder inside `folder`; empty = none."},
+            "format": {"type": "string", "enum": ["jpeg", "png", "tiff"]},
+            "quality": {"type": "integer", "minimum": 1, "maximum": 100,
+                        "description": "JPEG quality."},
+            "max_side": {"type": "integer", "minimum": 0,
+                         "description": "Longer side in pixels, 0 = full resolution."},
+            "naming": {"type": "string", "enum": ["original", "custom"]},
+            "custom_name": {"type": "string",
+                            "description": "Base name for naming=custom (numbers added)."},
+            "start_number": {"type": "integer", "minimum": 0},
+            "on_existing": {"type": "string", "enum": ["unique", "skip", "overwrite"],
+                            "default": "unique"},
+            "watermark": {"type": "boolean", "description": "Apply the user's watermark."},
+            "add_author": {"type": "boolean"},
+            "add_copyright": {"type": "boolean"},
+            "keywords": {"type": "string", "description": "Extra keywords for this export."},
+            "subject": {"type": "string"},
+            "comment": {"type": "string"},
+            "wait": {"type": "boolean", "default": True},
+        })),
+    _narzedzie(
+        "get_export_status",
+        "Progress of a running export, or the result of the last one.",
+        _schemat(), tylko_odczyt=True),
+    _narzedzie(
+        "cancel_export",
+        "Stop a running export (files already written stay).",
+        _schemat()),
 ]
+
+# Przyjazne nazwy pol metadanych -> klucze EXIF (core/exif_edit.FIELDS).
+POLA_METADANYCH = {
+    "title": "ImageDescription", "comment": "UserComment", "keywords": "XPKeywords",
+    "subject": "XPSubject", "author": "Artist", "copyright": "Copyright",
+    "date_taken": "DateTimeOriginal",
+}
 
 NAZWY = {n["name"] for n in NARZEDZIA}
 

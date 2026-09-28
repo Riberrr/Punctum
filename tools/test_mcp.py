@@ -60,6 +60,12 @@ wymagane_z_grup = {"get_status", "list_photos", "get_preview", "open_photo",
                    "select_photos", "set_adjustments", "auto_adjust", "apply_preset",
                    "undo"}
 check("narzedzia grup 1-3 sa na liscie", wymagane_z_grup <= set(nazwy))
+check("narzedzia grup 4-5 sa na liscie", {"set_metadata", "set_location", "remove_location",
+                                          "find_place", "export_photos", "get_export_status",
+                                          "cancel_export"} <= set(nazwy))
+from punctum.core.exif_edit import FIELDS_BY_KEY  # noqa: E402
+check("pola metadanych istnieja w EXIF", set(narzedzia.POLA_METADANYCH.values())
+      <= set(FIELDS_BY_KEY))
 
 from punctum.app.mcp_polecenia import PoleceniaMCP  # noqa: E402
 bez_kodu = [n for n in nazwy if not hasattr(PoleceniaMCP, "n_" + n)]

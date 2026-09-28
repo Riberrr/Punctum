@@ -205,6 +205,80 @@ def stage_wyglad() -> None:
           blad(o))
 
 
+def obraz_z(o: dict):
+    obrazy = [c for c in o.get("content", []) if c.get("type") == "image"]
+    return Image.open(io.BytesIO(base64.b64decode(obrazy[0]["data"]))) if obrazy else None
+
+
+def stage_podglad() -> None:
+    o = wolaj("set_adjustments", {"values": {"exposure": 1.0, "noise_luminance": 30}})
+    przed = obraz_z(wolaj("get_preview", {"view": "before", "max_size": 400}))
+    po = obraz_z(wolaj("get_preview", {"max_size": 400}))
+    ok = przed is not None and po is not None
+    if ok:
+        jasnosc = lambda z: sum(z.convert("L").getdata()) / (z.width * z.height)  # noqa: E731
+        ok = jasnosc(po) > jasnosc(przed) + 5
+    check("przed jest ciemniejsze niz po (+1 EV)", ok, blad(o))
+    obok = obraz_z(wolaj("get_preview", {"view": "side_by_side", "max_size": 400}))
+    check("obok siebie: dwa obrazy w poziomie", obok is not None and obok.width > obok.height,
+          str(obok and obok.size))
+    o = wolaj("get_preview", {"crop_100": {"x": 0.5, "y": 0.5, "size": 300}})
+    wycinek = obraz_z(o)
+    check("wycinek 1:1 ma zadany rozmiar", wycinek is not None and wycinek.size == (300, 300),
+          blad(o) or str(wycinek and wycinek.size))
+
+
+def stage_metadane() -> None:
+    p1 = os.path.basename(state["p1"])
+    o = wolaj("set_metadata", {"fields": {"title": "Zachód słońca", "keywords": "góry;lato"}})
+    meta = window.edits[state["p0"]].metadata
+    check("set_metadata: tytul i slowa", meta.get("ImageDescription") == "Zachód słońca"
+          and meta.get("XPKeywords") == "góry;lato", blad(o) or str(meta))
+    check("...w panelu EXIF", window.exif_panel.path == state["p0"])
+    o = wolaj("set_metadata", {"fields": {"keywords": "Tatry"}, "keywords_mode": "add"})
+    check("dopisanie slowa", window.edits[state["p0"]].metadata.get("XPKeywords", "")
+          .lower().count("tatry") == 1, blad(o))
+    o = wolaj("set_metadata", {"fields": {"keywords": "lato"}, "keywords_mode": "remove"})
+    check("usuniecie slowa", "lato" not in window.edits[state["p0"]].metadata
+          .get("XPKeywords", ""), blad(o))
+    o = wolaj("set_metadata", {"fields": {"date_taken": "jutro"}})
+    check("zla data -> blad", o.get("isError") is True)
+    o = wolaj("set_location", {"photos": [p1], "latitude": 49.2992, "longitude": 19.9496})
+    loc = window.edits[state["p1"]]
+    check("set_location na nieotwartym", loc.latitude == 49.2992 and loc.longitude == 19.9496,
+          blad(o))
+    check("...krok w historii Mapy", window.historia_mapy.mozna_cofnac())
+    check("...znacznik na pasku", window._has_location(state["p1"]))
+    zapisane = read_sidecar(state["p1"])
+    check("...w sidecarze", zapisane is not None and zapisane.has_location)
+    o = wolaj("remove_location", {"photos": [p1]})
+    check("remove_location", window.edits[state["p1"]].latitude is None, blad(o))
+
+
+def stage_eksport() -> None:
+    cel = os.path.join(workspace, "wynik")
+    o = wolaj("export_photos", {"target": "current", "folder": cel, "subfolder": "",
+                                "format": "jpeg", "max_side": 500, "quality": 80},
+              limit_ms=120000)
+    wynik = json_z(o) if not o.get("isError") else {}
+    pliki = os.listdir(cel) if os.path.isdir(cel) else []
+    check("export_photos czeka i zapisuje", wynik.get("saved") == 1 and len(pliki) == 1,
+          blad(o) or str(wynik)[:120])
+    if pliki:
+        z = Image.open(os.path.join(cel, pliki[0]))
+        check("...rozmiar z polecenia", max(z.size) == 500, str(z.size))
+    check("opcje z polecenia nie trafiaja do ustawien",
+          window.settings.export_max_side != 500 or window.settings.export_folder != cel)
+    o = wolaj("export_photos", {"target": "current", "folder": cel, "subfolder": "",
+                                "max_side": 500, "on_existing": "skip"}, limit_ms=120000)
+    check("on_existing skip", not o.get("isError") and json_z(o).get("skipped") == 1, blad(o))
+    o = wolaj("get_export_status")
+    check("get_export_status po eksporcie", not o.get("isError")
+          and json_z(o).get("running") is False, blad(o))
+    o = wolaj("export_photos", {"folder": "wzgledny"})
+    check("sciezka wzgledna -> blad", o.get("isError") is True)
+
+
 def stage_nawigacja() -> None:
     o = wolaj("open_photo", {"photo": os.path.basename(state["p1"])})
     check("open_photo czeka na wczytanie", window.current_path == state["p1"]
@@ -237,6 +311,6 @@ def report() -> None:
 
 
 lancuch(app, [stage_start, stage_odczyt, stage_edycja, stage_wiele, stage_wyglad,
-              stage_nawigacja], report)
+              stage_podglad, stage_metadane, stage_eksport, stage_nawigacja], report)
 app.exec()
 sys.exit(KOD)

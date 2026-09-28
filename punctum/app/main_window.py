@@ -657,6 +657,7 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------- sterowanie przez AI
 
     mcp = None
+    _ostatni_eksport: dict | None = None
 
     def uruchom_mcp(self, port: int | None = None, katalog: str | None = None) -> None:
         """Serwer MCP dla agentow AI (punkt 6). Wolany z __main__, nie
@@ -1894,17 +1895,29 @@ class MainWindow(QMainWindow):
             policy = self._ask_about_conflicts(plan)
             if policy is None:
                 return
+        blad = self.uruchom_eksport(plan, options, policy)
+        if blad == "katalog":
+            QMessageBox.warning(self, "Punctum", t("Nie udało się utworzyć katalogu:\n{blad}",
+                                                   blad=options.target_folder()))
+
+    def uruchom_eksport(self, plan, options: ExportOptions, policy: str) -> str | None:
+        """Start eksportu po ustaleniu opcji - wspolny dla okna eksportu
+        i dla narzedzia MCP (ktore nie pokazuje okien). Zwraca None po
+        starcie, "pusto" gdy wszystko pominieto, "katalog" gdy nie da sie
+        utworzyc katalogu docelowego."""
         pairs, skipped = resolve_conflicts(plan, policy)
+        self._ostatni_eksport = None
 
         if not pairs:
             self.status.showMessage(t("Nie zapisano nic — wszystkie pliki pominięto."))
-            return
+            self._ostatni_eksport = {"saved": 0, "failed": 0, "skipped": skipped,
+                                     "errors": [], "cancelled": False}
+            return "pusto"
 
         try:
             os.makedirs(options.target_folder(), exist_ok=True)
-        except OSError as exc:
-            QMessageBox.warning(self, "Punctum", t("Nie udało się utworzyć katalogu:\n{blad}", blad=exc))
-            return
+        except OSError:
+            return "katalog"
 
         params = {
             source: self._params_for(source) or default_params_for(source) for source, _ in pairs
@@ -1933,6 +1946,10 @@ class MainWindow(QMainWindow):
     def _on_export_finished(self, saved: int, failed: int, errors: list) -> None:
         cancelled = self.export_task is not None and self.export_task.cancelled
         self.export_task = None
+        # Wynik dla narzedzia MCP, ktore czeka na koniec eksportu.
+        self._ostatni_eksport = {"saved": saved, "failed": failed,
+                                 "skipped": getattr(self, "_skipped_in_export", 0),
+                                 "errors": list(errors), "cancelled": cancelled}
         self.progress_widget.hide()
         self.export_button.setEnabled(True)
 
