@@ -14,6 +14,8 @@ from PySide6.QtWidgets import (
     QStyleOptionSlider,
     QWidget,
 )
+from .skala import marginesy, odstep, pxf
+from .skala import minimum as minimum_px  # "minimum" to tu takze parametr suwaka
 from ..przeklad import liczba
 
 # Kierunek gradientow wynika z tego, co suwak opisuje: pokazuje, w ktora
@@ -141,7 +143,7 @@ class GradientSlider(WheelSlider):
     def __init__(self, stops, guard: WheelGuard | None = None, parent=None):
         super().__init__(guard, parent)
         self._stops = stops
-        self.setMinimumHeight(18)
+        minimum_px(self, wys=18)
 
     def paintEvent(self, event) -> None:
         painter = QPainter(self)
@@ -157,21 +159,21 @@ class GradientSlider(WheelSlider):
         )
 
         centre_y = self.height() / 2.0
-        bar = QRectF(groove.left(), centre_y - 3.0, max(1, groove.width()), 6.0)
+        bar = QRectF(groove.left(), centre_y - pxf(3.0), max(1, groove.width()), pxf(6.0))
 
         gradient = QLinearGradient(bar.left(), 0.0, bar.right(), 0.0)
         for position, color in self._stops:
             gradient.setColorAt(position, color)
 
         path = QPainterPath()
-        path.addRoundedRect(bar, 3.0, 3.0)
+        path.addRoundedRect(bar, pxf(3.0), pxf(3.0))
         painter.fillPath(path, gradient)
         painter.setPen(QPen(QColor(0, 0, 0, 90), 1))
         painter.drawPath(path)
 
         painter.setPen(QPen(QColor(24, 24, 26), 1))
         painter.setBrush(QColor(250, 250, 252))
-        painter.drawEllipse(QPointF(handle.center().x(), centre_y), 6.0, 6.0)
+        painter.drawEllipse(QPointF(handle.center().x(), centre_y), pxf(6.0), pxf(6.0))
 
 
 class ParamSlider(QWidget):
@@ -202,7 +204,7 @@ class ParamSlider(QWidget):
         self.name_label = QLabel(label)
         self.value_label = QLabel()
         self.value_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.value_label.setMinimumWidth(56)
+        minimum_px(self.value_label, szer=56)
         self.value_label.setObjectName("valueLabel")
 
         self.slider = (
@@ -214,8 +216,8 @@ class ParamSlider(QWidget):
         self.slider.valueChanged.connect(self._on_slider)
 
         layout = QGridLayout(self)
-        layout.setContentsMargins(0, 1, 0, 1)
-        layout.setSpacing(2)
+        marginesy(layout, 0, 1, 0, 1)
+        odstep(layout, 2)
         layout.addWidget(self.name_label, 0, 0)
         layout.addWidget(self.value_label, 0, 1)
         layout.addWidget(self.slider, 1, 0, 1, 2)

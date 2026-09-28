@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .skala import ikony, marginesy, odstep, stala, sygnaly
 from ..core.exif_edit import FIELDS, GROUPS, current_values, is_writable_format, validate
 from .podpowiedzi import podpowiedz, podpowiedz_wiersza
 from .style import ikona
@@ -56,8 +57,8 @@ class ExifPanel(QWidget):
         form = QVBoxLayout(form_host)
         # Margines od prawej: pola konczyly sie tuz przy pasku przewijania
         # i kolumna wygladala na obcieta przy samej krawedzi okna.
-        form.setContentsMargins(0, 2, 10, 2)
-        form.setSpacing(2 if zwarty else 8)
+        marginesy(form, 0, 2, 10, 2)
+        odstep(form, 2 if zwarty else 8)
 
         for group in GROUPS:
             label = QLabel(t(group).upper())
@@ -80,7 +81,7 @@ class ExifPanel(QWidget):
                 continue
             grid = QFormLayout()
             grid.setContentsMargins(0, 0, 0, 0)
-            grid.setSpacing(4)
+            odstep(grid, 4)
             grid.setLabelAlignment(Qt.AlignLeft)
             grid.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
             # Waskiej kolumnie wolno zlamac wiersz, zamiast rozpychac panel.
@@ -97,10 +98,8 @@ class ExifPanel(QWidget):
         form.addWidget(self.problem)
         form.addStretch(1)
         if self.wiersze:
-            # Wspolna kolumna etykiet, zeby wartosci staly w jednej linii.
-            szer = max(w.etykieta.sizeHint().width() for w in self.wiersze.values())
-            for wiersz in self.wiersze.values():
-                wiersz.etykieta.setFixedWidth(szer)
+            self._wyrownaj_etykiety()
+            sygnaly.zmieniona.connect(self._po_zmianie_skali)
 
         self.pola_box = self._obudowa(form_host, przewijany)
 
@@ -121,10 +120,10 @@ class ExifPanel(QWidget):
         # obcinal sobie napis ("apisz do oryginał").
         buttons = QVBoxLayout()
         buttons.setContentsMargins(0, 0, 0, 0)
-        buttons.setSpacing(4)
+        odstep(buttons, 4)
         top_row = QHBoxLayout()
         top_row.setContentsMargins(0, 0, 0, 0)
-        top_row.setSpacing(4)
+        odstep(top_row, 4)
         top_row.addWidget(self.all_button)
         top_row.addWidget(self.clear_button)
         buttons.addLayout(top_row)
@@ -132,19 +131,33 @@ class ExifPanel(QWidget):
 
         self.table = QWidget()
         self.table_layout = QGridLayout(self.table)
-        self.table_layout.setContentsMargins(0, 2, 10, 2)
-        self.table_layout.setHorizontalSpacing(10)
-        self.table_layout.setVerticalSpacing(2)
+        marginesy(self.table_layout, 0, 2, 10, 2)
+        odstep(self.table_layout, 10, "poziomo")
+        odstep(self.table_layout, 2, "pionowo")
         self.tabela_box = self._obudowa(self.table, przewijany)
         self.tabela_box.hide()
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(6)
+        odstep(layout, 6)
         layout.addWidget(self.pola_box, 1)
         layout.addWidget(self.tabela_box, 1)
         layout.addLayout(buttons)
         self.buttons = buttons
+
+    def _wyrownaj_etykiety(self) -> None:
+        # Wspolna kolumna etykiet, zeby wartosci staly w jednej linii.
+        # Najpierw zdejmujemy stara szerokosc - inaczej sizeHint oddalby ja.
+        for wiersz in self.wiersze.values():
+            wiersz.etykieta.setMinimumWidth(0)
+            wiersz.etykieta.setMaximumWidth(16777215)
+        szer = max(w.etykieta.sizeHint().width() for w in self.wiersze.values())
+        for wiersz in self.wiersze.values():
+            wiersz.etykieta.setFixedWidth(szer)
+
+    def _po_zmianie_skali(self, _skala: float) -> None:
+        # szerokosc etykiet liczy sie z czcionki, a ta zmienia sie z arkuszem stylow
+        QTimer.singleShot(0, self._wyrownaj_etykiety)
 
     @staticmethod
     def _obudowa(tresc: QWidget, przewijany: bool) -> QWidget:
@@ -177,7 +190,7 @@ class ExifPanel(QWidget):
             widget.currentIndexChanged.connect(lambda _=0: self._on_edited())
         elif field.kind == "multiline":
             widget = QPlainTextEdit()
-            widget.setFixedHeight(46)
+            stala(widget, wys=46)
             widget.textChanged.connect(self._on_edited)
         else:
             widget = QLineEdit()
@@ -404,9 +417,9 @@ class _WierszPola(QWidget):
         self.rysik = QToolButton()
         self.rysik.setObjectName("exifRysik")
         self.rysik.setIcon(ikona("edit"))
-        self.rysik.setIconSize(QSize(12, 12))
+        ikony(self.rysik, 12)
         self.rysik.setAutoRaise(True)
-        self.rysik.setFixedSize(18, 18)
+        stala(self.rysik, 18, 18)
         self.rysik.setCursor(Qt.PointingHandCursor)
         podpowiedz(self.rysik, "exif.rysik")
         self.rysik.clicked.connect(lambda: panel.edytuj(klucz))
@@ -419,8 +432,8 @@ class _WierszPola(QWidget):
         edytor.hide()
 
         uklad = QHBoxLayout(self)
-        uklad.setContentsMargins(0, 1, 0, 1)
-        uklad.setSpacing(6)
+        marginesy(uklad, 0, 1, 0, 1)
+        odstep(uklad, 6)
         uklad.addWidget(self.etykieta, 0, Qt.AlignTop)
         uklad.addWidget(self.wartosc, 1, Qt.AlignTop)
         uklad.addWidget(edytor, 1)

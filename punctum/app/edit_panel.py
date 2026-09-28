@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .skala import ikony, marginesy, minimum, odstep, px, stala, zarejestruj
 from ..core import EditParams
 from ..core.metadata import PhotoMetadata
 from ..core.params import MONO_FIELDS
@@ -55,7 +56,7 @@ class HistogramWidget(QFrame):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMinimumHeight(104)
+        minimum(self, wys=104)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self._data: np.ndarray | None = None
 
@@ -112,8 +113,8 @@ class InfoPanel(QFrame):
         super().__init__(parent)
         self.setObjectName("infoPanel")
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 6, 8, 6)
-        layout.setSpacing(2)
+        marginesy(layout, 8, 6, 8, 6)
+        odstep(layout, 2)
 
         self.camera_label = QLabel("—")
         self.camera_label.setObjectName("cameraLabel")
@@ -133,14 +134,14 @@ class InfoPanel(QFrame):
         # (to samo, co przy strzalkach pol liczbowych, patrz app/style.py).
         self.details_button.setText("▾")
         self.details_button.setAutoRaise(True)
-        self.details_button.setFixedSize(20, 18)
+        stala(self.details_button, 20, 18)
         podpowiedz(self.details_button, "podglad.metadane_rozwin")
         self.details_button.toggled.connect(self._on_details_toggled)
         self.details_button.hide()  # pojawia sie dopiero z podpieta trescia
 
         header = QHBoxLayout()
         header.setContentsMargins(0, 0, 0, 0)
-        header.setSpacing(4)
+        odstep(header, 4)
         self.camera_label.setWordWrap(True)
         header.addWidget(self.camera_label, 1)
         header.addWidget(self.details_button, 0, Qt.AlignTop)
@@ -229,7 +230,7 @@ class EditPanel(QObject):
         crop = self._tresc("kadrowanie")
         self.crop_button = QPushButton()
         self.crop_button.setIcon(ikona("crop"))
-        self.crop_button.setIconSize(QSize(18, 18))
+        ikony(self.crop_button, 18)
         self.crop_button.setCheckable(True)
         podpowiedz(self.crop_button, "edycja.kadrowanie")
         self.crop_button.toggled.connect(self.crop_mode_toggled.emit)
@@ -238,7 +239,7 @@ class EditPanel(QObject):
         # na ikonach, wiec miesci sie w najwezszym panelu, a suwak kata i dalsze
         # sekcje podjezdzaja o wiersz wyzej.
         rotate_row = QHBoxLayout()
-        rotate_row.setSpacing(4)
+        odstep(rotate_row, 4)
         for nazwa, step, tip in (
             ("rotate-left", -90, "edycja.obrot_lewo"),
             ("rotate-180", 180, "edycja.obrot_180"),
@@ -247,7 +248,7 @@ class EditPanel(QObject):
             # Same ikony, bez napisow: kierunek widac na strzalce.
             button = QPushButton()
             button.setIcon(ikona(nazwa))
-            button.setIconSize(QSize(18, 18))
+            ikony(button, 18)
             podpowiedz(button, tip)
             button.clicked.connect(lambda _=False, s=step: self.orientation_step.emit(s))
             rotate_row.addWidget(button, 1)
@@ -255,7 +256,7 @@ class EditPanel(QObject):
         rotate_row.addWidget(self.crop_button, 1)
         self.crop_reset_button = QPushButton()
         self.crop_reset_button.setIcon(ikona("crop-reset"))
-        self.crop_reset_button.setIconSize(QSize(18, 18))
+        ikony(self.crop_reset_button, 18)
         podpowiedz(self.crop_reset_button, "edycja.wyzeruj_kadr")
         self.crop_reset_button.clicked.connect(self.crop_reset_requested.emit)
         rotate_row.addWidget(self.crop_reset_button, 1)
@@ -274,7 +275,7 @@ class EditPanel(QObject):
         self.pasek_akcji = QWidget()
         action_row = QHBoxLayout(self.pasek_akcji)
         action_row.setContentsMargins(0, 0, 0, 0)
-        action_row.setSpacing(4)
+        odstep(action_row, 4)
         action_row.addWidget(self.auto_button, 1)
         action_row.addWidget(self.reset_button, 1)
         # Cofnij/ponow obok zerowania: to ten sam rodzaj ruchu ("wroc do
@@ -286,7 +287,7 @@ class EditPanel(QObject):
             (self.redo_button, "redo", "edycja.ponow", self.redo_requested),
         ):
             button.setIcon(ikona(nazwa))
-            button.setIconSize(QSize(18, 18))
+            ikony(button, 18)
             button.setEnabled(False)  # nic jeszcze nie zrobiono
             podpowiedz(button, tip)
             button.clicked.connect(sygnal.emit)
@@ -331,7 +332,7 @@ class EditPanel(QObject):
         widget = QWidget()
         layout = QVBoxLayout(widget)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(4)
+        odstep(layout, 4)
         self.sekcje[klucz] = widget
         return layout
 
@@ -356,7 +357,7 @@ class EditPanel(QObject):
         podpowiedz(self.mono_check, "monochrom.wlacz")
         self.mono_check.toggled.connect(lambda _on: self._on_change("mono", 0.0))
         row = QHBoxLayout()
-        row.setSpacing(4)
+        odstep(row, 4)
         row.addWidget(self.mono_check, 1)
         self.filtry: dict[str, QPushButton] = {}
         for klucz, kolor, tip in (
@@ -368,13 +369,14 @@ class EditPanel(QObject):
         ):
             button = QPushButton()
             button.setObjectName("filtrMono")
-            button.setFixedSize(20, 20)
+            stala(button, 20, 20)
             button.setCursor(Qt.PointingHandCursor)
-            button.setStyleSheet(
-                f"QPushButton {{ background: {kolor}; border: 1px solid #1c1c1e;"
-                f" border-radius: 10px; }}"
+            # kolko: promien rowny polowie boku, wiec rosnie razem z przyciskiem
+            zarejestruj(button, lambda b, k=kolor: b.setStyleSheet(
+                f"QPushButton {{ background: {k}; border: 1px solid #1c1c1e;"
+                f" border-radius: {px(10)}px; }}"
                 f" QPushButton:hover {{ border: 1px solid #e8e8ea; }}"
-            )
+            ))
             podpowiedz(button, tip)
             button.clicked.connect(lambda _=False, k=klucz: self.ustaw_filtr(k))
             self.filtry[klucz] = button

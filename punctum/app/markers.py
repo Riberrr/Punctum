@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QPainter, QPainterPath
+from .skala import pxf
 from ..przeklad import N_, t
 
 # Role danych w pozycjach list - obie listy trzymaja stan tak samo.
@@ -36,9 +37,11 @@ LEGEND = N_(
 )
 
 
-def paint_dot(painter: QPainter, centre: QPointF, radius: float = 3.0,
+def paint_dot(painter: QPainter, centre: QPointF, radius: float | None = None,
               color: QColor = EDIT_COLOR) -> None:
     """Kropka: zapisana praca."""
+    if radius is None:
+        radius = pxf(3.0)
     painter.save()
     painter.setRenderHint(QPainter.Antialiasing, True)
     painter.setPen(Qt.NoPen)
@@ -82,10 +85,10 @@ def paint_marks(painter: QPainter, rect: QRectF, edited: bool, located: bool) ->
     """Oba znaczniki w kolumnie o stalej szerokosci, po lewej stronie nazwy."""
     centre_y = rect.center().y()
     if edited:
-        paint_dot(painter, QPointF(rect.left() + 5.0, centre_y))
+        paint_dot(painter, QPointF(rect.left() + pxf(5.0), centre_y))
     if located:
-        width, height = PIN_SIZE
+        width, height = pxf(PIN_SIZE[0]), pxf(PIN_SIZE[1])
         paint_pin(
             painter,
-            QRectF(rect.left() + 12.0, centre_y - height / 2.0, width, height),
+            QRectF(rect.left() + pxf(12.0), centre_y - height / 2.0, width, height),
         )

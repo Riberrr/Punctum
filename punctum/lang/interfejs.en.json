@@ -422,5 +422,6 @@
  "Zastosowano preset „{nazwa}”.": "Applied preset “{nazwa}”.",
  "Skala interfejsu": "Interface scale",
  "Skala:": "Scale:",
- "Nowa skala obowiązuje od ponownego uruchomienia programu. Podgląd przy 100 % dalej pokazuje piksel zdjęcia na pikselu ekranu.": "The new scale takes effect after restarting the program. At 100 % the preview still shows one photo pixel per screen pixel."
+ "Skala zmienia się po kliknięciu „Zatwierdź zmiany” albo „Zapisz”. Podgląd przy 100 % dalej pokazuje piksel zdjęcia na pikselu ekranu.": "The scale changes when you click “Apply changes” or “Save”. At 100 % the preview still shows one photo pixel per screen pixel.",
+ "Zatwierdź zmiany": "Apply changes"
 }

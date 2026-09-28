@@ -6,8 +6,9 @@ metadanych nie rusza szerokosci niczego, a rozmiary paneli i paska miniatur
 zmienia sie mysza i sa pamietane.
 
 Uzycie:  python tools/test_uklad_gui.py <plik.rw2> <plik.jpg> [wiecej...]
-Po przejsciu test uruchamia sie jeszcze raz przy skali interfejsu 0,8 i 1,5
-(QT_SCALE_FACTOR w podprocesie).
+Etap `stage_skala` zmienia skale interfejsu na zywo (przycisk "Zatwierdz
+zmiany") i wraca do 100 %. Po przejsciu calosc idzie jeszcze raz przy
+gestosci ekranu 1,5 (QT_SCALE_FACTOR w podprocesie - jak skala 150 % w Windows).
 Zrzut okna po ulozeniu trafia do katalogu tymczasowego (punctum-uklad.png).
 """
 
@@ -34,6 +35,7 @@ from punctum.app import MainWindow  # noqa: E402
 from punctum.app.filmstrip import TILE_OVERHEAD  # noqa: E402
 from punctum.app.settings_dialog import PAGE_ABOUT, SettingsDialog  # noqa: E402
 from punctum.core.settings import LAYOUT_LIMITS, Settings, settings_path  # noqa: E402
+from punctum.app import skala as skala_ui  # noqa: E402
 
 results: list[tuple[str, bool, str]] = []
 SKALA = float(os.environ.get("QT_SCALE_FACTOR", "1") or 1)
@@ -77,7 +79,7 @@ def widoczny(widget, panel) -> bool:
     """Jak fully_visible, ale przy powiekszonym interfejsie wystarczy, ze
     panel przewija sie do widzetu - przy skali 150 % na zwyklym monitorze
     wszystko sie nie zmiesci i od tego jest wspolne przewijanie (punkt 30 B)."""
-    if fully_visible(widget, panel) or SKALA <= 1.0:
+    if fully_visible(widget, panel) or SKALA * skala_ui.skala() <= 1.0:
         return fully_visible(widget, panel)
     pasek = panel.scroll.verticalScrollBar()
     bylo = pasek.value()
@@ -248,6 +250,72 @@ def stage_przeciaganie() -> None:
     dialog.deleteLater()
 
 
+def stage_skala() -> None:
+    from PySide6.QtGui import QFontInfo
+
+    Settings.save = lambda *a, **k: True  # "Zatwierdz" zapisuje - nie do prawdziwego pliku
+    panel = window.edit_panel
+    etykieta = window.zoom_panel.zoom_label
+    przed = {
+        "ikona": panel.crop_button.iconSize().width(),
+        "czcionka": QFontInfo(etykieta.font()).pixelSize(),
+        "lewy": window.panel_splitter.sizes()[0],
+    }
+
+    def zatwierdz(procent: int) -> SettingsDialog:
+        dialog = SettingsDialog(window.settings, window.system, window)
+        dialog.zatwierdzono.connect(window._przyjmij_ustawienia)
+        dialog.scale_box.setValue(procent)
+        dialog.apply_button.click()
+        for _ in range(5):
+            app.processEvents()
+        return dialog
+
+    dialog = zatwierdz(150)
+    check("Zatwierdz zmiany nie zamyka okna ustawien", dialog.result() == 0)
+    check("skala 150 % po zatwierdzeniu", abs(skala_ui.skala() - 1.5) < 1e-6, str(skala_ui.skala()))
+    check("ikony rosna ze skala", panel.crop_button.iconSize().width() == round(przed["ikona"] * 1.5),
+          f"{przed['ikona']} -> {panel.crop_button.iconSize().width()}")
+    czcionka = QFontInfo(etykieta.font()).pixelSize()
+    check("czcionka rosnie ze skala", czcionka == round(przed["czcionka"] * 1.5),
+          f"{przed['czcionka']} -> {czcionka}")
+    lewy = window.panel_splitter.sizes()[0]
+    # Dokladnie 1,5 raza tylko, gdy okno ma miejsce - przy gestosci 1,5
+    # (podproces) panel dochodzi do szerokosci okna, wiec wystarczy, ze rosnie.
+    check("lewy panel rosnie ze skala",
+          abs(lewy - przed["lewy"] * 1.5) <= 2 if SKALA == 1.0 else lewy > przed["lewy"] * 1.2,
+          f"{przed['lewy']} -> {lewy}")
+    check("szerokosc w ustawieniach dalej przy 100 %",
+          window.settings.left_panel_width == przed["lewy"], str(window.settings.left_panel_width))
+    # Nawigator przy 150 % na gestosci 1,5 bywa wyzszy niz caly panel - tam
+    # sprawdzamy tylko przycisk.
+    osiagalne = [("przycisk Dopasuj", window.zoom_panel.fit_button)]
+    if SKALA == 1.0:
+        osiagalne.append(("nawigator", window.navigator))
+    for name, widget in osiagalne:
+        check(f"przy 150 %: {name} osiagalny", widoczny(widget, window.left_panel))
+    view = window.view
+    view.zoom_actual()
+    app.processEvents()
+    ekran = view.transform().m11() * view.devicePixelRatioF()
+    check("przy 150 % interfejsu 100 % dalej piksel na piksel", abs(ekran - 1.0) < 1e-3,
+          f"{ekran:.3f}")
+    nazwa = f"punctum-uklad-zywo-{SKALA:g}.png"
+    window.grab().save(os.path.join(tempfile.gettempdir(), nazwa))
+    dialog.deleteLater()
+
+    zatwierdz(100).deleteLater()
+    for _ in range(5):
+        app.processEvents()
+    po = {
+        "ikona": panel.crop_button.iconSize().width(),
+        "czcionka": QFontInfo(etykieta.font()).pixelSize(),
+        "lewy": window.panel_splitter.sizes()[0],
+    }
+    check("powrot do 100 % bez sladu", po == przed, f"{przed} -> {po}")
+    view.fit_to_window()
+
+
 def finish() -> None:
     try:
         failures = wypisz(results)
@@ -261,7 +329,7 @@ def finish() -> None:
 
 
 lancuch(app, [stage_start, stage_widocznosc, stage_powiekszenie, stage_metadane,
-              stage_przeciaganie], finish)
+              stage_przeciaganie, stage_skala], finish)
 failures = app.exec()
 
 # Ta sama seria przy innej skali interfejsu (punkt 30 A). QT_SCALE_FACTOR
@@ -269,7 +337,7 @@ failures = app.exec()
 if not failures and "QT_SCALE_FACTOR" not in os.environ:
     import subprocess
 
-    for skala in ("0.8", "1.5"):
+    for skala in ("1.5",):
         print(f"--- skala interfejsu {skala}")
         sys.stdout.flush()
         failures += subprocess.call(

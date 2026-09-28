@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .skala import minimum, odstep, px, sygnaly
 from ..core import presety
 from ..core.params import EditParams
 from ..przeklad import N_, mnoga, t
@@ -48,9 +49,10 @@ class PresetyPanel(QWidget):
         super().__init__(parent)
         self._biezace = biezace
         self._baza = baza  # katalog ustawien; testy podaja wlasny
+        sygnaly.zmieniona.connect(self._po_zmianie_skali)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(4)
+        odstep(layout, 4)
 
         self.lista = QListWidget()
         self.lista.setObjectName("listaPresetow")
@@ -66,7 +68,7 @@ class PresetyPanel(QWidget):
         layout.addWidget(self.lista)
 
         wiersz = QHBoxLayout()
-        wiersz.setSpacing(4)
+        odstep(wiersz, 4)
         self.zapisz_button = QPushButton(t("Zapisz…"))
         podpowiedz(self.zapisz_button, "presety.zapisz")
         self.zapisz_button.clicked.connect(self.zapisz_biezace)
@@ -103,7 +105,11 @@ class PresetyPanel(QWidget):
 
     def _dopasuj_wysokosc(self) -> None:
         wiersze = sum(max(0, self.lista.sizeHintForRow(i)) for i in range(self.lista.count()))
-        self.lista.setFixedHeight(wiersze + 2 * self.lista.frameWidth() + 4)
+        self.lista.setFixedHeight(wiersze + 2 * self.lista.frameWidth() + px(4))
+
+    def _po_zmianie_skali(self, _skala: float) -> None:
+        # wysokosc wierszy zalezy od czcionki, a ta zmienia sie z arkuszem stylow
+        QTimer.singleShot(0, self._dopasuj_wysokosc)
 
     def zaznaczony(self) -> presety.Preset | None:
         item = self.lista.currentItem()
@@ -233,7 +239,7 @@ class ZapiszPresetDialog(QDialog):
         self.przyciski.accepted.connect(self.accept)
         self.przyciski.rejected.connect(self.reject)
         layout.addWidget(self.przyciski)
-        self.setMinimumWidth(300)
+        minimum(self, szer=300)
         self._odswiez()
 
     def _odswiez(self) -> None:

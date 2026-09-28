@@ -7,6 +7,7 @@ import math
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QSlider, QVBoxLayout, QWidget
 
+from .skala import ikony, minimum, odstep, stala
 from .style import ikona
 from .podpowiedzi import podpowiedz
 from ..przeklad import t
@@ -44,16 +45,16 @@ class ZoomPanel(QWidget):
 
         self.fit_button = QPushButton()
         self.fit_button.setIcon(ikona("fit"))
-        self.fit_button.setIconSize(QSize(18, 18))
+        ikony(self.fit_button, 18)
         podpowiedz(self.fit_button, "podglad.dopasuj")
         self.fit_button.clicked.connect(self.fit_requested.emit)
         self.actual_button = QPushButton()
         self.actual_button.setIcon(ikona("actual-size"))
-        self.actual_button.setIconSize(QSize(18, 18))
+        ikony(self.actual_button, 18)
         podpowiedz(self.actual_button, "podglad.sto")
         self.actual_button.clicked.connect(self.actual_requested.emit)
         self.zoom_label = QLabel("—")
-        self.zoom_label.setMinimumWidth(44)
+        minimum(self.zoom_label, szer=44)
         self.zoom_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         # Stan dociagania ostrego fragmentu ("ostrzenie", "pelna ostrosc").
         # Siedzi pod suwakiem, bo dotyczy wlasnie powiekszenia.
@@ -64,20 +65,20 @@ class ZoomPanel(QWidget):
         # wolny na porownanie przed/po (add_buttons).
         slider_row = QHBoxLayout()
         slider_row.setContentsMargins(0, 0, 0, 0)
-        slider_row.setSpacing(6)
+        odstep(slider_row, 6)
         slider_row.addWidget(self.slider, 1)
         slider_row.addWidget(self.zoom_label)
 
         self._buttons = QHBoxLayout()
         self._buttons.setContentsMargins(0, 0, 0, 0)
-        self._buttons.setSpacing(4)
+        odstep(self._buttons, 4)
         self._buttons.addWidget(self.fit_button)
         self._buttons.addWidget(self.actual_button)
         self._buttons.addStretch(1)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(4)
+        odstep(layout, 4)
         layout.addLayout(slider_row)
         layout.addLayout(self._buttons)
         layout.addWidget(self.detail_label)
@@ -93,8 +94,8 @@ class ZoomPanel(QWidget):
         # Piec przyciskow w domyslnej szerokosci nie miesci sie w waskim
         # panelu i wypycha procent poza krawedz - wszystkie jednakowo waskie.
         for button in (self.fit_button, self.actual_button, *buttons):
-            button.setIconSize(QSize(18, 18))
-            button.setFixedWidth(BUTTON_WIDTH)
+            ikony(button, 18)
+            stala(button, szer=BUTTON_WIDTH)
 
     # --- przeliczenia ---------------------------------------------------
 

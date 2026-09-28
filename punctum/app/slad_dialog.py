@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from .skala import marginesy, minimum, odstep
 from ..core.slad import Slad, dopasuj, strefa_systemu
 from ..przeklad import mnoga, t
 from .podpowiedzi import podpowiedz
@@ -45,15 +46,15 @@ class SladDialog(QDialog):
                  polozone: set[str], zaznaczone: bool, parent=None):
         super().__init__(parent)
         self.setWindowTitle(t("Dopasuj do śladu GPX"))
-        self.setMinimumWidth(460)
+        minimum(self, szer=460)
         self.slad = slad
         self.czasy = czasy
         self.polozone = polozone
         self.wynik: dict[str, tuple[float, float]] = {}
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(8)
+        marginesy(layout, 12, 12, 12, 12)
+        odstep(layout, 8)
 
         naglowek = QLabel(mnoga(len(slad), "Ślad {plik}: {n} punkt|Ślad {plik}: {n} punkty|"
                                 "Ślad {plik}: {n} punktów", plik=os.path.basename(plik)))

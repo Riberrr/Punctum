@@ -17,8 +17,11 @@ import html
 import json
 import os
 
-from PySide6.QtCore import QEvent, QObject
-from PySide6.QtWidgets import QProxyStyle, QStyle
+from PySide6.QtCore import QEvent, QObject, Qt
+from PySide6.QtGui import QPalette
+from PySide6.QtWidgets import QProxyStyle, QStyle, QStyleOptionMenuItem
+
+from .skala import metryka, px
 
 LANG_DIRECTORY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lang")
 BAZOWY = "pl"
@@ -106,7 +109,7 @@ def tekst(klucz: str, suwak: bool = False, dopisek: str | None = None) -> str:
         tresc += (f"<hr><span style='color:{KOLOR_UWAGI}'>"
                   f"{html.escape(' · '.join(uwagi))}</span>")
     if len(opis) > DLUGI_OPIS:
-        tresc = (f"<table width='{SZEROKOSC_PX}' cellspacing='0' cellpadding='0'>"
+        tresc = (f"<table width='{px(SZEROKOSC_PX)}' cellspacing='0' cellpadding='0'>"
                  f"<tr><td>{tresc}</td></tr></table>")
     return f"<qt>{tresc}</qt>"
 
@@ -147,6 +150,35 @@ class StylPodpowiedzi(QProxyStyle):
         if hint == QStyle.SH_ToolTip_WakeUpDelay:
             return self.opoznienie_ms
         return super().styleHint(hint, option, widget, returnData)
+
+    def pixelMetric(self, metric, option=None, widget=None):  # noqa: N802
+        # Ta sama nakladka niesie skale interfejsu: domyslne marginesy
+        # ukladow, odstepy i znaczniki rosna razem z arkuszem stylow.
+        return metryka(metric, super().pixelMetric(metric, option, widget))
+
+    def drawControl(self, element, option, painter, widget=None):  # noqa: N802
+        # Styl Windows pisze pozycje paska menu czcionka systemowa, a nie
+        # czcionka paska - po zmianie skali napisy menu zostawaly male.
+        if element == QStyle.CE_MenuBarItem and widget is not None and option.text:
+            # tlo i zaznaczenie rysuje styl, napis - my, czcionka paska
+            tlo = QStyleOptionMenuItem(option)
+            tlo.text = ""
+            super().drawControl(element, tlo, painter, widget)
+            painter.save()
+            painter.setFont(widget.font())
+            # podkreslenie skrotu tylko wtedy, gdy system je pokazuje (po Alt)
+            skrot = (Qt.TextShowMnemonic
+                     if self.styleHint(QStyle.SH_UnderlineShortcut, option, widget)
+                     else Qt.TextHideMnemonic)
+            self.drawItemText(
+                painter, option.rect,
+                int(Qt.AlignCenter | skrot | Qt.TextDontClip | Qt.TextSingleLine),
+                option.palette, bool(option.state & QStyle.State_Enabled), option.text,
+                QPalette.ButtonText,
+            )
+            painter.restore()
+            return
+        super().drawControl(element, option, painter, widget)
 
 
 class WylacznikPodpowiedzi(QObject):

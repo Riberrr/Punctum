@@ -9,6 +9,7 @@ from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QIcon, QPixmap
 from PySide6.QtWidgets import QListWidget, QListWidgetItem, QStyledItemDelegate
 
+from .skala import odstep, px, pxf
 from .image_view import numpy_to_pixmap
 from .markers import EDIT_ROLE, GEO_ROLE, LEGEND, PIN_SIZE, paint_dot, paint_pin
 from ..przeklad import t
@@ -37,13 +38,13 @@ class BadgeDelegate(QStyledItemDelegate):
     def paint(self, painter, option, index) -> None:
         super().paint(painter, option, index)
         rect = option.rect
-        width, height = PIN_SIZE
+        width, height = pxf(PIN_SIZE[0]), pxf(PIN_SIZE[1])
         if index.data(EDIT_ROLE):
-            paint_dot(painter, QPointF(rect.left() + 11.0, rect.top() + 12.0))
+            paint_dot(painter, QPointF(rect.left() + pxf(11.0), rect.top() + pxf(12.0)))
         if index.data(GEO_ROLE):
             paint_pin(
                 painter,
-                QRectF(rect.right() - width - 6.0, rect.top() + 5.0, width, height),
+                QRectF(rect.right() - width - pxf(6.0), rect.top() + pxf(5.0), width, height),
             )
 
 
@@ -69,7 +70,7 @@ class Filmstrip(QListWidget):
         self.setSelectionMode(QListWidget.ExtendedSelection)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
         self.setHorizontalScrollMode(QListWidget.ScrollPerPixel)
-        self.setSpacing(2)
+        odstep(self, 2)
         self.setUniformItemSizes(True)
         self.setItemDelegate(BadgeDelegate(self))
         self._edited: set[str] = set()
@@ -85,12 +86,13 @@ class Filmstrip(QListWidget):
         gdy pojawia sie poziomy pasek przewijania, a zmiana kafelkow potrafi
         ten pasek schowac - i tak w kolko.
         """
-        icon_height = max(40, height - TILE_OVERHEAD)
+        icon_height = max(px(40), height - px(TILE_OVERHEAD))
         icon = QSize(round(icon_height * THUMB_ASPECT), icon_height)
-        if icon == self.iconSize():
+        grid = QSize(icon.width() + px(14), icon.height() + px(TEXT_HEIGHT))
+        if icon == self.iconSize() and grid == self.gridSize():
             return
         self.setIconSize(icon)
-        self.setGridSize(QSize(icon.width() + 14, icon.height() + TEXT_HEIGHT))
+        self.setGridSize(grid)
 
     def resizeEvent(self, event) -> None:
         self._fit_tiles(event.size().height())

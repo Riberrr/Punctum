@@ -9,6 +9,7 @@ Zawsze uzywac funkcji `stylesheet()`, nie stalej `STYLESHEET_TEMPLATE`.
 from __future__ import annotations
 
 import os
+import re
 
 ASSETS_DIRECTORY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
 
@@ -20,10 +21,40 @@ def ikona(nazwa: str):
     return QIcon(os.path.join(ASSETS_DIRECTORY, "icons", f"{nazwa}.svg"))
 
 
+CZCIONKA_PX = 12  # rozmiar pisma przy 100 %, ten sam co "QWidget { font-size }" w arkuszu
+
+
+def czcionki_aplikacji() -> None:
+    """Czcionki aplikacji w biezacej skali.
+
+    Pasek menu i menu na Windowsie rysuja pismo czcionka aplikacji dla swojej
+    klasy (z systemu, 9 pt), a nie z arkusza stylow - bez tego po zmianie
+    skali tylko menu zostawaloby w starym rozmiarze.
+    """
+    from PySide6.QtGui import QFont
+    from PySide6.QtWidgets import QApplication
+
+    from .skala import px
+
+    app = QApplication.instance()
+    for klasa in (None, "QMenuBar", "QMenu"):
+        czcionka = QFont(app.font(klasa) if klasa else app.font())
+        czcionka.setPixelSize(px(CZCIONKA_PX))
+        if klasa:
+            app.setFont(czcionka, klasa)
+        else:
+            app.setFont(czcionka)
+
+
 def stylesheet() -> str:
     """Gotowy arkusz stylow z podstawiona sciezka do grafik."""
+    from .skala import px
+
     # Qt oczekuje w url() ukosnikow w przod, takze na Windowsie
-    return STYLESHEET_TEMPLATE.replace("@ASSETS@", ASSETS_DIRECTORY.replace("\\", "/"))
+    arkusz = STYLESHEET_TEMPLATE.replace("@ASSETS@", ASSETS_DIRECTORY.replace("\\", "/"))
+    # Kazde "Npx" w szablonie to wymiar przy skali 100 % - przeliczamy go
+    # przez skale interfejsu (tak rosna tez czcionki, bo ich rozmiar stoi tu).
+    return re.sub(r"(\d+(?:\.\d+)?)px", lambda m: f"{px(float(m.group(1)))}px", arkusz)
 
 
 STYLESHEET_TEMPLATE = """

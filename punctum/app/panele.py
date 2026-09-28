@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .skala import ikony, marginesy, minimum, odstep, px, stala
 from ..przeklad import N_, t
 from .podpowiedzi import podpowiedz
 from .style import ikona
@@ -241,7 +242,7 @@ class _NaglowekSekcji(QWidget):
         self.strzalka = QToolButton()
         self.strzalka.setObjectName("sectionChevron")
         self.strzalka.setAutoRaise(True)
-        self.strzalka.setFixedSize(16, 16)
+        stala(self.strzalka, 16, 16)
         self.strzalka.setText("▾")
         podpowiedz(self.strzalka, "panele.sekcja")
         self.strzalka.clicked.connect(sekcja.przelacz)
@@ -267,8 +268,8 @@ class _NaglowekSekcji(QWidget):
         self._zapas = QSpacerItem(0, 0, QSizePolicy.Fixed, QSizePolicy.Minimum)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 6, 0, 2)
-        layout.setSpacing(4)
+        marginesy(layout, 0, 6, 0, 2)
+        odstep(layout, 4)
         layout.addWidget(self.uchwyt)
         layout.addWidget(self.strzalka)
         layout.addWidget(self.tytul, 1)
@@ -283,8 +284,8 @@ class _NaglowekSekcji(QWidget):
         przycisk.setAutoRaise(True)
         # tyle co strzalka zwijania - pojawienie sie po najechaniu nie moze
         # zmieniac wysokosci belki, bo panel podskakiwalby pod kursorem
-        przycisk.setFixedSize(16, 16)
-        przycisk.setIconSize(QSize(12, 12))
+        stala(przycisk, 16, 16)
+        ikony(przycisk, 12)
         przycisk.setIcon(ikona(nazwa))
         przycisk.clicked.connect(akcja)
         przycisk.hide()
@@ -371,8 +372,8 @@ class Sekcja(QFrame):
 
         self.naglowek = _NaglowekSekcji(self)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 5)
-        layout.setSpacing(2)
+        marginesy(layout, 0, 0, 0, 5)
+        odstep(layout, 2)
         layout.addWidget(self.naglowek)
         layout.addWidget(tresc, 1)
 
@@ -408,7 +409,7 @@ class _ListaSekcji(QWidget):
         # (dawniej sciskanie bylo celowe i rozwiniete metadane oraz lista
         # presetow dostawaly po kilka wierszy z wlasnym paskiem).
         self.uklad_pionowy = QVBoxLayout(self)
-        self.uklad_pionowy.setContentsMargins(10, 0, 10, 4 if grupa is None else 0)
+        marginesy(self.uklad_pionowy, 10, 0, 10, 4 if grupa is None else 0)
         self.uklad_pionowy.setSpacing(0)
         self.kreska = QFrame(self)
         self.kreska.setObjectName("dropLine")
@@ -500,9 +501,9 @@ class _Przypiete(QScrollArea):
         # Suma sekcji zamiast heightForWidth calej listy: ta druga bywa
         # nieaktualna po zwinieciu czegos wewnatrz sekcji (lista trzyma
         # stara wysokosc, dopoki sama nie dostanie nowego ukladu).
-        marginesy = self.lista.uklad_pionowy.contentsMargins()
-        szerokosc = self.viewport().width() - marginesy.left() - marginesy.right()
-        suma = marginesy.top() + marginesy.bottom()
+        brzegi = self.lista.uklad_pionowy.contentsMargins()
+        szerokosc = self.viewport().width() - brzegi.left() - brzegi.right()
+        suma = brzegi.top() + brzegi.bottom()
         for sekcja in self.lista.sekcje:
             if sekcja.isHidden():
                 continue
@@ -525,7 +526,7 @@ class _Przypiete(QScrollArea):
         # grupe mozna scisnac do samej belki pierwszej sekcji - reszta
         # dostaje wtedy pasek, ale panel nie wypycha okna poza ekran
         belka = self.lista.sekcje[0].naglowek.sizeHint().height() if self.lista.sekcje else 0
-        return QSize(0, min(self._wysokosc, belka + 8))
+        return QSize(0, min(self._wysokosc, belka + px(8)))
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
@@ -547,7 +548,7 @@ class PanelSekcji(QWidget):
         self.klodka = QToolButton()
         self.klodka.setObjectName("panelLock")
         self.klodka.setCheckable(True)
-        self.klodka.setIconSize(QSize(16, 16))
+        ikony(self.klodka, 16)
         self.klodka.setIcon(ikona("lock"))
         podpowiedz(self.klodka, "panele.klodka")
         self.klodka.toggled.connect(lambda on: uklad.ustaw_blokade(miejsce, on))
@@ -558,7 +559,7 @@ class PanelSekcji(QWidget):
         self.scroll.setWidgetResizable(True)
         self.scroll.setFrameShape(QFrame.NoFrame)
         self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.scroll.setMinimumHeight(MIN_PRZEWIJANEJ)
+        minimum(self.scroll, wys=MIN_PRZEWIJANEJ)
         self.gora = _Przypiete(_ListaSekcji(self, GORA))
         self.dol = _Przypiete(_ListaSekcji(self, DOL))
         self.grupy = {GORA: self.gora.lista, None: self.lista, DOL: self.dol.lista}
@@ -574,8 +575,8 @@ class PanelSekcji(QWidget):
         self._plywajaca = staly is None
         if staly is not None:
             gora = QHBoxLayout()
-            gora.setContentsMargins(10, 8, 10, 2)
-            gora.setSpacing(6)
+            marginesy(gora, 10, 8, 10, 2)
+            odstep(gora, 6)
             gora.addWidget(staly, 1)
             gora.addWidget(self.klodka)
             layout.addLayout(gora)
@@ -862,7 +863,7 @@ class OknoUkladu(QDialog):
         self._wypelniam = False
 
         siatka = QGridLayout()
-        siatka.setHorizontalSpacing(10)
+        odstep(siatka, 10, "poziomo")
         for kolumna, (miejsce, dymek) in enumerate((
             (SCHOWEK, "panele.okno_schowek"),
             (LEWY, "panele.okno_lewy"),
@@ -876,7 +877,7 @@ class OknoUkladu(QDialog):
             lista.setDefaultDropAction(Qt.MoveAction)
             lista.setSelectionMode(QAbstractItemView.SingleSelection)
             # w kolumnach paneli po prawej stronie wiersza stoja przyciski
-            lista.setMinimumSize(190 if miejsce == SCHOWEK else 240, 300)
+            minimum(lista, 190 if miejsce == SCHOWEK else 240, 300)
             if miejsce in PANELE:
                 lista.setMouseTracking(True)
                 lista.viewport().setAttribute(Qt.WA_Hover)

@@ -25,6 +25,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .skala import sygnaly, zmien as zmien_skale
+from .skala import marginesy, odstep, px, skala, stala, zarejestruj
 from ..core import (
     FORMAT_ALL,
     FORMAT_JPEG,
@@ -71,7 +73,7 @@ from .panele import LEWY, PRAWY, UkladPaneli
 from .podpowiedzi import StylPodpowiedzi, WylacznikPodpowiedzi, podpowiedz
 # "O programie" nie ma osobnego okna - to strona w ustawieniach.
 from .settings_dialog import PAGE_ABOUT, SettingsDialog
-from .style import ikona, stylesheet
+from .style import czcionki_aplikacji, ikona, stylesheet
 from .workers import (
     AutoToneTask,
     DetailRenderTask,
@@ -95,6 +97,17 @@ FULL_CROP = (0.0, 0.0, 1.0, 1.0)
 HISTORIA_MS = 450
 
 
+def _granice(widget, zakres: tuple[int, int], wymiar: str) -> None:
+    """Granice rozmiaru panelu z LAYOUT_LIMITS (podane przy skali 100 %)."""
+    low, high = px(zakres[0]), px(zakres[1])
+    if wymiar == "szer":
+        widget.setMinimumWidth(low)
+        widget.setMaximumWidth(high)
+    else:
+        widget.setMinimumHeight(low)
+        widget.setMaximumHeight(high)
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -106,9 +119,14 @@ class MainWindow(QMainWindow):
         if not isinstance(app.style(), StylPodpowiedzi):
             app.setStyle(StylPodpowiedzi(app.style().name()))
         self.tooltip_style = app.style()
-        self.setStyleSheet(stylesheet())
 
         self.settings = Settings.load()
+        # Skala przed budowa okna: wymiary licza sie przy tworzeniu widzetow,
+        # a arkusz stylow nakladamy przez rejestr, zeby zmiana skali go odswiezala.
+        zmien_skale(self.settings.ui_scale)
+        zarejestruj(self, lambda okno: (czcionki_aplikacji(), okno.setStyleSheet(stylesheet()),
+                                        okno._czcionki_menu()))
+        sygnaly.zmieniona.connect(self._po_zmianie_skali)
         self.pool = QThreadPool.globalInstance()
         self.thumb_pool = QThreadPool()
 
@@ -222,7 +240,7 @@ class MainWindow(QMainWindow):
         self.view_area = QWidget()
         view_row = QHBoxLayout(self.view_area)
         view_row.setContentsMargins(0, 0, 0, 0)
-        view_row.setSpacing(2)
+        odstep(view_row, 2)
         view_row.addWidget(self.before_view, 1)
         view_row.addWidget(self.view, 1)
 
@@ -318,9 +336,7 @@ class MainWindow(QMainWindow):
         # ma pierwszenstwo przed tym, o co prosi zawartosc - bez tego
         # rozwiniecie metadanych poszerzalo kolumne i przesuwalo podglad.
         for panel, key in ((left, "left_panel_width"), (right, "right_panel_width")):
-            low, high = LAYOUT_LIMITS[key]
-            panel.setMinimumWidth(low)
-            panel.setMaximumWidth(high)
+            zarejestruj(panel, lambda p, k=key: _granice(p, LAYOUT_LIMITS[k], "szer"))
 
         # Przycisk eksportu stoi w rogu belki zakladek: gorny pasek narzedzi
         # zajmowal caly wiersz na kilka przyciskow, ktore teraz maja swoje
@@ -333,9 +349,7 @@ class MainWindow(QMainWindow):
         self.filmstrip = Filmstrip()
         self.filmstrip.photo_selected.connect(self.open_photo)
         self.filmstrip.thumbnail_ready.connect(self._on_thumbnail_icon)
-        low, high = LAYOUT_LIMITS["filmstrip_height"]
-        self.filmstrip.setMinimumHeight(low)
-        self.filmstrip.setMaximumHeight(high)
+        zarejestruj(self.filmstrip, lambda f: _granice(f, LAYOUT_LIMITS["filmstrip_height"], "wys"))
 
         # Pasek nad miniaturami. Katalogu, w ktorym lezy kilkanascie tysiecy
         # JPEG-ow i garsc RAW-ow, nie da sie przejrzec bez takiego filtra.
@@ -351,8 +365,8 @@ class MainWindow(QMainWindow):
 
         strip_header = QWidget()
         header_layout = QHBoxLayout(strip_header)
-        header_layout.setContentsMargins(8, 3, 8, 3)
-        header_layout.setSpacing(8)
+        marginesy(header_layout, 8, 3, 8, 3)
+        odstep(header_layout, 8)
         header_layout.addWidget(QLabel(t("Pokaż:")))
         header_layout.addWidget(self.format_combo)
         header_layout.addWidget(self.format_count)
@@ -414,7 +428,7 @@ class MainWindow(QMainWindow):
         self.tabs.currentChanged.connect(self._on_tab_changed)
         corner = QWidget()
         corner_layout = QHBoxLayout(corner)
-        corner_layout.setContentsMargins(0, 2, 6, 4)
+        marginesy(corner_layout, 0, 2, 6, 4)
         corner_layout.addWidget(self.export_button)
         self.tabs.setCornerWidget(corner, Qt.TopRightCorner)
 
@@ -426,12 +440,12 @@ class MainWindow(QMainWindow):
         # i pojawia sie tylko na czas pracy
         self.progress_widget = QWidget()
         progress_layout = QHBoxLayout(self.progress_widget)
-        progress_layout.setContentsMargins(0, 0, 6, 0)
-        progress_layout.setSpacing(8)
+        marginesy(progress_layout, 0, 0, 6, 0)
+        odstep(progress_layout, 8)
         self.progress_label = QLabel()
         self.progress_label.setObjectName("metaLabel")
         self.progress_bar = QProgressBar()
-        self.progress_bar.setFixedWidth(180)
+        stala(self.progress_bar, szer=180)
         self.progress_bar.setTextVisible(False)
         self.cancel_export_button = QPushButton(t("Przerwij"))
         podpowiedz(self.cancel_export_button, "okno.przerwij")
@@ -557,22 +571,44 @@ class MainWindow(QMainWindow):
         s = self.settings
         sizes = self.panel_splitter.sizes()
         total = sum(sizes)
-        centre = max(1, total - s.left_panel_width - s.right_panel_width)
-        self.panel_splitter.setSizes([s.left_panel_width, centre, s.right_panel_width])
+        # W ustawieniach rozmiary przy skali 100 % - po zmianie skali panel
+        # ma urosnac razem ze swoja zawartoscia.
+        left, right = px(s.left_panel_width), px(s.right_panel_width)
+        centre = max(1, total - left - right)
+        self.panel_splitter.setSizes([left, centre, right])
 
         sizes = self.strip_splitter.sizes()
-        strip = s.filmstrip_height + self._strip_header.sizeHint().height()
+        strip = px(s.filmstrip_height) + self._strip_header.sizeHint().height()
         self.strip_splitter.setSizes([max(1, sum(sizes) - strip), strip])
+
+    def _czcionki_menu(self) -> None:
+        # Pasek menu i menu pisza czcionka AKCJI, a akcja zapamietuje czcionke
+        # aplikacji z chwili utworzenia - ani arkusz stylow, ani nowa czcionka
+        # aplikacji jej nie zmieniaja. Akcje tworzone pozniej (np. ostatnie
+        # katalogi) dostaja juz biezaca czcionke same.
+        def przejdz(akcje, czcionka) -> None:
+            for akcja in akcje:
+                akcja.setFont(czcionka)
+                if akcja.menu() is not None:
+                    przejdz(akcja.menu().actions(), QApplication.font("QMenu"))
+
+        przejdz(self.menuBar().actions(), QApplication.font("QMenuBar"))
+
+    def _po_zmianie_skali(self, _skala: float) -> None:
+        # Szerokosci paneli sa w ustawieniach przy 100 % - nakladamy je od nowa
+        # w nowej skali, gdy granice paneli i arkusz stylow juz sie zmienily.
+        if getattr(self, "_layout_restored", False):
+            QTimer.singleShot(0, self._restore_layout)
 
     def _remember_layout(self, *_args) -> None:
         """Przepisuje rozmiary do ustawien; na dysk ida przy zamknieciu okna."""
         left, _centre, right = self.panel_splitter.sizes()
         # Zakladka Mapa chowa splitter - wtedy rozmiary sa zerowe i nic nie mowia.
         if left > 0 and right > 0:
-            self.settings.left_panel_width = left
-            self.settings.right_panel_width = right
+            self.settings.left_panel_width = round(left / skala())
+            self.settings.right_panel_width = round(right / skala())
         if self.filmstrip.height() > 0:
-            self.settings.filmstrip_height = self.filmstrip.height()
+            self.settings.filmstrip_height = round(self.filmstrip.height() / skala())
 
     def _remember_panels(self) -> None:
         """Uklad sekcji do ustawien; na dysk idzie przy zamknieciu okna."""
@@ -625,6 +661,7 @@ class MainWindow(QMainWindow):
     def _apply_settings(self) -> None:
         """Przenosi ustawienia na faktyczne zachowanie programu."""
         s = self.settings
+        zmien_skale(s.ui_scale)
 
         threads = s.thumbnail_threads or max(2, (os.cpu_count() or 4) - 1)
         self.thumb_pool.setMaxThreadCount(threads)
@@ -651,11 +688,15 @@ class MainWindow(QMainWindow):
         dialog = SettingsDialog(self.settings, self.system, self)
         if page is not None:
             dialog.show_page(page)
+        dialog.zatwierdzono.connect(self._przyjmij_ustawienia)
         if dialog.exec() != SettingsDialog.Accepted:
             return
+        self._przyjmij_ustawienia(dialog.result_settings())
 
+    def _przyjmij_ustawienia(self, nowe: Settings) -> None:
+        """Stosuje ustawienia z okna - po "Zapisz" i po "Zatwierdz zmiany"."""
         previous = self.settings
-        self.settings = dialog.result_settings()
+        self.settings = nowe
         self.settings.save()
         self._apply_settings()
 

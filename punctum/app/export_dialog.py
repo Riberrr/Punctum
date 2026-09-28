@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .skala import marginesy, minimum, odstep
 from ..core.export import (
     DEFAULT_SUBFOLDER,
     EXISTING_LABELS,
@@ -50,13 +51,13 @@ class ExportDialog(QDialog):
     def __init__(self, options: ExportOptions, sources: list[str], parent=None):
         super().__init__(parent)
         self.setWindowTitle(t("Eksportuj zdjęcia"))
-        self.setMinimumWidth(960)
+        minimum(self, szer=960)
         self.options = ExportOptions(**vars(options))
         self.sources = sources
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(10)
+        marginesy(layout, 12, 12, 12, 12)
+        odstep(layout, 10)
 
         count = len(sources)
         self.headline = QLabel(
@@ -73,7 +74,7 @@ class ExportDialog(QDialog):
         # ponad 900 px wysokosci, a przy skalowaniu 125 % ekran Full HD ma
         # ich do dyspozycji mniej - przyciski wypadalyby pod pasek zadan.
         columns = QHBoxLayout()
-        columns.setSpacing(10)
+        odstep(columns, 10)
         left = QVBoxLayout()
         left.addWidget(self._location_group())
         left.addWidget(self._naming_group())
@@ -161,7 +162,7 @@ class ExportDialog(QDialog):
 
         self.custom_row = QWidget()
         form = QFormLayout(self.custom_row)
-        form.setContentsMargins(22, 2, 0, 0)
+        marginesy(form, 22, 2, 0, 0)
         self.custom_edit = QLineEdit()
         self.custom_edit.setPlaceholderText(t("np. Wakacje"))
         self.custom_edit.textChanged.connect(self._refresh_preview)

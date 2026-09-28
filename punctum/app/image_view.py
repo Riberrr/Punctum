@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
     QGraphicsView,
 )
 
+from .skala import px, pxf
 from ..przeklad import t
 from .style import ASSETS_DIRECTORY
 
@@ -49,11 +50,11 @@ def draw_badge(painter: QPainter, text: str, x: float, top: float,
     """Podpis "Przed" / "Po" na ciemnym tle, w pikselach okna. `x` to lewa
     krawedz podpisu albo - przy `right_aligned` - prawa."""
     metrics = painter.fontMetrics()
-    width = metrics.horizontalAdvance(text) + 14.0
-    box = QRectF(x - width if right_aligned else x, top, width, metrics.height() + 6.0)
+    width = metrics.horizontalAdvance(text) + pxf(14.0)
+    box = QRectF(x - width if right_aligned else x, top, width, metrics.height() + pxf(6.0))
     painter.setPen(Qt.NoPen)
     painter.setBrush(QColor(28, 28, 32, 190))
-    painter.drawRoundedRect(box, 4.0, 4.0)
+    painter.drawRoundedRect(box, pxf(4.0), pxf(4.0))
     painter.setPen(QColor(235, 235, 240))
     painter.drawText(box, Qt.AlignCenter, text)
 
@@ -291,7 +292,7 @@ class ImageView(QGraphicsView):
         if line is None:
             return False
         x, y0, y1 = line
-        return abs(position.x() - x) <= SPLIT_GRAB_PX and y0 <= position.y() <= y1
+        return abs(position.x() - x) <= px(SPLIT_GRAB_PX) and y0 <= position.y() <= y1
 
     def _set_split_hover(self, hover: bool) -> None:
         if hover == self._split_hover:
@@ -585,7 +586,7 @@ class ImageView(QGraphicsView):
             screen = QPointF(self.mapFromScene(point))
             dx, dy = screen.x() - position.x(), screen.y() - position.y()
             distance = (dx * dx + dy * dy) ** 0.5
-            if distance <= HANDLE_GRAB_PX and distance < best_distance:
+            if distance <= px(HANDLE_GRAB_PX) and distance < best_distance:
                 best_name, best_distance = name, distance
                 if len(name) == 2:  # rog wygrywa z krawedzia
                     best_distance = -1.0
@@ -774,15 +775,15 @@ class ImageView(QGraphicsView):
         cy = (y0 + y1) / 2.0
         painter.setPen(QPen(QColor(255, 255, 255, 230), 1.5))
         painter.setBrush(QColor(28, 28, 32, 210))
-        painter.drawEllipse(QPointF(x, cy), SPLIT_KNOB_PX, SPLIT_KNOB_PX)
+        painter.drawEllipse(QPointF(x, cy), pxf(SPLIT_KNOB_PX), pxf(SPLIT_KNOB_PX))
         painter.setBrush(Qt.NoBrush)
         for side in (-1.0, 1.0):
-            tip, back = x + side * 7.0, x + side * 3.0
-            painter.drawPolyline([QPointF(back, cy - 4.0), QPointF(tip, cy), QPointF(back, cy + 4.0)])
+            tip, back = x + side * pxf(7.0), x + side * pxf(3.0)
+            painter.drawPolyline([QPointF(back, cy - pxf(4.0)), QPointF(tip, cy), QPointF(back, cy + pxf(4.0))])
 
         # podpisy u gory, po obu stronach linii
-        draw_badge(painter, t("Przed"), x - 10.0, y0 + 10.0, right_aligned=True)
-        draw_badge(painter, t("Po"), x + 10.0, y0 + 10.0)
+        draw_badge(painter, t("Przed"), x - pxf(10.0), y0 + pxf(10.0), right_aligned=True)
+        draw_badge(painter, t("Po"), x + pxf(10.0), y0 + pxf(10.0))
         painter.restore()
 
     def drawForeground(self, painter: QPainter, rect: QRectF) -> None:
@@ -790,7 +791,7 @@ class ImageView(QGraphicsView):
         if self._after_badge and not self._crop_mode:
             painter.save()
             painter.resetTransform()
-            draw_badge(painter, t("Po"), 10.0, 10.0)
+            draw_badge(painter, t("Po"), pxf(10.0), pxf(10.0))
             painter.restore()
         if not self._crop_mode or self._crop.isNull():
             return
@@ -829,7 +830,7 @@ class ImageView(QGraphicsView):
         painter.setPen(QPen(QColor(40, 40, 44, 200), pixel))
         painter.setBrush(QColor(255, 255, 255, 240))
         for name, point in self._handle_points().items():
-            size = (10.0 if len(name) == 2 else 8.0) * pixel
+            size = pxf(10.0 if len(name) == 2 else 8.0) * pixel
             painter.drawRect(QRectF(point.x() - size / 2, point.y() - size / 2, size, size))
 
         painter.restore()
@@ -951,7 +952,7 @@ class BeforeView(QGraphicsView):
     def drawForeground(self, painter: QPainter, rect: QRectF) -> None:
         painter.save()
         painter.resetTransform()
-        draw_badge(painter, t("Przed"), 10.0, 10.0)
+        draw_badge(painter, t("Przed"), pxf(10.0), pxf(10.0))
         painter.restore()
 
     def scrollContentsBy(self, dx: int, dy: int) -> None:

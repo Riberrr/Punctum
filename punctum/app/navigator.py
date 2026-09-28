@@ -7,6 +7,7 @@ from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import QFrame, QSizePolicy
 
+from .skala import minimum, px
 from .image_view import numpy_to_pixmap
 from ..przeklad import t
 
@@ -24,7 +25,7 @@ class Navigator(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setObjectName("navigator")
-        self.setMinimumHeight(120)
+        minimum(self, wys=120)
         # Wysokosc idzie za szerokoscia panelu: po poszerzeniu lewej kolumny
         # sama szerokosc zostawialaby miniature malenka w srodku szerokiego
         # pasa, a to przy duzym powiekszeniu jest jedyna mapa kadru.
@@ -38,10 +39,10 @@ class Navigator(QFrame):
         return True
 
     def heightForWidth(self, width: int) -> int:
-        return max(120, round(width * 2 / 3))
+        return max(px(120), round(width * 2 / 3))
 
     def sizeHint(self) -> QSize:
-        return QSize(260, self.heightForWidth(260))
+        return QSize(px(260), self.heightForWidth(px(260)))
 
     def set_image(self, rgb8: np.ndarray | None) -> None:
         self._pixmap = None if rgb8 is None else numpy_to_pixmap(rgb8)

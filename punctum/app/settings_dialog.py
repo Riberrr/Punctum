@@ -4,12 +4,14 @@ Strony odpowiadaja obszarom dzialania programu, nie modulom kodu - dzieki
 temu kolejne parametry beda mialy gdzie trafic bez przebudowy okna.
 
 Dialog pracuje na KOPII ustawien. Zmiany zapisuja sie dopiero po nacisnieciu
-"Zapisz", wiec "Anuluj" naprawde anuluje, a nie zostawia polowy zmian.
+"Zapisz" albo "Zatwierdz zmiany" (to drugie bez zamykania okna - np. zeby
+obejrzec nowa skale interfejsu). "Anuluj" cofa to, co zmieniono od ostatniego
+zatwierdzenia, a nie zostawia polowy zmian.
 """
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
@@ -34,6 +36,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .skala import marginesy, minimum, odstep, px, sygnaly
 from ..core.hardware import SystemInfo
 from ..core.settings import (
     ENGINE_AUTO,
@@ -90,10 +93,13 @@ _last_page = PAGE_GENERAL
 
 
 class SettingsDialog(QDialog):
+    # Ustawienia zatwierdzone bez zamykania okna - okno glowne stosuje je od razu.
+    zatwierdzono = Signal(object)
+
     def __init__(self, settings: Settings, system: SystemInfo, parent=None):
         super().__init__(parent)
         self.setWindowTitle(t("Ustawienia — Punctum"))
-        self.setMinimumWidth(680)
+        minimum(self, szer=680)
         self.settings = settings.copy()
         self.system = system
 
@@ -123,15 +129,19 @@ class SettingsDialog(QDialog):
             self.pages.addWidget(page)
             self._page_keys.append(key)
         self.categories.currentRowChanged.connect(self._on_category_changed)
-        # Lista tak waska, jak najdluzsza nazwa kategorii w biezacym jezyku.
-        width = max(self.categories.sizeHintForColumn(0), 80)
-        self.categories.setFixedWidth(width + 28)
+        self._dopasuj_kategorie()
+        sygnaly.zmieniona.connect(self._po_zmianie_skali)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.Save | QDialogButtonBox.Cancel | QDialogButtonBox.RestoreDefaults
         )
         buttons.button(QDialogButtonBox.Save).setText(t("Zapisz"))
         buttons.button(QDialogButtonBox.Cancel).setText(t("Anuluj"))
+        # Rola "akcja": na Windowsie przycisk staje zaraz za "Zapisz" i nie
+        # zamyka okna (nie wysyla accepted jak przyciski roli "akceptuj").
+        self.apply_button = buttons.addButton(t("Zatwierdź zmiany"), QDialogButtonBox.ActionRole)
+        podpowiedz(self.apply_button, "ustawienia.zatwierdz")
+        self.apply_button.clicked.connect(self._on_apply)
         buttons.button(QDialogButtonBox.RestoreDefaults).setText(t("Przywróć domyślne"))
         podpowiedz(buttons.button(QDialogButtonBox.RestoreDefaults), "ustawienia.domyslne")
         buttons.accepted.connect(self._on_accept)
@@ -139,18 +149,27 @@ class SettingsDialog(QDialog):
         buttons.button(QDialogButtonBox.RestoreDefaults).clicked.connect(self._restore_defaults)
 
         body = QHBoxLayout()
-        body.setSpacing(14)
+        odstep(body, 14)
         body.addWidget(self.categories)
         body.addWidget(self.pages, 1)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 12, 12, 12)
-        layout.setSpacing(10)
+        marginesy(layout, 12, 12, 12, 12)
+        odstep(layout, 10)
         layout.addLayout(body, 1)
         layout.addWidget(buttons)
 
         self._load_into_widgets()
         self.show_page(_last_page)
+
+    def _dopasuj_kategorie(self) -> None:
+        # Lista tak waska, jak najdluzsza nazwa kategorii w biezacym jezyku.
+        width = max(self.categories.sizeHintForColumn(0), px(80))
+        self.categories.setFixedWidth(width + px(28))
+
+    def _po_zmianie_skali(self, _skala: float) -> None:
+        # szerokosc nazw kategorii liczy sie z czcionki z arkusza stylow
+        QTimer.singleShot(0, self._dopasuj_kategorie)
 
     # ------------------------------------------------------- strony
 
@@ -172,7 +191,7 @@ class SettingsDialog(QDialog):
     def _general_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setSpacing(10)
+        odstep(layout, 10)
 
         language = QGroupBox(t("Język"))
         language_layout = QVBoxLayout(language)
@@ -204,7 +223,7 @@ class SettingsDialog(QDialog):
     def _performance_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setSpacing(10)
+        odstep(layout, 10)
 
         # --- wykryty sprzet ---------------------------------------------
         hardware = QGroupBox(t("Wykryty sprzęt"))
@@ -237,7 +256,7 @@ class SettingsDialog(QDialog):
             podpowiedz(button, f"ustawienia.silnik_{key}")
             engine_layout.addWidget(button)
             hint = _hint(t(ENGINE_DESCRIPTIONS[key]))
-            hint.setContentsMargins(22, 0, 0, 6)
+            marginesy(hint, 22, 0, 0, 6)
             engine_layout.addWidget(hint)
 
         if not self.system.gpu.available:
@@ -277,7 +296,7 @@ class SettingsDialog(QDialog):
     def _preview_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setSpacing(10)
+        odstep(layout, 10)
 
         timing = QGroupBox(t("Opóźnienia"))
         form = QFormLayout(timing)
@@ -332,7 +351,7 @@ class SettingsDialog(QDialog):
     def _interface_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setSpacing(10)
+        odstep(layout, 10)
 
         scale = QGroupBox(t("Skala interfejsu"))
         scale_form = QFormLayout(scale)
@@ -343,7 +362,7 @@ class SettingsDialog(QDialog):
         scale_form.addRow(t("Skala:"), self.scale_box)
         podpowiedz_wiersza(scale_form, self.scale_box, "ustawienia.skala")
         scale_form.addRow("", _hint(
-            t("Nowa skala obowiązuje od ponownego uruchomienia programu. "
+            t("Skala zmienia się po kliknięciu „Zatwierdź zmiany” albo „Zapisz”. "
             "Podgląd przy 100 % dalej pokazuje piksel zdjęcia na pikselu ekranu.")
         ))
         layout.addWidget(scale)
@@ -398,7 +417,7 @@ class SettingsDialog(QDialog):
     def _export_page(self) -> QWidget:
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setSpacing(10)
+        odstep(layout, 10)
 
         output = QGroupBox(t("Plik wynikowy"))
         form = QFormLayout(output)
@@ -469,7 +488,7 @@ class SettingsDialog(QDialog):
 
         page = QWidget()
         layout = QVBoxLayout(page)
-        layout.setSpacing(8)
+        odstep(layout, 8)
 
         import os
 
@@ -482,13 +501,13 @@ class SettingsDialog(QDialog):
         title = QLabel("Punctum")
         title.setObjectName("cameraLabel")
         naglowek = QVBoxLayout()
-        naglowek.setSpacing(2)
+        odstep(naglowek, 2)
         naglowek.addStretch(1)
         naglowek.addWidget(title)
         naglowek.addWidget(_hint(t("Wersja {wersja} — edytor zdjęć RAW i JPEG", wersja=__version__)))
         naglowek.addStretch(1)
         wiersz = QHBoxLayout()
-        wiersz.setSpacing(12)
+        odstep(wiersz, 12)
         wiersz.addWidget(logo)
         wiersz.addLayout(naglowek, 1)
         layout.addLayout(wiersz)
@@ -613,6 +632,10 @@ class SettingsDialog(QDialog):
         self.settings = Settings()
         self.settings.last_folder = keep_last
         self._load_into_widgets()
+
+    def _on_apply(self) -> None:
+        self.settings = self._collect_from_widgets()
+        self.zatwierdzono.emit(self.settings.copy())
 
     def _on_accept(self) -> None:
         self.settings = self._collect_from_widgets()

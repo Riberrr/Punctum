@@ -47,6 +47,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .skala import ikony, marginesy, odstep, px, rozmiar, skala, stala, zarejestruj
 from ..core.slad import wczytaj_gpx, wspolrzedne_z_tekstu
 from .exif_panel import ExifPanel
 from .map_page import strona
@@ -95,12 +96,12 @@ class PhotoRowDelegate(QStyledItemDelegate):
 
     def sizeHint(self, option, index) -> QSize:
         if index.data(DAY_ROLE) is not None:
-            return QSize(0, HEADER_HEIGHT)
-        return QSize(0, THUMB_SIZE.height() + 8)
+            return QSize(0, px(HEADER_HEIGHT))
+        return QSize(0, px(THUMB_SIZE.height() + 8))
 
     def _paint_header(self, painter: QPainter, option, index) -> None:
         """Naglowek dnia: data i liczba zdjec, z kreska pod spodem."""
-        rect = QRectF(option.rect).adjusted(self.PADDING, 0, -self.PADDING, 0)
+        rect = QRectF(option.rect).adjusted(px(self.PADDING), 0, -px(self.PADDING), 0)
         font = QFont(option.font)
         font.setBold(True)
         painter.setFont(font)
@@ -122,19 +123,19 @@ class PhotoRowDelegate(QStyledItemDelegate):
             painter.setBrush(QColor("#34343c"))
             painter.drawRoundedRect(QRectF(rect).adjusted(2, 1, -2, -1), 4, 4)
 
-        right = rect.right() - self.PADDING
+        right = rect.right() - px(self.PADDING)
         icon = index.data(Qt.DecorationRole)
         if isinstance(icon, QIcon) and not icon.isNull():
-            pixmap = icon.pixmap(THUMB_SIZE)
+            pixmap = icon.pixmap(rozmiar(THUMB_SIZE.width(), THUMB_SIZE.height()))
             ratio = pixmap.devicePixelRatio() or 1.0
             width, height = pixmap.width() / ratio, pixmap.height() / ratio
             target = QRectF(
                 right - width, rect.center().y() - height / 2.0, width, height
             )
             painter.drawPixmap(target, pixmap, QRectF(pixmap.rect()))
-            right -= width + self.GAP
+            right -= width + px(self.GAP)
 
-        marks = QRectF(rect.left() + self.PADDING, rect.top(), MARK_COLUMN, rect.height())
+        marks = QRectF(rect.left() + px(self.PADDING), rect.top(), px(MARK_COLUMN), rect.height())
         paint_marks(painter, marks, bool(index.data(EDIT_ROLE)), bool(index.data(GEO_ROLE)))
 
         text_left = marks.right()
@@ -221,11 +222,11 @@ class MapView(QWidget):
 
         self.list = QListWidget()
         self.list.setSelectionMode(QListWidget.ExtendedSelection)
-        self.list.setFixedWidth(300)
+        stala(self.list, szer=300)
         # Miniatury biora sie z paska zdjec - te same obrazki sa juz
         # zdekodowane, wiec lista nic nie dolicza.
-        self.list.setIconSize(THUMB_SIZE)
-        self.list.setSpacing(1)
+        ikony(self.list, THUMB_SIZE.width(), THUMB_SIZE.height())
+        odstep(self.list, 1)
         # Naglowki dni sa nizsze od wierszy zdjec - rowne wysokosci odpadaja.
         self.list.setUniformItemSizes(False)
         self.list.setItemDelegate(PhotoRowDelegate(self.list))
@@ -332,6 +333,8 @@ class MapView(QWidget):
         self.place_label.hide()
 
         self.web = QWebEngineView()
+        # Strona mapy ma wlasny arkusz w pikselach - rosnie przez powiekszenie strony.
+        zarejestruj(self.web, lambda w: w.setZoomFactor(skala()))
         # Strona zaczyna zycie biala, a okno jest ciemne - bez tego wejscie
         # na zakladke blyska bielą, zanim doleci pierwszy kafelek.
         self.web.page().setBackgroundColor(QColor("#1e1e20"))
@@ -350,16 +353,16 @@ class MapView(QWidget):
 
         buttons = QHBoxLayout()
         buttons.setContentsMargins(0, 0, 0, 0)
-        buttons.setSpacing(4)
+        odstep(buttons, 4)
         buttons.addWidget(self.tag_button)
         buttons.addWidget(self.clear_button)
 
         side = QVBoxLayout()
-        side.setContentsMargins(8, 8, 4, 8)
-        side.setSpacing(6)
+        marginesy(side, 8, 8, 4, 8)
+        odstep(side, 6)
         header = QHBoxLayout()
         header.setContentsMargins(0, 0, 0, 0)
-        header.setSpacing(2)
+        odstep(header, 2)
         header.addWidget(QLabel(t("Zdjęcia")), 1)
         for button in (self.select_all_button, self.select_located_button,
                        self.select_missing_button):
@@ -369,7 +372,7 @@ class MapView(QWidget):
 
         history = QHBoxLayout()
         history.setContentsMargins(0, 0, 0, 0)
-        history.setSpacing(4)
+        odstep(history, 4)
         history.addWidget(self.undo_button)
         history.addWidget(self.redo_button)
 
@@ -377,7 +380,7 @@ class MapView(QWidget):
         side.addWidget(self.list, 1)
         view_row = QHBoxLayout()
         view_row.setContentsMargins(0, 0, 0, 0)
-        view_row.setSpacing(4)
+        odstep(view_row, 4)
         view_row.addWidget(self.fit_button)
         view_row.addWidget(self.track_button)
 
@@ -398,9 +401,9 @@ class MapView(QWidget):
         self.panel_host = QWidget()
         self.panel_host.setObjectName("sidePanel")
         self.panel_host.setAttribute(Qt.WA_StyledBackground, True)
-        self.panel_host.setFixedWidth(348)
+        stala(self.panel_host, szer=348)
         host_layout = QVBoxLayout(self.panel_host)
-        host_layout.setContentsMargins(10, 10, 10, 10)
+        marginesy(host_layout, 10, 10, 10, 10)
         host_layout.setSpacing(0)
         host_layout.addWidget(self.exif_panel)
 
@@ -674,7 +677,7 @@ class MapView(QWidget):
     def _maly_przycisk(self, nazwa: str, tip: str) -> QToolButton:
         button = QToolButton()
         button.setIcon(ikona(nazwa))
-        button.setIconSize(QSize(16, 16))
+        ikony(button, 16)
         button.setAutoRaise(True)
         podpowiedz(button, tip)
         return button
