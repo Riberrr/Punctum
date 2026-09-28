@@ -166,5 +166,19 @@
   "presety.grupa": {"tytul": "Slider group", "opis": "Checked groups go into the preset. White balance, sharpness and noise depend on the particular photo, so they are left out by default."},
   "exif.rysik": {"tytul": "Edit field", "opis": "Opens the field for editing. Enter saves, Esc cancels, Tab moves to the next field. Double-clicking the row does the same."},
   "ustawienia.skala": {"tytul": "Interface scale", "opis": "Enlarges or shrinks the labels, buttons and panels of the whole program, on top of the system scale. The photo at 100 % stays at 1:1.", "uwaga": "The change takes effect immediately after clicking “Apply changes” or “Save”."},
-  "ustawienia.zatwierdz": {"tytul": "Apply changes", "opis": "Applies the settings right away without closing the window, so you can see the effect, e.g. a new interface scale. The settings are saved as well."}
+  "ustawienia.zatwierdz": {"tytul": "Apply changes", "opis": "Applies the settings right away without closing the window, so you can see the effect, e.g. a new interface scale. The settings are saved as well."},
+  "znak.rodzaj_tekst": {"tytul": "Text watermark", "opis": "A line of text, e.g. your copyright. Its size follows the width of the photo."},
+  "znak.rodzaj_obraz": {"tytul": "Image watermark", "opis": "Your own PNG file, e.g. a logo. Transparent areas of the file stay transparent on the photo."},
+  "znak.tekst": {"tytul": "Watermark text", "opis": "Empty field = the copyright from Settings ▸ Export, or © and the author without it."},
+  "znak.kolor": {"tytul": "Text colour", "opis": "White suits most photos; black suits bright ones, e.g. snow or sky."},
+  "znak.obraz": {"tytul": "Watermark file", "opis": "A PNG file with transparency. It stays where it is on disk - the program only remembers the path."},
+  "znak.wybierz_obraz": {"tytul": "Choose image", "opis": "Opens a dialog to pick a PNG file."},
+  "znak.pozycja": {"tytul": "Watermark position", "opis": "A corner, the middle of an edge or the centre of the photo. The distance from the edge is set by Margin."},
+  "znak.kafelki": {"tytul": "Watermark across the photo", "opis": "Repeats the watermark diagonally over the whole frame - hard to crop out, but more distracting. Lower the opacity."},
+  "znak.rozmiar": {"tytul": "Watermark size", "opis": "Width of the watermark as a percentage of the photo's longer side - it looks the same at any export resolution."},
+  "znak.krycie": {"tytul": "Opacity", "opis": "100 % covers the photo completely, lower values let it show through. A discreet signature: 40-60 %."},
+  "znak.margines": {"tytul": "Margin", "opis": "Distance from the edge as a percentage of the photo's shorter side."},
+  "znak.podglad": {"tytul": "Watermark preview", "opis": "The current photo with the watermark, computed the same way as on export, just smaller."},
+  "eksport.znak": {"tytul": "Watermark", "opis": "Puts the watermark on every file of this export. Source photos and their edits stay without it."},
+  "eksport.wzor_znaku": {"tytul": "Watermark design", "opis": "Text or image, position, size and opacity. The design is remembered for later exports; the same one is in Settings ▸ Export."}
 }

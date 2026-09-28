@@ -10,6 +10,7 @@ from PIL import Image
 
 from .exif_edit import exif_bytes, layer_metadata, source_metadata
 from .metadata import PhotoMetadata
+from .znak_wodny import ZnakWodny, naloz
 from ..przeklad import N_, t
 
 # co zrobic, gdy plik o danej nazwie juz istnieje
@@ -41,6 +42,7 @@ def save_image(
     meta: PhotoMetadata | None = None,
     location: tuple[float, float] | None = None,
     metadata: dict[str, str] | None = None,
+    znak: ZnakWodny | None = None,
 ) -> str:
     """Zapisuje obraz RGB uint8 jako JPEG, PNG lub TIFF (wg rozszerzenia)."""
     img = Image.fromarray(rgb8, mode="RGB")
@@ -52,6 +54,9 @@ def save_image(
             img = img.resize(
                 (max(1, round(w * scale)), max(1, round(h * scale))), Image.LANCZOS
             )
+    # Znak wodny po zmniejszeniu: rozmiar w % boku ma dotyczyc tego, co
+    # dostaje odbiorca, a cienkie litery nie przechodza przez przeskalowanie.
+    img = naloz(img, znak)
 
     os.makedirs(os.path.dirname(os.path.abspath(out_path)) or ".", exist_ok=True)
     ext = os.path.splitext(out_path)[1].lower()
@@ -140,6 +145,25 @@ class ExportOptions:
     subject: str = ""
     comment: str = ""
 
+    # Znak wodny: wzor pamietany w ustawieniach, wlacznik w oknie eksportu.
+    add_watermark: bool = False
+    znak: ZnakWodny = field(default_factory=ZnakWodny)
+
+    def znak_do_eksportu(self) -> ZnakWodny | None:
+        """Znak gotowy do nalozenia albo None, gdy wylaczony lub pusty.
+
+        Pusty tekst zastepujemy prawami autorskimi, a bez nich "(c) autor" -
+        wartosciami z ustawien, niezaleznie od tego, czy trafiaja do metadanych.
+        """
+        if not self.add_watermark:
+            return None
+        znak = ZnakWodny(**vars(self.znak))
+        if znak.rodzaj == "tekst" and not znak.tekst.strip():
+            znak.tekst = domyslny_tekst_znaku(self.copyright, self.author)
+            if not znak.tekst:
+                return None
+        return znak
+
     def metadata_overrides(self) -> dict[str, str]:
         """Pola z okna eksportu pod nazwami EXIF; puste i odznaczone pomijamy."""
         values: dict[str, str] = {}
@@ -169,6 +193,15 @@ class ExportOptions:
 
     def preview_name(self, source_path: str = "P1170926.RW2") -> str:
         return self.file_name(source_path, 0)
+
+
+def domyslny_tekst_znaku(copyright: str, author: str) -> str:
+    """Tekst znaku, gdy uzytkownik nie wpisal wlasnego."""
+    if copyright.strip():
+        return copyright.strip()
+    if author.strip():
+        return f"© {author.strip()}"
+    return ""
 
 
 def export_metadata(source: str, params, options: ExportOptions | None = None

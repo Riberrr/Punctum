@@ -24,9 +24,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .skala import marginesy, minimum, odstep
+from .skala import marginesy, minimum, odstep, px, stala
+from .znak_wodny_panel import OknoZnaku, pixmapa_podgladu
+from ..core.znak_wodny import ZnakWodny
 from ..core.export import (
     DEFAULT_SUBFOLDER,
+    domyslny_tekst_znaku,
     EXISTING_LABELS,
     FORMAT_LABELS,
     NAMING_CUSTOM,
@@ -36,6 +39,10 @@ from ..core.export import (
 from ..core.settings import NOISE_QUALITY_LABELS
 from .podpowiedzi import podpowiedz, podpowiedz_wiersza
 from ..przeklad import mnoga, t
+
+
+# Miniatura ze znakiem w oknie eksportu (px przy skali 100 %).
+PODGLAD_EKSPORTU = (180, 120)
 
 
 def _hint(text: str) -> QLabel:
@@ -48,8 +55,10 @@ def _hint(text: str) -> QLabel:
 class ExportDialog(QDialog):
     """Pracuje na kopii nastaw - "Anuluj" nie zostawia polowy zmian."""
 
-    def __init__(self, options: ExportOptions, sources: list[str], parent=None):
+    def __init__(self, options: ExportOptions, sources: list[str], parent=None,
+                 probka=None):
         super().__init__(parent)
+        self.probka = probka
         self.setWindowTitle(t("Eksportuj zdjęcia"))
         minimum(self, szer=960)
         self.options = ExportOptions(**vars(options))
@@ -78,6 +87,7 @@ class ExportDialog(QDialog):
         left = QVBoxLayout()
         left.addWidget(self._location_group())
         left.addWidget(self._naming_group())
+        left.addWidget(self._watermark_group())
         left.addStretch(1)
         right = QVBoxLayout()
         right.addWidget(self._format_group())
@@ -99,6 +109,9 @@ class ExportDialog(QDialog):
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
 
+        # Pusty tekst znaku bierze prawa autorskie albo autora z tego okna.
+        self.author_edit.textChanged.connect(self._refresh_watermark)
+        self.copyright_edit.textChanged.connect(self._refresh_watermark)
         self._load_into_widgets()
         self._refresh_preview()
 
@@ -214,6 +227,27 @@ class ExportDialog(QDialog):
         podpowiedz_wiersza(form, self.noise_box, "eksport.odszumianie")
         return group
 
+    def _watermark_group(self) -> QGroupBox:
+        group = QGroupBox(t("Znak wodny"))
+        layout = QHBoxLayout(group)
+        odstep(layout, 10)
+        column = QVBoxLayout()
+        self.watermark_box = QCheckBox(t("Dodaj znak wodny"))
+        self.watermark_box.toggled.connect(self._refresh_watermark)
+        podpowiedz(self.watermark_box, "eksport.znak")
+        column.addWidget(self.watermark_box)
+        self.watermark_button = QPushButton(t("Wzór znaku…"))
+        self.watermark_button.clicked.connect(self._edit_watermark)
+        podpowiedz(self.watermark_button, "eksport.wzor_znaku")
+        column.addWidget(self.watermark_button)
+        column.addStretch(1)
+        layout.addLayout(column, 1)
+        self.watermark_preview = QLabel()
+        stala(self.watermark_preview, *PODGLAD_EKSPORTU)
+        podpowiedz(self.watermark_preview, "znak.podglad")
+        layout.addWidget(self.watermark_preview)
+        return group
+
     def _metadata_group(self) -> QGroupBox:
         group = QGroupBox(t("Metadane"))
         form = QFormLayout(group)
@@ -285,7 +319,9 @@ class ExportDialog(QDialog):
         self.keywords_edit.setText(o.keywords)
         self.subject_edit.setText(o.subject)
         self.comment_edit.setText(o.comment)
+        self.watermark_box.setChecked(o.add_watermark)
         self._on_format_changed()
+        self._refresh_watermark()
 
     def collect(self) -> ExportOptions:
         o = ExportOptions(**vars(self.options))
@@ -308,6 +344,7 @@ class ExportDialog(QDialog):
         o.keywords = self.keywords_edit.text().strip()
         o.subject = self.subject_edit.text().strip()
         o.comment = self.comment_edit.text().strip()
+        o.add_watermark = self.watermark_box.isChecked()
         return o
 
     # ---------------------------------------------------------- reakcje
@@ -325,6 +362,31 @@ class ExportDialog(QDialog):
             # Zaznaczenie zwykle znaczy "chce to zmienic" - kursor od razu w polu.
             edit.setFocus()
             edit.selectAll()
+
+    def _watermark_text(self) -> str:
+        return domyslny_tekst_znaku(self.copyright_edit.text(), self.author_edit.text())
+
+    def _edit_watermark(self) -> None:
+        okno = OknoZnaku(self.options.znak, self.probka, self._watermark_text(), self)
+        if okno.exec() == QDialog.Accepted:
+            self.options.znak = okno.edytor.znak()
+            # Kto ustawil wzor, ten chce go uzyc - oszczedzamy mu drugi klik.
+            self.watermark_box.setChecked(True)
+            self._refresh_watermark()
+
+    def _refresh_watermark(self, *_) -> None:
+        """Miniatura pierwszego zdjecia ze znakiem - albo bez, gdy wylaczony."""
+        on = self.watermark_box.isChecked()
+        znak = None
+        if on:
+            znak = ZnakWodny(**vars(self.options.znak))
+            if znak.rodzaj == "tekst" and not znak.tekst:
+                znak.tekst = self._watermark_text()
+        self.watermark_preview.setPixmap(pixmapa_podgladu(
+            znak, self.probka, px(PODGLAD_EKSPORTU[0]), px(PODGLAD_EKSPORTU[1]),
+            self.devicePixelRatioF(),
+        ))
+        self.watermark_preview.setEnabled(on)
 
     def _on_subfolder_toggled(self, checked: bool) -> None:
         self.subfolder_edit.setEnabled(checked)

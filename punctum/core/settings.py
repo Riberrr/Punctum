@@ -112,6 +112,10 @@ class Settings:
     export_copyright: str = ""
     export_add_author: bool = False
     export_add_copyright: bool = False
+    # Znak wodny (punkt 11): wzor jako slownik z ZnakWodny.do_dict - modul
+    # ustawien nie importuje Pillow przy starcie - i czy byl wlaczony.
+    export_add_watermark: bool = False
+    export_watermark: dict = field(default_factory=dict)
 
     # --- ogolne ---------------------------------------------------------
     # Kod jezyka interfejsu (pl, en...). Pusty = jeszcze nie wybrany: przy
@@ -178,6 +182,10 @@ class Settings:
         clean.export_copyright = str(clean.export_copyright or "").strip()
         clean.export_add_author = bool(clean.export_add_author)
         clean.export_add_copyright = bool(clean.export_add_copyright)
+        clean.export_add_watermark = bool(clean.export_add_watermark)
+        from .znak_wodny import ZnakWodny
+
+        clean.export_watermark = ZnakWodny.z_dict(clean.export_watermark).do_dict()
         if clean.format_filter not in ("all", "raw", "jpeg"):
             clean.format_filter = "all"
         clean.recent_folders_limit = max(0, min(50, int(clean.recent_folders_limit)))

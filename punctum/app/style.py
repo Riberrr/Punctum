@@ -109,6 +109,16 @@ QMainWindow::separator { background: #131315; width: 1px; height: 1px; }
 #panelLock:hover { background: #2b2b30; border-color: #3c3c42; }
 #panelLock:checked { background: #34304f; border-color: #6c63ff; }
 
+/* Siatka polozenia znaku wodnego: wybrane pole musi byc widac od razu,
+   bo to jedyny slad, gdzie znak wyladuje. */
+#pozycjaZnaku {
+    background: #26262b; border: 1px solid #3c3c42; border-radius: 3px;
+}
+#pozycjaZnaku:hover { background: #2f2f35; border-color: #55555e; }
+#pozycjaZnaku:checked { background: #6c63ff; border-color: #8a83ff; }
+#pozycjaZnaku:disabled { background: transparent; border-color: #2e2e33; }
+#pozycjaZnaku:checked:disabled { background: #34304f; border-color: #34304f; }
+
 QSlider::groove:horizontal {
     height: 3px; background: #3a3a40; border-radius: 1px;
 }

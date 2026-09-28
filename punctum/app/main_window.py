@@ -685,7 +685,7 @@ class MainWindow(QMainWindow):
             self.gpu_source_ready = self.gpu.set_source(self.full_raw.camera_linear)
 
     def open_settings(self, page: str | None = None) -> None:
-        dialog = SettingsDialog(self.settings, self.system, self)
+        dialog = SettingsDialog(self.settings, self.system, self, probka=self.current_image)
         if page is not None:
             dialog.show_page(page)
         dialog.zatwierdzono.connect(self._przyjmij_ustawienia)
@@ -1768,6 +1768,8 @@ class MainWindow(QMainWindow):
     # ---------------------------------------------------------------- eksport
 
     def _export_options(self) -> ExportOptions:
+        from ..core.znak_wodny import ZnakWodny
+
         s = self.settings
         return ExportOptions(
             folder=s.export_folder,
@@ -1786,6 +1788,8 @@ class MainWindow(QMainWindow):
             author=s.export_author,
             add_copyright=s.export_add_copyright,
             copyright=s.export_copyright,
+            add_watermark=s.export_add_watermark,
+            znak=ZnakWodny.z_dict(s.export_watermark),
             # Slowa kluczowe, temat i komentarz zaczynaja puste: tag jednej
             # serii nie ma prawa przez nieuwage trafic do nastepnej.
         )
@@ -1803,6 +1807,10 @@ class MainWindow(QMainWindow):
         # Same pola wyboru - wartosci autora zmienia sie w ustawieniach
         # (patrz komentarz przy Settings.export_author).
         (s.export_add_author, s.export_add_copyright) = (o.add_author, o.add_copyright)
+        # Wzor znaku zmieniony z okna eksportu zostaje - w przeciwienstwie do
+        # autora to nie jest jednorazowa poprawka, tylko ustawianie wygladu.
+        s.export_add_watermark = o.add_watermark
+        s.export_watermark = o.znak.do_dict()
         s.save()
 
     def _ask_about_conflicts(self, plan) -> str | None:
@@ -1847,7 +1855,7 @@ class MainWindow(QMainWindow):
         sources = self.filmstrip.selected_paths() or [self.current_path]
         edited = sum(1 for path in sources if self._params_for(path) is not None)
 
-        dialog = ExportDialog(self._export_options(), sources, self)
+        dialog = ExportDialog(self._export_options(), sources, self, probka=self.current_image)
         dialog.set_edited_count(edited)
         if dialog.exec() != ExportDialog.Accepted:
             return

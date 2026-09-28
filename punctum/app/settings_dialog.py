@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QPushButton,
     QRadioButton,
+    QScrollArea,
     QSpinBox,
     QStackedWidget,
     QVBoxLayout,
@@ -92,12 +93,30 @@ PAGES = (
 _last_page = PAGE_GENERAL
 
 
+class _PrzewijanaWPionie(QScrollArea):
+    """Przewija tylko w pionie; szerokosc bierze z tresci.
+
+    Zwykly QScrollArea podaje minimalna szerokosc niezalezna od tresci, wiec
+    przy wylaczonym przewijaniu poziomym okno ucinalo prawy brzeg strony.
+    """
+
+    def minimumSizeHint(self):
+        hint = super().minimumSizeHint()
+        tresc = self.widget()
+        if tresc is not None:
+            hint.setWidth(tresc.minimumSizeHint().width()
+                          + self.verticalScrollBar().sizeHint().width())
+        return hint
+
+
 class SettingsDialog(QDialog):
     # Ustawienia zatwierdzone bez zamykania okna - okno glowne stosuje je od razu.
     zatwierdzono = Signal(object)
 
-    def __init__(self, settings: Settings, system: SystemInfo, parent=None):
+    def __init__(self, settings: Settings, system: SystemInfo, parent=None, probka=None):
         super().__init__(parent)
+        # Biezace zdjecie jako tlo podgladu znaku wodnego (albo None).
+        self._probka = probka
         self.setWindowTitle(t("Ustawienia — Punctum"))
         minimum(self, szer=680)
         self.settings = settings.copy()
@@ -415,8 +434,19 @@ class SettingsDialog(QDialog):
         return page
 
     def _export_page(self) -> QWidget:
+        # Po dolozeniu znaku wodnego strona jest wyzsza niz pozostale - okno
+        # ustawien urosloby do ~1000 px i nie zmiescilo sie na ekranie laptopa.
+        # Przewija sie wiec tylko ta strona, a okno zostaje wysokosci reszty.
         page = QWidget()
-        layout = QVBoxLayout(page)
+        page_layout = QVBoxLayout(page)
+        scroll = _PrzewijanaWPionie()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        page_layout.addWidget(scroll)
+        inner = QWidget()
+        layout = QVBoxLayout(inner)
+        marginesy(layout, 0, 0, 10, 0)
         odstep(layout, 10)
 
         output = QGroupBox(t("Plik wynikowy"))
@@ -480,8 +510,31 @@ class SettingsDialog(QDialog):
         ))
         layout.addWidget(authorship)
 
+        from ..core.znak_wodny import ZnakWodny
+        from .znak_wodny_panel import EdytorZnaku
+
+        watermark = QGroupBox(t("Znak wodny"))
+        watermark_layout = QVBoxLayout(watermark)
+        self.znak_edytor = EdytorZnaku(ZnakWodny(), self._probka)
+        watermark_layout.addWidget(self.znak_edytor)
+        watermark_layout.addWidget(_hint(
+            t("Pusty tekst = prawa autorskie z pola wyżej, a bez nich © i autor. "
+              "Znak włączasz w oknie eksportu; trafia tylko do plików wynikowych.")
+        ))
+        layout.addWidget(watermark)
+        # Podpowiedz pustego pola i podglad nadazaja za autorem wpisywanym wyzej.
+        self.author_edit.textChanged.connect(self._odswiez_tekst_znaku)
+        self.copyright_edit.textChanged.connect(self._odswiez_tekst_znaku)
+
         layout.addStretch(1)
+        scroll.setWidget(inner)
         return page
+
+    def _odswiez_tekst_znaku(self) -> None:
+        from ..core.export import domyslny_tekst_znaku
+
+        self.znak_edytor.ustaw_domyslny_tekst(domyslny_tekst_znaku(
+            self.copyright_edit.text(), self.author_edit.text()))
 
     def _about_page(self) -> QWidget:
         from .. import __version__
@@ -584,6 +637,10 @@ class SettingsDialog(QDialog):
         self.folder_edit.setText(s.export_folder)
         self.author_edit.setText(s.export_author)
         self.copyright_edit.setText(s.export_copyright)
+        from ..core.znak_wodny import ZnakWodny
+
+        self.znak_edytor.ustaw(ZnakWodny.z_dict(s.export_watermark))
+        self._odswiez_tekst_znaku()
         # Pusty w ustawieniach = jezyk dobrany przy starcie; pokazujemy ten, ktory dziala.
         self.language_box.setCurrentIndex(
             max(0, self.language_box.findData(s.language or jezyk())))
@@ -613,6 +670,7 @@ class SettingsDialog(QDialog):
         s.export_folder = self.folder_edit.text().strip()
         s.export_author = self.author_edit.text().strip()
         s.export_copyright = self.copyright_edit.text().strip()
+        s.export_watermark = self.znak_edytor.znak().do_dict()
         s.language = self.language_box.currentData()
         s.reopen_last_folder = self.reopen_box.isChecked()
         s.store_edits = self.store_edits_box.isChecked()

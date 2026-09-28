@@ -165,5 +165,19 @@
   "presety.grupa": {"tytul": "Grupa suwaków", "opis": "Zaznaczone grupy trafią do presetu. Balans bieli, ostrość i szum zależą od konkretnego zdjęcia, dlatego domyślnie są pominięte."},
   "exif.rysik": {"tytul": "Edytuj pole", "opis": "Otwiera pole do edycji. Enter zapisuje, Esc anuluje, Tab przechodzi do następnego pola. Dwuklik na wierszu działa tak samo."},
   "ustawienia.skala": {"tytul": "Skala interfejsu", "opis": "Powiększa albo zmniejsza napisy, przyciski i panele całego programu, ponad skalę ustawioną w systemie. Zdjęcie przy 100 % zostaje w skali 1:1.", "uwaga": "Zmiana działa od razu po kliknięciu „Zatwierdź zmiany” albo „Zapisz”."},
-  "ustawienia.zatwierdz": {"tytul": "Zatwierdź zmiany", "opis": "Stosuje ustawienia od razu, bez zamykania okna - można obejrzeć skutek, np. nową skalę interfejsu. Ustawienia są przy tym zapisywane."}
+  "ustawienia.zatwierdz": {"tytul": "Zatwierdź zmiany", "opis": "Stosuje ustawienia od razu, bez zamykania okna - można obejrzeć skutek, np. nową skalę interfejsu. Ustawienia są przy tym zapisywane."},
+  "znak.rodzaj_tekst": {"tytul": "Znak z tekstu", "opis": "Napis, np. prawa autorskie. Rozmiar dopasowuje się do szerokości zdjęcia."},
+  "znak.rodzaj_obraz": {"tytul": "Znak z obrazu", "opis": "Własny plik PNG, np. logo. Przezroczyste miejsca pliku zostają przezroczyste na zdjęciu."},
+  "znak.tekst": {"tytul": "Tekst znaku", "opis": "Puste pole = prawa autorskie z Ustawień ▸ Eksport, a bez nich © i autor."},
+  "znak.kolor": {"tytul": "Kolor napisu", "opis": "Biały pasuje do większości zdjęć; czarny do jasnych, np. śniegu albo nieba."},
+  "znak.obraz": {"tytul": "Plik znaku", "opis": "Plik PNG z przezroczystością. Zostaje na dysku tam, gdzie jest - program pamięta tylko ścieżkę."},
+  "znak.wybierz_obraz": {"tytul": "Wybierz obraz", "opis": "Otwiera okno wyboru pliku PNG."},
+  "znak.pozycja": {"tytul": "Położenie znaku", "opis": "Róg, środek krawędzi albo środek zdjęcia. Odstęp od krawędzi ustawia Margines."},
+  "znak.kafelki": {"tytul": "Znak na całym zdjęciu", "opis": "Powtarza znak ukośnie po całym kadrze - trudno go wyciąć, ale bardziej przeszkadza w oglądaniu. Zmniejsz krycie."},
+  "znak.rozmiar": {"tytul": "Rozmiar znaku", "opis": "Szerokość znaku w procentach dłuższego boku zdjęcia - wygląda tak samo przy każdej rozdzielczości eksportu."},
+  "znak.krycie": {"tytul": "Krycie", "opis": "100 % zakrywa zdjęcie całkowicie, mniejsze wartości prześwitują. Dyskretny podpis: 40-60 %."},
+  "znak.margines": {"tytul": "Margines", "opis": "Odstęp znaku od krawędzi w procentach krótszego boku zdjęcia."},
+  "znak.podglad": {"tytul": "Podgląd znaku", "opis": "Bieżące zdjęcie ze znakiem, liczone tak samo jak przy eksporcie, tylko w mniejszej skali."},
+  "eksport.znak": {"tytul": "Znak wodny", "opis": "Nakłada znak na każdy plik z tego eksportu. Zdjęcia źródłowe i ich korekty zostają bez znaku."},
+  "eksport.wzor_znaku": {"tytul": "Wzór znaku", "opis": "Tekst albo obraz, położenie, rozmiar i krycie. Wzór zostaje zapamiętany do kolejnych eksportów; ten sam jest w Ustawieniach ▸ Eksport."}
 }

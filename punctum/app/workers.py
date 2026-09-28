@@ -213,6 +213,7 @@ class ExportTask(QRunnable):
                     max_side=self.options.max_side or None,
                     location=location,
                     metadata=fields,
+                    znak=self.options.znak_do_eksportu(),
                 )
                 saved += 1
             except Exception as exc:
