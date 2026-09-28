@@ -137,6 +137,12 @@ class Settings:
     # goly napis, zeby modul ustawien nie zalezal od dekodowania zdjec.
     format_filter: str = "all"
 
+    # --- sterowanie przez AI (punkt 6, MCP) -------------------------------
+    # Serwer slucha tylko na 127.0.0.1 i wymaga tokenu (mcp.json obok
+    # ustawien). Port staly, bo klienci HTTP maja go wpisanego na sztywno.
+    mcp_enabled: bool = True
+    mcp_port: int = 47823
+
     # --- uklad okna -----------------------------------------------------
     # Rozmiary ustawiane przeciaganiem krawedzi. Zakresy (LAYOUT_LIMITS)
     # pilnuja, zeby zle zapisana wartosc nie zostawila panelu, w ktorym

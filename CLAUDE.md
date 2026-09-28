@@ -136,6 +136,13 @@ Pisząc test z interfejsem:
    Nowy napis = wpis w `punctum/lang/interfejs.en.json`; brak wyłapie
    `tools/test_przeklad.py`. Decyzji w kodzie nie opierać na treści
    przetłumaczonego komunikatu.
+7. **Każda istotna nowa funkcja dostaje narzędzie MCP** (`punctum/mcp/`):
+   nowa możliwość edycji, nawigacji, metadanych albo eksportu = opis
+   narzędzia w `punctum/mcp/narzedzia.py` (po angielsku — czyta go model,
+   nie użytkownik) + metoda `n_<nazwa>` w `punctum/app/mcp_polecenia.py`.
+   Nowe pole `EditParams` ustawiane suwakiem potrzebuje zakresu
+   w `narzedzia.ZAKRESY` — brak wyłapie `tools/test_mcp.py`. Narzędzia nie
+   ruszają pliku zdjęcia (tylko sidecar i eksport).
 
 ## Git
 
@@ -151,5 +158,6 @@ Pisząc test z interfejsem:
 ```
 punctum/core/   tor obróbki, wejście plików, sidecary, eksport, ustawienia
 punctum/app/    okno, widoki, panele, zakładki, shader, zadania w tle
+punctum/mcp/    serwer MCP dla agentów AI (protokół, narzędzia, mostek stdio)
 tools/          testy, narzędzia diagnostyczne i pomiarowe
 ```

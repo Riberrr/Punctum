@@ -50,7 +50,11 @@ TECHNICZNE = {"_js", "runJavaScript", "setStyleSheet", "join", "open", "print", 
               "info", "exception", "error", "setUniformValue", "uniformLocation"}
 # F-stringi, ktore sa kluczem albo nazwa wlasna, a nie zdaniem.
 KOD_W_FSTRINGU = re.compile(r"^([a-z_.]+[._]|Punctum|Python)$")
-BEZ_INTERFEJSU = {"core/sidecar.py"}  # zapis XMP - nic z tego nie trafia na ekran
+BEZ_INTERFEJSU = {
+    "core/sidecar.py",  # zapis XMP - nic z tego nie trafia na ekran
+    # Odpowiedzi dla modelu AI (MCP) - celowo po angielsku, nie na ekran.
+    "app/mcp_polecenia.py", "mcp/narzedzia.py", "mcp/protokol.py", "mcp/most.py",
+}
 # Napisy, ktore celowo zostaja jak sa: nazwy wlasne, formaty, jednostki.
 STALE = re.compile(r"^(\s*(px|ms|K|%|×|°|mm)\s*|(Ctrl|Shift|Alt)\+.*|Punctum|OpenCV|Pillow|"
                    r"PySide6 ?|OpenGL ?|Python|JPEG|RAW|TIFF|PNG|GPS|EXIF|XMP|numpy|rawpy|\W*)$")

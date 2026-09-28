@@ -651,7 +651,32 @@ class MainWindow(QMainWindow):
         """
         self.remember_current_edits()
         self.settings.save()
+        self.zatrzymaj_mcp()
         super().closeEvent(event)
+
+    # ------------------------------------------------- sterowanie przez AI
+
+    mcp = None
+
+    def uruchom_mcp(self, port: int | None = None, katalog: str | None = None) -> None:
+        """Serwer MCP dla agentow AI (punkt 6). Wolany z __main__, nie
+        z konstruktora - testy buduja okno dziesiatki razy i nie powinny
+        zajmowac portu."""
+        if not self.settings.mcp_enabled or self.mcp is not None:
+            return
+        from .mcp_polecenia import PoleceniaMCP
+
+        self.mcp = PoleceniaMCP(self)
+        blad = self.mcp.uruchom(self.settings.mcp_port if port is None else port, katalog)
+        if blad:
+            self.mcp = None
+            self.status.showMessage(
+                t("Sterowanie przez AI (MCP) nie wystartowało: {blad}", blad=blad))
+
+    def zatrzymaj_mcp(self) -> None:
+        if self.mcp is not None:
+            self.mcp.zatrzymaj()
+            self.mcp = None
 
     # ------------------------------------------------------------ ustawienia
 

@@ -441,5 +441,6 @@
  "Krycie:": "Opacity:",
  "Margines:": "Margin:",
  "Obraz znaku wodnego": "Watermark image",
- "Obrazy PNG (*.png)": "PNG images (*.png)"
+ "Obrazy PNG (*.png)": "PNG images (*.png)",
+ "Sterowanie przez AI (MCP) nie wystartowało: {blad}": "AI control (MCP) did not start: {blad}"
 }

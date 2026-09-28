@@ -47,6 +47,7 @@ def main() -> int:
     ekran.krok(t("Przygotowanie okna…"), 0.4)
     window = MainWindow()
     window.show()
+    window.uruchom_mcp()  # agenci AI (punkt 6); sam serwer to watek, bez kosztu startu
     ekran.raise_()  # na wypadek, gdyby system zignorowal "na wierzchu" przy aktywacji okna
 
     folder = sys.argv[1] if len(sys.argv) > 1 else ""
