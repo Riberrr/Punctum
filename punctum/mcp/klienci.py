@@ -66,12 +66,16 @@ def polecenie_mostka() -> dict:
     nie znalazloby pakietu, bo klient startuje w swoim katalogu roboczym.
     Po kompilacji (punkt 18) mostek bedzie osobnym plikiem .exe.
     """
+    # Najpierw Scripts venv: program startowany przez Punctum.exe (punkt 29)
+    # ma sys.executable w .venv\Punctum, a mostek nie powinien udawac
+    # w Menedzerze zadan drugiego Punctum. Wpis w konfiguracji klienta
+    # zostaje przy tym taki sam jak przy starcie z pythonw.
     interpreter = sys.executable
-    katalog = os.path.dirname(interpreter)
-    for nazwa in ("pythonw.exe", "python.exe"):
-        kandydat = os.path.join(katalog, nazwa)
-        if os.path.isfile(kandydat):
-            interpreter = kandydat
+    for katalog in (os.path.join(sys.prefix, "Scripts"), os.path.dirname(interpreter)):
+        kandydaci = [os.path.join(katalog, n) for n in ("pythonw.exe", "python.exe")]
+        znaleziony = next((k for k in kandydaci if os.path.isfile(k)), None)
+        if znaleziony:
+            interpreter = znaleziony
             break
     pakiet = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     return {"command": interpreter, "args": ["-m", "punctum.mcp"],

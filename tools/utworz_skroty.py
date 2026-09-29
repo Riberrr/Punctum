@@ -7,15 +7,20 @@ bezwzgledne tego komputera, dlatego nie trafia do repozytorium (.gitignore)
 - kazdy tworzy go u siebie tym skryptem. --pulpit i --menu-start dokladaja
 kopie w tamtych miejscach.
 
-Skrot uruchamia pythonw.exe z `-m punctum` - bez okna konsoli, z ikona
-programu. Przeciagniety na skrot folder ze zdjeciami otwiera sie od razu
-(Windows dopisuje go jako argument). Skrot dostaje ten sam identyfikator
-programu (APP_ID) co okno, wiec skrot przypiety do paska zadan i uruchomiony
-program to jedna ikona, a nie dwie.
+Skrot uruchamia .venv\\Punctum\\Punctum.exe z `-m punctum` - wlasna kopie
+pythonw z nasza nazwa i ikona, ktora skrypt najpierw buduje
+(tools\\program_exe.py). Dzieki niej Menedzer zadan pokazuje jeden proces
+"Punctum", a nie grupe "Python (2)". Gdy budowa sie nie uda, skrot idzie
+na zwykly pythonw.exe z venv - program dziala tak samo, tylko pod nazwa
+Pythona. Bez okna konsoli, z ikona programu. Przeciagniety na skrot folder
+ze zdjeciami otwiera sie od razu (Windows dopisuje go jako argument).
+Skrot dostaje ten sam identyfikator programu (APP_ID) co okno, wiec skrot
+przypiety do paska zadan i uruchomiony program to jedna ikona, a nie dwie.
 
 Sciezki liczone na miejscu, z polozenia tego pliku - skrypt dziala na
 kazdym komputerze i nie zapisuje nic do repozytorium. Uruchomic ponownie po
-przeniesieniu katalogu programu.
+przeniesieniu katalogu programu i po aktualizacji Pythona (Punctum.exe to
+kopia pythonw z tamtej instalacji).
 """
 
 from __future__ import annotations
@@ -47,7 +52,7 @@ def folder_specjalny(nazwa: str) -> str:
     return wynik.stdout.strip()
 
 
-def utworz_skrot(sciezka: str) -> None:
+def utworz_skrot(sciezka: str, program: str = PYTHONW) -> None:
     # WScript.Shell z PowerShella: najprostsza droga do .lnk bez pywin32.
     # Apostrofy podwojone, bo sciezki ida w cudzyslowach PowerShella.
     def ps(tekst: str) -> str:
@@ -55,7 +60,7 @@ def utworz_skrot(sciezka: str) -> None:
 
     polecenie = (
         "$s = (New-Object -ComObject WScript.Shell).CreateShortcut(" + ps(sciezka) + ");"
-        f"$s.TargetPath = {ps(PYTHONW)};"
+        f"$s.TargetPath = {ps(program)};"
         "$s.Arguments = '-m punctum';"
         f"$s.WorkingDirectory = {ps(KATALOG)};"
         f"$s.IconLocation = {ps(IKONA + ',0')};"
@@ -119,7 +124,9 @@ def ustaw_app_id(sciezka: str, app_id: str) -> None:
         for nazwa, wynik in (("SetValue", set_value(magazyn, ctypes.byref(PKEY_AppUserModel_ID),
                                                      ctypes.byref(wartosc))),
                              ("Commit", commit(magazyn))):
-            if wynik != 0:
+            # Sukces w COM to kazde HRESULT >= 0; SetValue na istniejacym
+            # skrocie z tym samym ID oddaje S_FALSE (1) i to nie jest blad.
+            if wynik < 0:
                 raise OSError(f"{nazwa}: 0x{wynik & 0xFFFFFFFF:08x}")
     finally:
         release(magazyn)
@@ -132,13 +139,20 @@ def main() -> int:
     if not os.path.isfile(PYTHONW):
         print(f"Brak {PYTHONW} - najpierw utworz srodowisko .venv (README).")
         return 1
+    import program_exe  # obok tego pliku; sys.path[0] to katalog tools
+    try:
+        program = program_exe.utworz_exe()
+        print(f"program: {program}")
+    except OSError as blad:
+        program = PYTHONW
+        print(f"Bez wlasnego Punctum.exe ({blad}) - skrot na pythonw.exe z venv.")
     cele = [os.path.join(KATALOG, "Punctum.lnk")]
     if "--menu-start" in sys.argv:
         cele.append(os.path.join(folder_specjalny("Programs"), "Punctum.lnk"))
     if "--pulpit" in sys.argv:
         cele.append(os.path.join(folder_specjalny("Desktop"), "Punctum.lnk"))
     for cel in cele:
-        utworz_skrot(cel)
+        utworz_skrot(cel, program)
         try:
             ustaw_app_id(cel, APP_ID)
             dopisek = ""

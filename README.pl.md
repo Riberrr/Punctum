@@ -19,6 +19,10 @@ z podglądem liczonym na karcie graficznej i geotagowaniem na mapie.
 .venv\Scripts\python.exe tools\utworz_skroty.py
 ```
 
+Skrypt buduje przy tym `.venv\Punctum\Punctum.exe` — kopię `pythonw.exe`
+z nazwą i ikoną programu — więc Menedżer zadań pokazuje jeden proces „Punctum”
+zamiast grupy „Python”. Po aktualizacji Pythona uruchom skrypt ponownie.
+
 Albo dwuklik na `Punctum.bat` (można przeciągnąć na pulpit albo upuścić na niego
 folder ze zdjęciami), lub z wiersza poleceń:
 

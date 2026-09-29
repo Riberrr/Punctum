@@ -19,6 +19,10 @@ window; add `--pulpit` / `--menu-start` for copies on the desktop and in the Sta
 .venv\Scripts\python.exe tools\utworz_skroty.py
 ```
 
+The script also builds `.venv\Punctum\Punctum.exe` — a copy of `pythonw.exe`
+with the program's name and icon — so Task Manager shows a single "Punctum"
+process instead of a "Python" group. Run it again after updating Python.
+
 Or double-click `Punctum.bat` (you can drag it to the desktop or drop a photo
 folder onto it), or from the command line:
 
