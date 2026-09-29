@@ -105,17 +105,40 @@ def _uruchom(polecenie: list[str]) -> None:
         raise SystemExit(wynik.returncode)
 
 
+def _wolny(katalog: str) -> bool:
+    """Czy poprzednia kompilacja da sie usunac w calosci.
+
+    Proba przemianowania katalogu: Windows jej odmawia, gdy dziala z niego
+    Punctum.exe albo mostek MCP. Wczesniej rmtree(ignore_errors) kasowalo
+    polowe plikow dzialajacego programu i dopiero kopiowanie padalo.
+    """
+    if not os.path.exists(katalog):
+        return True
+    proba = katalog + "-sprawdzenie"
+    try:
+        os.rename(katalog, proba)
+        os.rename(proba, katalog)
+        return True
+    except OSError:
+        print(f"{katalog} jest w uzyciu - zamknij Punctum (i klienta AI z mostkiem MCP)")
+        return False
+
+
 def main() -> int:
     argumenty = [a for a in sys.argv[1:] if not a.startswith("--")]
     szybko = "--szybko" in sys.argv
     wyjscie = os.path.abspath(argumenty[0] if argumenty else os.path.join(REPO, "..", "kompilacja"))
     roboczy = os.path.join(wyjscie, "_nuitka")
     os.makedirs(roboczy, exist_ok=True)
+    gotowy = os.path.join(wyjscie, "Punctum")
+    if not _wolny(gotowy):
+        return 1
 
     _uruchom(_polecenie(roboczy, szybko))
 
-    gotowy = os.path.join(wyjscie, "Punctum")
-    shutil.rmtree(gotowy, ignore_errors=True)
+    if not _wolny(gotowy):
+        return 1
+    shutil.rmtree(gotowy)
     shutil.copytree(os.path.join(roboczy, "punctum.dist"), gotowy)
     # Jeden plik, dwa wejscia: nazwa .exe wybiera, ktore sie uruchomi.
     exe = os.path.join(gotowy, "punctum.exe")

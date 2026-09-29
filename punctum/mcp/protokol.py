@@ -35,11 +35,11 @@ class BladNarzedzia(Exception):
 
 
 def wersja_programu() -> str:
-    try:
-        from importlib.metadata import version
-        return version("punctum")
-    except Exception:
-        return "0.1.0"
+    # Z pakietu, nie z importlib.metadata: Punctum nie jest instalowany przez
+    # pip (ani w kompilacji), wiec metadata zawsze zawodzila i zostawala
+    # osobna, wpisana na sztywno kopia numeru, ktora rozjezdzala sie z reszta.
+    from .. import __version__
+    return __version__
 
 
 # ------------------------------------------------------------- plik polaczenia
