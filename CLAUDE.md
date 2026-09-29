@@ -146,8 +146,37 @@ Pisząc test z interfejsem:
 
 ## Git
 
-- Gałąź `main`, zdalne `origin` = https://github.com/Riberrr/Punctum
+- Zdalne `origin` = https://github.com/Riberrr/Punctum
 - Autor ustawiony lokalnie dla repozytorium (brak konfiguracji globalnej).
+
+### Gałęzie i wydania
+
+- **`main` = wersja stabilna**, gotowa do pobrania i instalacji. Trafiają
+  tam tylko wersje przyjęte przez użytkownika. **Nie commitować na `main`
+  bezpośrednio.**
+- **`dev` = bieżąca praca.** Każda sesja zaczyna od `git switch dev`
+  i `git pull`; commit i push idą na `dev`.
+- **Równoległe sesje:** każda na własnej gałęzi od `dev`
+  (`git switch -c dev-<temat>`), scalanej do `dev` po zamknięciu obszaru
+  i potem usuwanej. Dzięki temu jedna sesja nie zabiera do commita zmian
+  drugiej. Przed `git add` zawsze `git status` — dodawać tylko własne pliki.
+- **Numer wersji** tylko w `punctum/__init__.py` (`__version__`).
+  Poprawki podbijają PATCH (0.9.0 → 0.9.1), nowe funkcje MINOR
+  (0.9.x → 0.10.0); 1.0.0 dopiero po próbie użytkownika przy prawdziwej
+  obróbce zdjęć.
+- **Wydanie — tylko na wyraźne słowo użytkownika**, w tej kolejności:
+  1. na `dev`: changelog uzupełniony, `__version__` podbity, pełna seria
+     testów przeszła, commit „Wydanie X.Y.Z”;
+  2. `git switch main`, `git pull`, `git merge --no-ff dev`
+     (commit scalenia „Wydanie X.Y.Z”);
+  3. `git tag -a vX.Y.Z -m "Punctum X.Y.Z"`;
+  4. `git push origin main vX.Y.Z`;
+  5. `git switch dev` i dalsza praca.
+- Znacznik `v*` na `main` jest jedynym źródłem wydania (budowanie
+  instalatora w GitHub Actions i załącznik w GitHub Releases — stamtąd
+  ludzie pobierają program, nie z gałęzi).
+- Poprawka pilna do wydanej wersji też idzie przez `dev` i zwykłe wydanie
+  (PATCH) — bez osobnych gałęzi poprawkowych, dopóki jest jeden autor.
 - Opisy commitów po polsku, podawane przez plik (`git commit -F <plik>`),
   zapisany **poza** katalogiem `.git`. Opis mówi, jaki problem zamyka commit
   i jaką decyzję zapisuje — nie wylicza zmienionych plików.
