@@ -165,8 +165,10 @@ Pisząc test z interfejsem:
   (0.9.x → 0.10.0); 1.0.0 dopiero po próbie użytkownika przy prawdziwej
   obróbce zdjęć.
 - **Wydanie — tylko na wyraźne słowo użytkownika**, w tej kolejności:
-  1. na `dev`: changelog uzupełniony, `__version__` podbity, pełna seria
-     testów przeszła, commit „Wydanie X.Y.Z”;
+  1. na `dev`: w `CHANGELOG.md` i `CHANGELOG.pl.md` sekcja
+     „Unreleased” / „Nieopublikowane” zamieniona na `## X.Y.Z — RRRR-MM-DD`
+     (bez tego `test_changelog` nie przejdzie), `__version__` podbity, pełna
+     seria testów przeszła, commit „Wydanie X.Y.Z”;
   2. `git switch main`, `git pull`, `git merge --no-ff dev`
      (commit scalenia „Wydanie X.Y.Z”);
   3. `git tag -a vX.Y.Z -m "Punctum X.Y.Z"`;

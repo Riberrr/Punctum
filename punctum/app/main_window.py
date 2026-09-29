@@ -555,6 +555,9 @@ class MainWindow(QMainWindow):
         ai_help_action = QAction(t("Sterowanie przez AI (MCP)…"), self)
         ai_help_action.triggered.connect(self._pomoc_mcp)
         help_menu.addAction(ai_help_action)
+        news_action = QAction(t("Co nowego"), self)
+        news_action.triggered.connect(self._co_nowego)
+        help_menu.addAction(news_action)
         about_action = QAction(t("O programie"), self)
         about_action.triggered.connect(lambda: self.open_settings(PAGE_ABOUT))
         help_menu.addAction(about_action)
@@ -702,6 +705,11 @@ class MainWindow(QMainWindow):
         from .pomoc import pokaz_pomoc_mcp
 
         pokaz_pomoc_mcp(self)
+
+    def _co_nowego(self) -> None:
+        from .pomoc import pokaz_co_nowego
+
+        pokaz_co_nowego(self)
 
     # ------------------------------------------------------------ ustawienia
 

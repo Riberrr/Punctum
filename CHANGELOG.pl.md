@@ -1,0 +1,42 @@
+# Historia zmian
+
+Istotne zmiany w Punctum, od najnowszych. Numer wersji ma postać
+GŁÓWNA.POBOCZNA.POPRAWKA: poprawki podbijają ostatnią liczbę, nowe funkcje
+środkową. English version: [CHANGELOG.md](CHANGELOG.md).
+
+## Nieopublikowane
+
+### Nowe
+
+- Pomoc ▸ „Co nowego” — historia zmian w programie. Po aktualizacji okno
+  pokazuje się samo, jeden raz.
+
+## 0.9.0 — 2026-09-29
+
+Pierwsze wydanie.
+
+### Nowe
+
+- Obróbka zdjęć RAW (RW2, CR2, CR3, NEF, ARW, DNG) i JPEG w jednym torze,
+  z podglądem liczonym na karcie graficznej.
+- Korekty światła i koloru, balans bieli, automatyczna korekta tonalna.
+- Kadrowanie i obrót, także o dowolny kąt.
+- Usuwanie szumu dopasowane do zmierzonego szumu zdjęcia, z podglądem;
+  wyostrzanie.
+- Monochrom z mieszaniem barw i presety nastaw.
+- Porównanie przed / po: obok siebie (Y) albo z linią podziału (Shift+Y).
+- Cofnij / ponów w edycji i na mapie.
+- Praca nieniszcząca: nastawy zapisywane obok zdjęcia w pliku XMP, oryginał
+  zostaje nietknięty.
+- Eksport w tle z oknem opcji: autor, prawa autorskie, tagi, dane aparatu
+  i znak wodny.
+- Mapa i geotagowanie: ślad GPX, grupowanie zdjęć po dniach, schowek
+  współrzędnych, nazwa miejsca.
+- Panel metadanych i znaczniki stanu na liście zdjęć.
+- Panele z sekcjami: zwijanie, zmiana kolejności, przypinanie i ukrywanie;
+  skala całego interfejsu.
+- Interfejs po polsku i po angielsku, podpowiedź przy każdym przycisku,
+  suwaku i polu.
+- Sterowanie przez agentów AI (serwer MCP).
+- Instalator dla Windows: skojarzenia plików RAW i otwieranie zdjęcia
+  prosto z Eksploratora.

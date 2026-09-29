@@ -87,6 +87,7 @@ class EkranStartowy(QSplashScreen):
         self.postep = 0.0
         self._logo = QSvgRenderer(os.path.join(ASSETS, "logo.svg"))
         self._pokazany = time.monotonic()
+        self.po_schowaniu = None  # wywolywane raz, gdy ekran zejdzie
 
     def show(self) -> None:
         super().show()
@@ -134,10 +135,14 @@ class EkranStartowy(QSplashScreen):
     def zakoncz(self, okno) -> None:
         """Chowa ekran po minimalnym czasie, zeby start nie byl tylko mignieciem."""
         zostalo = MINIMUM_MS - (time.monotonic() - self._pokazany) * 1000
-        if zostalo <= 0:
-            self.finish(okno)
-        else:
-            QTimer.singleShot(int(zostalo), lambda: self.finish(okno))
+        QTimer.singleShot(max(0, int(zostalo)), lambda: self._schowaj(okno))
+
+    def _schowaj(self, okno) -> None:
+        self.finish(okno)
+        # Okno zmian dopiero po zejsciu ekranu: ekran jest zawsze na wierzchu
+        # i zaslonilby okno dialogowe otwarte wczesniej.
+        if self.po_schowaniu is not None:
+            self.po_schowaniu()
 
     def drawContents(self, p: QPainter) -> None:  # noqa: N802 - nazwa z Qt
         p.setRenderHint(QPainter.Antialiasing)

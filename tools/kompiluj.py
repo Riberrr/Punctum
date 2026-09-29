@@ -65,6 +65,10 @@ def _polecenie(wyjscie: str, szybko: bool) -> list[str]:
         "--include-package=punctum",
         f"--include-data-dir={os.path.join(REPO, 'punctum', 'lang')}=punctum/lang",
         f"--include-data-dir={os.path.join(REPO, 'punctum', 'assets')}=punctum/assets",
+        # Historia zmian dla Pomoc > Co nowego: obok exe, tak jak w repo
+        # obok pakietu (app/pomoc.py szuka jej trzy poziomy nad soba).
+        f"--include-data-files={os.path.join(REPO, 'CHANGELOG.md')}=CHANGELOG.md",
+        f"--include-data-files={os.path.join(REPO, 'CHANGELOG.pl.md')}=CHANGELOG.pl.md",
         # Wtyczka pyside6 dolacza wszystkie tlumaczenia Qt; interfejs ma dwa jezyki.
         "--noinclude-qt-translations",
         # Zbedny balast (~110 MB): narzedzia deweloperskie przegladarki mapy
