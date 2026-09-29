@@ -64,8 +64,15 @@ def polecenie_mostka() -> dict:
     nie ukrywa). Stdin/stdout mostka to potoki klienta, wiec pythonw je ma.
     Katalog nad pakietem idzie w PYTHONPATH - bez tego `-m punctum.mcp`
     nie znalazloby pakietu, bo klient startuje w swoim katalogu roboczym.
-    Po kompilacji (punkt 18) mostek bedzie osobnym plikiem .exe.
+    Po kompilacji (punkt 18) mostek to PunctumMCP.exe obok Punctum.exe -
+    bez interpretera i bez PYTHONPATH.
     """
+    # Nuitka wstawia __compiled__ do kazdego skompilowanego modulu;
+    # containing_dir to katalog z Punctum.exe.
+    skompilowany = globals().get("__compiled__")
+    if skompilowany is not None:
+        mostek = os.path.join(skompilowany.containing_dir, "PunctumMCP.exe")
+        return {"command": mostek, "args": [], "env": {}}
     # Najpierw Scripts venv: program startowany przez Punctum.exe (punkt 29)
     # ma sys.executable w .venv\Punctum, a mostek nie powinien udawac
     # w Menedzerze zadan drugiego Punctum. Wpis w konfiguracji klienta
