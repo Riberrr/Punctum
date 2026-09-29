@@ -334,4 +334,83 @@ for skala, tag in ((1, ""), (2, "@2x")):
     tlo_ekranu(skala).save(os.path.join(ASSETS, f"ekran-startowy{tag}.png"), optimize=True)
     print(f"  {f'ekran-startowy{tag}.png':<28} {EKRAN_W * skala}x{EKRAN_H * skala}")
 
-print(f"\nzapisano w {ASSETS}")
+# ------------------------------------------------------ grafika instalatora
+# Wariant 2 "Pole ostrosci" (wybor uzytkownika 2026-09-29): tlo ekranu
+# startowego rozlane na cale okno kreatora, znak w lewym dolnym rogu stron
+# powitalnej i koncowej. Nie w punctum/assets - program ich nie uzywa,
+# a trafilyby do kompilacji. Rozmiary z dokumentacji Inno Setup: obszar tla
+# 596x432 przy 100 % (proporcja 497:360), obraz strony powitalnej 202x386
+# (164:314); kilka plikow = Setup wybiera najlepszy do DPI.
+
+INSTALATOR = os.path.join(HERE, "tools", "instalator_grafika")
+TLO_W, TLO_H = 596, 432
+TLA = (596, 796, 994, 1272)          # 100, 125, 150, 200 %
+ZNAKI = ((202, 386), (269, 515), (336, 643), (430, 824))
+PUNKT = (548, 124)                   # przy prawej krawedzi, na wysokosci tytulow
+
+
+def tlo_instalatora(szer: int) -> Image.Image:
+    s = szer / TLO_W
+    w, h = szer, round(TLO_H * s)
+    ys, xs = np.mgrid[0:h, 0:w].astype(np.float32)
+    xs = (xs + 0.5) / s
+    ys = (ys + 0.5) / s
+    t = np.clip(np.hypot((xs / TLO_W - 0.80) / 0.95, (ys / TLO_H - 0.30) / 0.95), 0, 1)
+    a, b, c = _kolor("#1d1a2c"), _kolor("#131217"), _kolor("#0e0e11")
+    k1 = np.clip(t / 0.6, 0, 1)[..., None]
+    k2 = np.clip((t - 0.6) / 0.4, 0, 1)[..., None]
+    obraz = np.where(t[..., None] < 0.6, a + (b - a) * k1, b + (c - b) * k2).astype(np.float32)
+
+    ziarno = 11
+    def los() -> float:
+        nonlocal ziarno
+        ziarno = (ziarno * 16807) % 2147483647
+        return ziarno / 2147483647
+
+    # Swiatla slabsze niz na ekranie startowym: na nich stoi tekst kreatora,
+    # wiec jasne plamy nie moga zjadac kontrastu napisow.
+    kolory = [_kolor(k) for k in ("#6c63ff", "#8e7bff", "#4a6cff", "#b07cff", "#ff9a6a")]
+    for i in range(24):
+        x, y, r = 120 + los() * 500, -30 + los() * 440, 16 + los() * 58
+        kolor = kolory[int(los() * (5 if i % 7 == 0 else 4))]
+        krycie = 0.05 + los() * 0.15
+        maska = np.clip(r - np.hypot(xs - x, ys - y) + 0.5, 0, 1) * krycie
+        sigma = (16 if r > 42 else 6) * s
+        _nad(obraz, kolor, cv2.GaussianBlur(maska, (0, 0), sigma))
+
+    # przyciemnienie dolu (przyciski) i lewego dolnego rogu (znak)
+    _nad(obraz, _kolor("#0e0e11"), np.clip((ys / TLO_H - 0.70) / 0.30, 0, 1) * 0.85)
+    _nad(obraz, _kolor("#0e0e11"), np.clip(1 - np.hypot(xs / 260, (ys - TLO_H) / 220), 0, 1) * 0.6)
+
+    px, py = PUNKT
+    d = np.hypot(xs - px, ys - py) / 26
+    bialy, fiolet = np.ones(3, np.float32), _kolor(FIOLET_JASNY)
+    k = np.clip(d / 0.25, 0, 1)[..., None]
+    kolor = np.where(d[..., None] < 0.25, bialy + (fiolet - bialy) * k, fiolet)
+    alfa = np.where(d < 0.25, 0.9 + (0.55 - 0.9) * (d / 0.25), 0.55 * (1 - (d - 0.25) / 0.75))
+    _nad(obraz, kolor, np.clip(alfa, 0, 1) * (d < 1))
+    _nad(obraz, bialy, np.clip(4.0 - np.hypot(xs - px, ys - py) + 0.5 / s, 0, 1))
+
+    szum = np.random.default_rng(16).triangular(-1, 0, 1, obraz.shape).astype(np.float32)
+    wynik = np.clip(obraz * 255 + szum, 0, 255).round().astype(np.uint8)
+    return Image.fromarray(wynik, "RGB")
+
+
+def znak_instalatora(szer: int, wys: int) -> Image.Image:
+    """Przezroczysty obraz strony powitalnej: sam znak w lewym dolnym rogu."""
+    s = szer / ZNAKI[0][0]
+    obraz = Image.new("RGBA", (szer, wys), (0, 0, 0, 0))
+    bok = round(44 * s)
+    obraz.alpha_composite(svg_do_obrazu(LOGA["logo.svg"], bok), (round(20 * s), wys - bok - round(20 * s)))
+    return obraz
+
+
+os.makedirs(INSTALATOR, exist_ok=True)
+for szer in TLA:
+    tlo_instalatora(szer).save(os.path.join(INSTALATOR, f"tlo-{szer}.png"), optimize=True)
+    print(f"  {f'instalator tlo-{szer}.png':<28}")
+for szer, wys in ZNAKI:
+    znak_instalatora(szer, wys).save(os.path.join(INSTALATOR, f"znak-{szer}.png"), optimize=True)
+    print(f"  {f'instalator znak-{szer}.png':<28}")
+
+print(f"\nzapisano w {ASSETS} i {INSTALATOR}")

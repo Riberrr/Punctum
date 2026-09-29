@@ -33,6 +33,8 @@ from punctum.core.loader import RAW_EXTENSIONS  # noqa: E402
 from kompiluj import _wersja_czworka  # noqa: E402
 
 SKRYPT = os.path.join(REPO, "tools", "punctum.iss")
+# Tla i znak kreatora - generuje tools/make_assets.py.
+GRAFIKA = os.path.join(REPO, "tools", "instalator_grafika")
 
 
 def znajdz_iscc() -> str | None:
@@ -77,6 +79,15 @@ def main() -> int:
         if not os.path.isfile(os.path.join(zrodlo, plik)):
             print(f"brak {plik} w {zrodlo} - najpierw tools/kompiluj.py")
             return 1
+    wynikowy = os.path.join(katalog, f"Punctum-{__version__}-setup.exe")
+    try:
+        # Otwarty kreator trzyma swoj plik - ISCC padlby dopiero po
+        # kompresji z mniej czytelnym bledem 32.
+        if os.path.exists(wynikowy):
+            open(wynikowy, "r+b").close()
+    except OSError:
+        print(f"{wynikowy} jest otwarty - zamknij okno instalatora")
+        return 1
     iscc = znajdz_iscc()
     if not iscc:
         print("nie znaleziono ISCC.exe - winget install JRSoftware.InnoSetup")
@@ -93,6 +104,7 @@ def main() -> int:
             f"/DWyjscie={katalog}",
             f"/DRepo={REPO}",
             f"/DGenerowane={generowane}",
+            f"/DGrafika={GRAFIKA}",
             SKRYPT,
         ]
         start = time.time()

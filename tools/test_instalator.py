@@ -50,6 +50,12 @@ check("instalacja bez administratora z wyborem", "PrivilegesRequired=lowest" in 
       and "PrivilegesRequiredOverridesAllowed=dialog" in tekst)
 check("dolacza wygenerowane rozszerzenia", 'rozszerzenia.iss"' in tekst)
 check("oba jezyki kreatora", "Polish.isl" in tekst and "Default.isl" in tekst)
+# Grafiki z make_assets.py: kazdy plik wskazany w skrypcie musi istniec,
+# inaczej ISCC przerwie budowe dopiero po kompilacji programu.
+import re  # noqa: E402
+pliki = set(re.findall(r"\{#Grafika\}\\([\w.-]+\.png)", tekst)) | set(re.findall(r"'(tlo-\d+\.png)'", tekst))
+brak = [p for p in sorted(pliki) if not os.path.isfile(os.path.join(instalator.GRAFIKA, p))]
+check("grafiki kreatora na miejscu", len(pliki) >= 8 and not brak, f"{len(pliki)} plikow, brak: {brak}")
 
 with tempfile.TemporaryDirectory() as tmp:
     zdjecie = os.path.join(tmp, "a.rw2")

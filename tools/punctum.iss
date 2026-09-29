@@ -32,7 +32,16 @@ OutputBaseFilename=Punctum-{#Wersja}-setup
 SetupIconFile={#Repo}\punctum\assets\punctum.ico
 UninstallDisplayIcon={app}\Punctum.exe
 UninstallDisplayName=Punctum
-WizardStyle=modern
+; Wyglad: wariant 2 "Pole ostrosci" (wybor uzytkownika 2026-09-29) - tlo
+; ekranu startowego pod calym kreatorem, ciemny styl, bez linii. Grafiki
+; z tools/make_assets.py (tools/instalator_grafika), po jednej na DPI.
+WizardStyle=modern dark windows11 hidebevels includetitlebar
+WizardBackColor=#131217
+WizardBackImageFile={#Grafika}\tlo-596.png,{#Grafika}\tlo-796.png,{#Grafika}\tlo-994.png,{#Grafika}\tlo-1272.png
+WizardImageFile={#Grafika}\znak-202.png,{#Grafika}\znak-269.png,{#Grafika}\znak-336.png,{#Grafika}\znak-430.png
+WizardSmallImageFile=
+; Strona powitalna z haslem - w Inno 6 domyslnie wylaczona.
+DisableWelcomePage=no
 ShowLanguageDialog=auto
 ; Solidna kompresja: ~490 MB programu to glownie biblioteki Qt i OpenCV,
 ; ktore dobrze sie kompresuja; wiele watkow skraca budowe.
@@ -49,7 +58,18 @@ RestartApplications=no
 Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
+[Messages]
+polish.WelcomeLabel1=Witaj w instalatorze Punctum
+english.WelcomeLabel1=Welcome to the Punctum installer
+; Zdanie o przycisku Dalej Inno dopisuje samo (ClickNext).
+polish.WelcomeLabel2=Zainstalujesz edytor zdjęć RAW i JPEG — [name/ver].%n%nZamknij inne programy przed kontynuowaniem.
+english.WelcomeLabel2=This will install the RAW and JPEG photo editor — [name/ver].%n%nClose other applications before continuing.
+polish.FinishedHeadingLabel=Punctum jest gotowy
+english.FinishedHeadingLabel=Punctum is ready
+
 [CustomMessages]
+polish.Haslo=Dla tego jednego szczegółu.
+english.Haslo=For that one detail.
 polish.GrupaSkojarzen=Skojarzenia plików:
 english.GrupaSkojarzen=File associations:
 polish.ZadanieRaw=Otwieraj zdjęcia RAW w Punctum (dwuklik w Eksploratorze)
@@ -66,6 +86,8 @@ Name: "pulpit"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:Ad
 Name: "skojarz_raw"; Description: "{cm:ZadanieRaw}"; GroupDescription: "{cm:GrupaSkojarzen}"
 
 [Files]
+; Tla jeszcze raz, dla [Code]: na stronach srodkowych tlo jest przygaszone.
+Source: "{#Grafika}\tlo-*.png"; Flags: dontcopy
 Source: "{#Zrodlo}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [InstallDelete]
@@ -115,4 +137,61 @@ Filename: "{app}\Punctum.exe"; Description: "{cm:LaunchProgram,Punctum}"; Flags:
 function JestPunctum: Boolean;
 begin
   Result := FileExists(ExpandConstant('{app}\Punctum.exe'));
+end;
+
+const
+  KryciePelne = 255;
+  // Strony z formularzami (katalog, zadania, postep) - tlo cichsze,
+  // zeby pola i tekst mialy kontrast; powitanie i koniec w pelni.
+  KrycieCiche = 110;
+
+procedure UstawTlo(Krycie: Byte);
+var
+  Obrazy: TArrayOfGraphic;
+  Nazwy: TArrayOfString;
+  I: Integer;
+begin
+  Nazwy := ['tlo-596.png', 'tlo-796.png', 'tlo-994.png', 'tlo-1272.png'];
+  SetLength(Obrazy, GetArrayLength(Nazwy));
+  for I := 0 to GetArrayLength(Nazwy) - 1 do
+    Obrazy[I] := TPngImage.Create;
+  try
+    for I := 0 to GetArrayLength(Nazwy) - 1 do begin
+      ExtractTemporaryFile(Nazwy[I]);
+      Obrazy[I].LoadFromFile(ExpandConstant('{tmp}\' + Nazwy[I]));
+    end;
+    WizardSetBackImage(Obrazy, True, True, Krycie);
+  finally
+    for I := 0 to GetArrayLength(Nazwy) - 1 do
+      Obrazy[I].Free;
+  end;
+end;
+
+procedure InitializeWizard;
+var
+  Haslo: TNewStaticText;
+  Odstep: Integer;
+begin
+  // Haslo z ekranu startowego pod tytulem, kursywa w kolorze marki.
+  // Bez usuniecia seFont styl kreatora nadpisalby kolor.
+  Haslo := TNewStaticText.Create(WizardForm);
+  Haslo.Parent := WizardForm.WelcomePage;
+  Haslo.AutoSize := True;
+  Haslo.Caption := CustomMessage('Haslo');
+  Haslo.Font.Style := [fsItalic];
+  Haslo.StyleElements := Haslo.StyleElements - [seFont];
+  Haslo.Font.Color := StrToColor('#8e87ff');
+  Haslo.Left := WizardForm.WelcomeLabel2.Left;
+  Haslo.Top := WizardForm.WelcomeLabel2.Top;
+  Odstep := Haslo.Height + ScaleY(12);
+  WizardForm.WelcomeLabel2.Top := WizardForm.WelcomeLabel2.Top + Odstep;
+  WizardForm.WelcomeLabel2.Height := WizardForm.WelcomeLabel2.Height - Odstep;
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if (CurPageID = wpWelcome) or (CurPageID = wpFinished) then
+    UstawTlo(KryciePelne)
+  else
+    UstawTlo(KrycieCiche);
 end;
