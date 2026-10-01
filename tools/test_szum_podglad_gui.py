@@ -225,6 +225,26 @@ def stage_stary_szum() -> None:
           f"jasnosc {jasnosc:.1f} wobec {jasnosc_nowa:.1f}")
 
 
+def stage_kolor_na_karcie() -> None:
+    """Punkt 32: przy dopasowaniu do okna i samym szumie koloru podglad z karty
+    jest od razu kompletny - procesor nic nie doklada, wiec barwy nie
+    przeskakuja po zatrzymaniu suwaka."""
+    if not (window.gpu_source_ready and window.gpu.kolor_dostepny):
+        check("kolor na karcie - podglad bez podmiany", True, "brak GPU - pominiete")
+        return
+    window.view.fit_to_window()
+    window.edit_panel.sliders["noise_luminance"].set_value(0)
+    window.edit_panel.sliders["noise_color"].set_value(25)
+    window.edit_panel.sliders["exposure"].set_value(0.3)
+    window._on_params_changed()
+    pauza(200)
+    obraz = window.current_image
+    check("przy samym szumie koloru procesor nic nie doklada",
+          window._noise_pending is None and window._podglad_dokladka is None)
+    pauza(1200)
+    check("podglad nie zostal podmieniony po chwili ciszy", window.current_image is obraz)
+
+
 KOD = 0
 
 
@@ -241,7 +261,8 @@ def report() -> None:
 
 lancuch(app, [stage_load, stage_noise_on, stage_noise_check, stage_before,
               stage_before_check, stage_after_check, stage_sharpen_only,
-              stage_sharpen_check, stage_migniecia, stage_stary_szum], report)
+              stage_sharpen_check, stage_migniecia, stage_stary_szum,
+              stage_kolor_na_karcie], report)
 
 app.exec()
 sys.exit(KOD)

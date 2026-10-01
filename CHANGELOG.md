@@ -14,7 +14,9 @@ Wersja polska: [CHANGELOG.pl.md](CHANGELOG.pl.md).
 ### Fixed
 
 - Smoother preview while dragging sliders: the photo no longer flickers with
-  the previous setting or a blurry image, also when zoomed in.
+  the previous setting or a blurry image, also when zoomed in, and colours no
+  longer shift a moment after the slider stops — colour noise reduction now
+  runs on the graphics card with every move.
 
 ## 0.9.0 — 2026-09-29
 

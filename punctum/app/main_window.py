@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from dataclasses import replace
 from datetime import datetime
 
 import numpy as np
@@ -168,6 +169,10 @@ class MainWindow(QMainWindow):
         self._latest_job = 0
         self._latest_detail = 0
         self._geometria_podgladu = None  # przy jej zmianie stary fragment nie pasuje
+        # Nastawy, ktore procesor ma jeszcze dolozyc do current_image (szum
+        # jasnosci, wyostrzanie) - None, gdy podglad jest kompletny. Czyta to
+        # MCP get_preview, zeby nie odszumiac drugi raz.
+        self._podglad_dokladka = None
         # przytrzymany "Przed / po": podglad pokazuje zdjecie bez korekt i nic,
         # co przyjdzie w tym czasie z watkow, nie moze go podmienic
         self._before_shown = False
@@ -1507,7 +1512,7 @@ class MainWindow(QMainWindow):
             rgb8 = self.gpu.render(
                 self.full_raw, params,
                 max(1, round(out_w * scale)), max(1, round(out_h * scale)),
-                region=(0, 0, out_w, out_h), scale=scale,
+                region=(0, 0, out_w, out_h), scale=scale, kolor=self._kolor_karty(params),
             )
             if rgb8 is not None:
                 # Odszumianie podgladu liczone dla poprzednich nastaw moze
@@ -1515,7 +1520,8 @@ class MainWindow(QMainWindow):
                 # stary stan suwaka (punkt 32), wiec je uniewazniamy.
                 self._job_counter += 1
                 self._latest_job = self._job_counter
-                self._show_preview(rgb8, (out_w, out_h), params)
+                self._show_preview(rgb8, (out_w, out_h), params,
+                                   kolor_z_karty=self.gpu.kolor_dostepny)
                 return
             self.gpu_source_ready = False  # karta odmowila, wracamy na procesor
 
@@ -1525,14 +1531,25 @@ class MainWindow(QMainWindow):
         task.signals.render_ready.connect(self._on_render_ready)
         self.pool.start(task)
 
-    def _show_preview(self, rgb8: np.ndarray, image_size: tuple, params: EditParams) -> None:
+    def _kolor_karty(self, params: EditParams) -> float:
+        """Suwak szumu koloru dla karty - odszumia go sama (punkt 32), wiec
+        podglad nie zmienia barw po chwili, gdy dochodzi przebieg procesora."""
+        return params.noise_color if self.gpu.kolor_dostepny else 0.0
+
+    def _show_preview(self, rgb8: np.ndarray, image_size: tuple, params: EditParams,
+                      kolor_z_karty: bool = False) -> None:
         self.current_image = rgb8
-        # odszumianie liczy procesor, wiec dokladamy je dopiero po chwili ciszy
-        if params.needs_detail_pass(rgb8.shape[1] / float(max(1, image_size[0]))):
-            self._noise_pending = (rgb8, params)
+        # Szum jasnosci i wyostrzanie liczy procesor, wiec dokladamy je dopiero
+        # po chwili ciszy. Kolor zrobila juz karta - drugi raz byloby za mocno.
+        if params.needs_detail_pass(rgb8.shape[1] / float(max(1, image_size[0])),
+                                    bez_koloru=kolor_z_karty):
+            cpu = replace(params, noise_color=0.0) if kolor_z_karty else params
+            self._noise_pending = (rgb8, cpu)
+            self._podglad_dokladka = cpu
             self.noise_timer.start()
         else:
             self._noise_pending = None
+            self._podglad_dokladka = None
             self.noise_timer.stop()
         if self._before_shown:
             return  # pokazemy po puszczeniu przycisku
@@ -1569,7 +1586,7 @@ class MainWindow(QMainWindow):
             self.full_raw, params,
             max(1, round(rect.width() * scale)), max(1, round(rect.height() * scale)),
             region=(rect.x(), rect.y(), rect.width(), rect.height()), scale=scale,
-            nearest=scale >= self.settings.pixel_peek_zoom,
+            nearest=scale >= self.settings.pixel_peek_zoom, kolor=self._kolor_karty(params),
         )
         if rgb8 is not None:
             self.view.set_detail(rgb8, rect, scale)
@@ -1597,6 +1614,7 @@ class MainWindow(QMainWindow):
         if job_id != self._latest_job or self.full_raw is None:
             return
         self.current_image = rgb8
+        self._podglad_dokladka = None  # podglad jest juz kompletny
         if self._before_shown:
             return
         # te same nastawy - ostry fragment jest juz wlasciwy albo w drodze
@@ -1618,14 +1636,17 @@ class MainWindow(QMainWindow):
         # Shader nie odszumia ani nie wyostrza. Gdy ktores jest wlaczone, ostry
         # fragment liczymy na procesorze; z karty wjezdzal fragment BEZ tych
         # efektow na gotowy podglad i efekt suwaka znikal po chwili.
-        denoise = params.needs_detail_pass(min(scale, 1.0))
+        # Kolor odszumia karta, jesli umie - procesor jest wtedy potrzebny
+        # tylko do szumu jasnosci i wyostrzania.
+        denoise = params.needs_detail_pass(
+            min(scale, 1.0), bez_koloru=self.gpu_source_ready and self.gpu.kolor_dostepny)
 
         if self.gpu_source_ready:
             rgb8 = self.gpu.render(
                 self.full_raw, params,
                 max(1, round(rect.width() * scale)), max(1, round(rect.height() * scale)),
                 region=(rect.x(), rect.y(), rect.width(), rect.height()), scale=scale,
-                nearest=scale >= self.settings.pixel_peek_zoom,
+                nearest=scale >= self.settings.pixel_peek_zoom, kolor=self._kolor_karty(params),
             )
             if rgb8 is not None:
                 # Przy odszumianiu/wyostrzaniu fragment z karty jest tylko

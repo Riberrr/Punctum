@@ -14,7 +14,9 @@ GŁÓWNA.POBOCZNA.POPRAWKA: poprawki podbijają ostatnią liczbę, nowe funkcje
 ### Poprawione
 
 - Płynniejszy podgląd przy przesuwaniu suwaków: zdjęcie nie miga już
-  poprzednim ustawieniem ani rozmytym obrazem, także w powiększeniu.
+  poprzednim ustawieniem ani rozmytym obrazem, także w powiększeniu,
+  a kolory nie zmieniają się chwilę po zatrzymaniu suwaka — odszumianie
+  koloru liczy teraz karta graficzna przy każdym ruchu.
 
 ## 0.9.0 — 2026-09-29
 
