@@ -17,6 +17,8 @@ Wersja polska: [CHANGELOG.pl.md](CHANGELOG.pl.md).
   the previous setting or a blurry image, also when zoomed in, and colours no
   longer shift a moment after the slider stops — colour noise reduction now
   runs on the graphics card with every move.
+- The luminance noise and sharpening sliders show their effect while
+  dragging, not only after the slider is released.
 
 ## 0.9.0 — 2026-09-29
 

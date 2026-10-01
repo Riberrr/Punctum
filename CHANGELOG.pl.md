@@ -17,6 +17,8 @@ GŁÓWNA.POBOCZNA.POPRAWKA: poprawki podbijają ostatnią liczbę, nowe funkcje
   poprzednim ustawieniem ani rozmytym obrazem, także w powiększeniu,
   a kolory nie zmieniają się chwilę po zatrzymaniu suwaka — odszumianie
   koloru liczy teraz karta graficzna przy każdym ruchu.
+- Suwaki szumu jasności i wyostrzania pokazują efekt już w trakcie
+  przesuwania, a nie dopiero po puszczeniu.
 
 ## 0.9.0 — 2026-09-29
 

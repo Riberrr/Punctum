@@ -245,6 +245,38 @@ def stage_kolor_na_karcie() -> None:
     check("podglad nie zostal podmieniony po chwili ciszy", window.current_image is obraz)
 
 
+def stage_szum_w_ruchu() -> None:
+    """Punkt 32: suwak szumu jasnosci dziala w trakcie przesuwania, nie dopiero
+    po puszczeniu - przebieg procesora idzie na biezaco, a obraz z karty (bez
+    odszumiania) nie jest podmieniany przy kazdym ruchu."""
+    if not window.gpu_source_ready:
+        check("szum jasnosci w trakcie ruchu", True, "brak GPU - pominiete")
+        return
+    window.view.fit_to_window()
+    pauza(800)
+    zrodla = []
+    oryginal = window.view.set_image
+
+    def szpieg(*a, **k):
+        import inspect
+        zrodla.append(inspect.stack()[1].function)
+        return oryginal(*a, **k)
+
+    window.view.set_image = szpieg
+    suwak = window.edit_panel.sliders["noise_luminance"].slider
+    try:
+        for k in range(80):  # ok. 2,5 s ruchu bez zatrzymania
+            suwak.setValue(10 + k // 2)
+            pauza(30)
+    finally:
+        window.view.set_image = oryginal
+    z_procesora = zrodla.count("_on_noise_ready")
+    check("szum jasnosci odswieza podglad w trakcie ruchu", z_procesora >= 2,
+          f"{z_procesora} wynikow procesora w trakcie ruchu")
+    check("w trakcie ruchu karta nie podmienia obrazu", "_show_preview" not in zrodla,
+          f"zrodla: {sorted(set(zrodla))}")
+
+
 KOD = 0
 
 
@@ -262,7 +294,7 @@ def report() -> None:
 lancuch(app, [stage_load, stage_noise_on, stage_noise_check, stage_before,
               stage_before_check, stage_after_check, stage_sharpen_only,
               stage_sharpen_check, stage_migniecia, stage_stary_szum,
-              stage_kolor_na_karcie], report)
+              stage_kolor_na_karcie, stage_szum_w_ruchu], report)
 
 app.exec()
 sys.exit(KOD)
