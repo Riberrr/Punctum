@@ -139,6 +139,7 @@ def stage_before_check() -> None:
 
 def stage_after_check() -> None:
     czekaj(app, lambda: len(details) > 0, "ostry fragment po puszczeniu", 30000)
+    pauza(1500)  # pierwszy bywa zastepczy z karty - liczy sie wynik procesora
     rgb8, rect, scale = details[-1]
     reference = gpu_reference(window.display_params(), rect, scale)
     if reference is not None:
@@ -171,6 +172,59 @@ def stage_sharpen_check() -> None:
               f"energia drobnego pasma {e_det:.2f} wobec {e_ref:.2f}")
 
 
+def stage_migniecia() -> None:
+    """Punkt 32: przy 1:1 ruch suwaka nie chowa ostrego fragmentu (pod nim
+    jest rozmyty podglad), a fragment od razu ma biezace nastawy."""
+    pauza(1500)
+    widoczny = [window.view._detail.isVisible()]
+    roznica = None
+    for wartosc in (0.2, 0.4, 0.6):
+        details.clear()
+        window.edit_panel.sliders["exposure"].set_value(wartosc)
+        window._on_params_changed()
+        for _ in range(5):
+            app.processEvents()
+            widoczny.append(window.view._detail.isVisible())
+            time.sleep(0.005)
+        if roznica is None and details and window.gpu_source_ready:
+            # pierwszy fragment po ruchu, zanim dojedzie wynik procesora
+            rgb8, rect, scale = details[0]
+            ref = gpu_reference(window.display_params(), rect, scale)
+            roznica = float(np.mean(np.abs(rgb8.astype(np.int16) - ref.astype(np.int16))))
+    check("ruch suwaka przy 1:1 nie chowa ostrego fragmentu", all(widoczny),
+          f"schowany w {widoczny.count(False)} z {len(widoczny)} probek")
+    if not window.gpu_source_ready:
+        check("fragment zastepczy z karty", True, "brak GPU - pominiete")
+        return
+    check("fragment zastepczy od razu z nowymi nastawami",
+          roznica is not None and roznica < 2.0, f"srednia roznica {roznica}")
+
+
+def stage_stary_szum() -> None:
+    """Punkt 32: odszumianie podgladu policzone dla poprzednich nastaw nie
+    moze wjechac po nowszym podgladzie z karty (bylo widac stary stan)."""
+    if not window.gpu_source_ready:
+        check("stary wynik odszumiania odrzucony", True, "brak GPU - pominiete")
+        return
+    window.edit_panel.sliders["exposure"].set_value(-0.5)
+    window._render_preview()
+    window._noise_pending = (window.current_image, window.display_params())
+    window._render_noise_pass()  # zadanie dla starych nastaw w drodze
+    window.edit_panel.sliders["exposure"].set_value(0.5)
+    window._render_preview()
+    nowy = window.current_image
+    # Bez odszumienia nowych nastaw i bez ponownego podgladu z set_value -
+    # inaczej przykrylyby stary wynik i test niczego by nie zlapal.
+    window.noise_timer.stop()
+    window.debounce.stop()
+    window.pool.waitForDone(30000)
+    pauza(300)
+    jasnosc_nowa = float(nowy.mean())
+    jasnosc = float(window.current_image.mean())
+    check("stary wynik odszumiania odrzucony", abs(jasnosc - jasnosc_nowa) < 2.0,
+          f"jasnosc {jasnosc:.1f} wobec {jasnosc_nowa:.1f}")
+
+
 KOD = 0
 
 
@@ -187,7 +241,7 @@ def report() -> None:
 
 lancuch(app, [stage_load, stage_noise_on, stage_noise_check, stage_before,
               stage_before_check, stage_after_check, stage_sharpen_only,
-              stage_sharpen_check], report)
+              stage_sharpen_check, stage_migniecia, stage_stary_szum], report)
 
 app.exec()
 sys.exit(KOD)

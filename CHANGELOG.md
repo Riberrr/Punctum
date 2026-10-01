@@ -11,6 +11,11 @@ Wersja polska: [CHANGELOG.pl.md](CHANGELOG.pl.md).
 - Help ▸ "What's new" — the program's change history. After an update the
   window opens by itself, once.
 
+### Fixed
+
+- Smoother preview while dragging sliders: the photo no longer flickers with
+  the previous setting or a blurry image, also when zoomed in.
+
 ## 0.9.0 — 2026-09-29
 
 First release.

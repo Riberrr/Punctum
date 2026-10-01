@@ -167,6 +167,7 @@ class MainWindow(QMainWindow):
         self._job_counter = 0
         self._latest_job = 0
         self._latest_detail = 0
+        self._geometria_podgladu = None  # przy jej zmianie stary fragment nie pasuje
         # przytrzymany "Przed / po": podglad pokazuje zdjecie bez korekt i nic,
         # co przyjdzie w tym czasie z watkow, nie moze go podmienic
         self._before_shown = False
@@ -1509,6 +1510,11 @@ class MainWindow(QMainWindow):
                 region=(0, 0, out_w, out_h), scale=scale,
             )
             if rgb8 is not None:
+                # Odszumianie podgladu liczone dla poprzednich nastaw moze
+                # jeszcze byc w drodze - po dojechaniu pokazaloby na chwile
+                # stary stan suwaka (punkt 32), wiec je uniewazniamy.
+                self._job_counter += 1
+                self._latest_job = self._job_counter
                 self._show_preview(rgb8, (out_w, out_h), params)
                 return
             self.gpu_source_ready = False  # karta odmowila, wracamy na procesor
@@ -1530,12 +1536,43 @@ class MainWindow(QMainWindow):
             self.noise_timer.stop()
         if self._before_shown:
             return  # pokazemy po puszczeniu przycisku
+        # Fragment liczony na procesorze dla poprzednich nastaw nie moze
+        # wjechac po tym podgladzie.
+        self._latest_detail = -1
+        geometria = (params.orientation, params.rotation, params.crop)
+        if geometria != self._geometria_podgladu:
+            self._geometria_podgladu = geometria
+            self.view.clear_detail()
         self.view.set_image(rgb8, image_size)
+        self._detal_zastepczy(params)
         self._odswiez_przed(rgb8, image_size)
         self.navigator.set_pixmap(self.view.base_pixmap())
         self.histogram_widget.set_histogram(histogram(rgb8))
         if self.crop_mode:
             self.view.set_crop_fractions(self.crop)
+
+    def _detal_zastepczy(self, params: EditParams) -> None:
+        """Ostry fragment z karty od razu po ruchu suwaka.
+
+        Pelny fragment (z odszumianiem i wyostrzaniem) liczy procesor dopiero
+        po zegarze widoku. Do tego czasu przy powiekszeniu wisialby fragment
+        ze starymi nastawami - albo, gdyby go schowac, rozmyty podglad.
+        Karta liczy wycinek w milisekundach, wiec nadaje sie na kazdy ruch.
+        """
+        if not self.gpu_source_ready or self.full_raw is None:
+            return
+        fragment = self.view.widoczny_fragment()
+        if fragment is None:
+            return
+        rect, scale = fragment
+        rgb8 = self.gpu.render(
+            self.full_raw, params,
+            max(1, round(rect.width() * scale)), max(1, round(rect.height() * scale)),
+            region=(rect.x(), rect.y(), rect.width(), rect.height()), scale=scale,
+            nearest=scale >= self.settings.pixel_peek_zoom,
+        )
+        if rgb8 is not None:
+            self.view.set_detail(rgb8, rect, scale)
 
     def _on_render_ready(self, job_id: int, rgb8: np.ndarray) -> None:
         if job_id != self._latest_job or self.full_raw is None:
@@ -1562,7 +1599,8 @@ class MainWindow(QMainWindow):
         self.current_image = rgb8
         if self._before_shown:
             return
-        self.view.set_image(rgb8, self.view.image_size)
+        # te same nastawy - ostry fragment jest juz wlasciwy albo w drodze
+        self.view.set_image(rgb8, self.view.image_size, odswiez_detal=False)
         self.navigator.set_pixmap(self.view.base_pixmap())
         self.histogram_widget.set_histogram(histogram(rgb8))
 
@@ -1582,7 +1620,7 @@ class MainWindow(QMainWindow):
         # efektow na gotowy podglad i efekt suwaka znikal po chwili.
         denoise = params.needs_detail_pass(min(scale, 1.0))
 
-        if self.gpu_source_ready and not denoise:
+        if self.gpu_source_ready:
             rgb8 = self.gpu.render(
                 self.full_raw, params,
                 max(1, round(rect.width() * scale)), max(1, round(rect.height() * scale)),
@@ -1590,9 +1628,13 @@ class MainWindow(QMainWindow):
                 nearest=scale >= self.settings.pixel_peek_zoom,
             )
             if rgb8 is not None:
+                # Przy odszumianiu/wyostrzaniu fragment z karty jest tylko
+                # zastepczy: ma juz biezace tony, wiec do czasu wyniku
+                # procesora nie widac ani rozmycia, ani starych nastaw.
                 self.view.set_detail(rgb8, rect, scale)
-                self.detail_label.setText(t("pełna ostrość"))
-                return
+                if not denoise:
+                    self.detail_label.setText(t("pełna ostrość"))
+                    return
 
         self._job_counter += 1
         self._latest_detail = self._job_counter
@@ -1742,6 +1784,7 @@ class MainWindow(QMainWindow):
     def _show_after(self) -> None:
         self._before_shown = False
         self._latest_detail = -1  # fragment "przed" nie moze wjechac na "po"
+        self.view.clear_detail()  # set_image juz go nie chowa
         if self.current_image is not None and self.full_raw is not None:
             size = geometry_size(self.full_raw, self.display_params())
             self.view.set_image(self.current_image, size)
