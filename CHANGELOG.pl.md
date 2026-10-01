@@ -11,7 +11,7 @@ GŁÓWNA.POBOCZNA.POPRAWKA: poprawki podbijają ostatnią liczbę, nowe funkcje
 - Pomoc ▸ „Co nowego” — historia zmian w programie. Po aktualizacji okno
   pokazuje się samo, jeden raz.
 
-### Poprawki
+### Poprawione
 
 - Płynniejszy podgląd przy przesuwaniu suwaków: zdjęcie nie miga już
   poprzednim ustawieniem ani rozmytym obrazem, także w powiększeniu.
