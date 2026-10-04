@@ -55,6 +55,9 @@ BEZ_INTERFEJSU = {
     # Odpowiedzi dla modelu AI (MCP) - celowo po angielsku, nie na ekran.
     "app/mcp_polecenia.py", "mcp/narzedzia.py", "mcp/protokol.py", "mcp/most.py",
     "mcp/klienci.py",  # komunikaty sklada okno ustawien z kodow bledow
+    # Plik licencji (po angielsku, jak same licencje) i strona kreatora
+    # instalacji w obu jezykach - poza przekladem, jak [CustomMessages].
+    "core/licencje.py",
 }
 # Napisy, ktore celowo zostaja jak sa: nazwy wlasne, formaty, jednostki.
 STALE = re.compile(r"^(\s*(px|ms|K|%|×|°|mm)\s*|(Ctrl|Shift|Alt)\+.*|Punctum|OpenCV|Pillow|"

@@ -148,6 +148,11 @@ def main() -> int:
     exe = os.path.join(gotowy, "punctum.exe")
     shutil.copy2(exe, os.path.join(gotowy, "PunctumMCP.exe"))
     os.replace(exe, os.path.join(gotowy, "Punctum.exe"))
+    # Licencje bibliotek z paczki (punkt 18, etap 3). Liczone tutaj, bo
+    # skompilowany program nie ma juz metadanych pakietow, z ktorych powstaja.
+    from punctum.core import licencje
+
+    licencje.zapisz(gotowy, nuitka=True)
     rozmiar = sum(os.path.getsize(os.path.join(k, p)) for k, _, pp in os.walk(gotowy) for p in pp)
     print(f"gotowe: {gotowy} ({rozmiar / 2**20:.0f} MB)")
     return 0

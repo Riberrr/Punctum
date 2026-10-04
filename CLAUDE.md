@@ -176,7 +176,18 @@ Pisząc test z interfejsem:
   5. `git switch dev` i dalsza praca.
 - Znacznik `v*` na `main` jest jedynym źródłem wydania (budowanie
   instalatora w GitHub Actions i załącznik w GitHub Releases — stamtąd
-  ludzie pobierają program, nie z gałęzi).
+  ludzie pobierają program, nie z gałęzi). Robi to
+  `.github/workflows/wydanie.yml`: sprawdza, że tag = `__version__` i leży
+  na `main`, puszcza `testy.bat --szybkie`, kompiluje z przypiętych wersji
+  (`tools/wymagania-kompilacji.txt` — przy podbiciu biblioteki zmienić
+  tam i w venv), dołącza instalator, `SHA256SUMS.txt` i opis z sekcji
+  wersji w `CHANGELOG.md` (`tools/opis_wydania.py`). Ręczne uruchomienie
+  workflow = próba budowy bez wydania (instalator jako artefakt).
+- Licencje bibliotek: `punctum/core/licencje.py` liczy je z metadanych
+  pakietów; kompilacja zapisuje `THIRD-PARTY-LICENSES.txt` obok exe,
+  instalator pokazuje ich spis na osobnej stronie kreatora. Nowa
+  zależność trafia tam sama; biblioteka wszyta w pakiet (jak LibRaw
+  w rawpy) — uwaga w `UWAGI`.
 - Poprawka pilna do wydanej wersji też idzie przez `dev` i zwykłe wydanie
   (PATCH) — bez osobnych gałęzi poprawkowych, dopóki jest jeden autor.
 - Opisy commitów po polsku, podawane przez plik (`git commit -F <plik>`),

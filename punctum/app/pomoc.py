@@ -60,13 +60,21 @@ def tekst_zmian(kod: str | None = None) -> str:
 
 
 class OknoPomocy(QDialog):
-    def __init__(self, temat: str, tytul: str, parent=None, markdown: str | None = None):
+    def __init__(self, temat: str, tytul: str, parent=None, markdown: str | None = None,
+                 zwykly: str | None = None):
         super().__init__(parent)
         self.setWindowTitle(tytul)
         minimum(self, szer=620, wys=560)
         self.przegladarka = QTextBrowser()
         self.przegladarka.setOpenExternalLinks(True)
-        if markdown is None:
+        if zwykly is not None:
+            # Teksty licencji maja wciecia i tabelki ze spacji - pismo
+            # o stalej szerokosci i bez interpretacji znacznikow.
+            from PySide6.QtGui import QFontDatabase
+
+            self.przegladarka.setFont(QFontDatabase.systemFont(QFontDatabase.FixedFont))
+            self.przegladarka.setPlainText(zwykly)
+        elif markdown is None:
             self.przegladarka.setHtml(tekst_pomocy(temat))
         else:
             # Odnosnik do wersji w drugim jezyku jest dla czytajacych na
@@ -88,6 +96,15 @@ def pokaz_pomoc_mcp(parent=None) -> None:
 
 def pokaz_co_nowego(parent=None) -> None:
     OknoPomocy("", t("Co nowego"), parent, markdown=tekst_zmian()).exec()
+
+
+def pokaz_licencje(parent=None) -> None:
+    """Licencje bibliotek dolaczonych do programu (punkt 18, etap 3)."""
+    from ..core import licencje
+
+    okno = OknoPomocy("", t("Licencje zewnętrzne"), parent, zwykly=licencje.tekst())
+    minimum(okno, szer=760, wys=600)
+    okno.exec()
 
 
 def co_nowego_po_aktualizacji(okno) -> None:

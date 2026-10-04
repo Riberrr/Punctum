@@ -188,6 +188,7 @@
   "ustawienia.mcp_token_pokaz": {"tytul": "Show token", "opis": "Shows or hides the token."},
   "ustawienia.mcp_token_nowy": {"tytul": "New token", "opis": "Revokes the current token and creates a new one. Useful when the token got into the wrong hands."},
   "ustawienia.mcp_klient": {"tytul": "Connect to an AI app", "opis": "Adds Punctum to the configuration of the chosen AI app or removes it. The previous file is kept as a .punctum-kopia copy. Restart the AI app after connecting."},
+  "ustawienia.licencje": {"tytul": "Third-party licenses", "opis": "Shows the libraries by other authors included with Punctum (Qt, LibRaw, OpenCV, Python and more) with the full texts of their licenses."},
   "ustawienia.mcp_kopiuj": {"tytul": "Copy configuration", "opis": "Copies the MCP server entry in the mcpServers format to the clipboard - for pasting into an AI app not on the list."},
   "ustawienia.mcp_pomoc": {"tytul": "How does it work?", "opis": "Opens the help: how to connect AI apps, what the assistant can do, example commands and safety."}
 }

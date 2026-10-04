@@ -37,6 +37,11 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
+A ready-made Windows installer (no Python needed) is on the
+[releases](../../releases) page, with SHA-256 checksums. Licenses of the
+libraries included with the program: Settings ▸ About ▸ Third-party
+licenses (the installation also contains `THIRD-PARTY-LICENSES.txt`).
+
 ## What works
 
 **Browsing** — a thumbnail strip loaded from the previews embedded in RAW

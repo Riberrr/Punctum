@@ -10,6 +10,11 @@ Wersja polska: [CHANGELOG.pl.md](CHANGELOG.pl.md).
 
 - Help ▸ "What's new" — the program's change history. After an update the
   window opens by itself, once.
+- Settings ▸ About ▸ "Third-party licenses" — the libraries by other authors
+  included with the program and the full texts of their licenses; the
+  installer lists them too.
+- The installer can be downloaded from the GitHub releases page, with
+  a SHA-256 checksum.
 
 ### Fixed
 

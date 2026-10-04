@@ -10,6 +10,11 @@ GŁÓWNA.POBOCZNA.POPRAWKA: poprawki podbijają ostatnią liczbę, nowe funkcje
 
 - Pomoc ▸ „Co nowego” — historia zmian w programie. Po aktualizacji okno
   pokazuje się samo, jeden raz.
+- Ustawienia ▸ O programie ▸ „Licencje zewnętrzne” — biblioteki innych
+  autorów dołączone do programu i pełne teksty ich licencji; ich spis
+  pokazuje też instalator.
+- Instalator do pobrania ze strony wydań na GitHubie, z sumą kontrolną
+  SHA-256.
 
 ### Poprawione
 
