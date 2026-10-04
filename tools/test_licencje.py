@@ -99,7 +99,8 @@ check("workflow: tag v*, sprawdzenie main, sumy, Releases",
 import opis_wydania  # noqa: E402
 
 opis = opis_wydania.opis(__version__)
-check("opis wydania z CHANGELOG.md", len(opis) > 100 and "## " not in opis.split("\n")[0], opis[:60])
+# Opis zaczyna sie od tresci sekcji (### Added...), bez naglowka wersji.
+check("opis wydania z CHANGELOG.md", len(opis) > 100 and f"## {__version__}" not in opis, opis[:60])
 check("brak sekcji = pusto", opis_wydania.sekcja("0.0.0") == "")
 
 from PySide6.QtWidgets import QApplication  # noqa: E402
