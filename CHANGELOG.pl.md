@@ -4,6 +4,14 @@ Istotne zmiany w Punctum, od najnowszych. Numer wersji ma postać
 GŁÓWNA.POBOCZNA.POPRAWKA: poprawki podbijają ostatnią liczbę, nowe funkcje
 środkową. English version: [CHANGELOG.md](CHANGELOG.md).
 
+## 0.10.1 — 2026-10-04
+
+### Poprawione
+
+- Pierwsze wydanie z instalatorem na stronie wydań GitHuba — budowa
+  wersji 0.10.0 przerwała się przed powstaniem instalatora; zawartość
+  programu jest ta sama.
+
 ## 0.10.0 — 2026-10-04
 
 ### Nowe

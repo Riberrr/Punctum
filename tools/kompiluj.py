@@ -142,7 +142,10 @@ def main() -> int:
 
     if not _wolny(gotowy):
         return 1
-    shutil.rmtree(gotowy)
+    # Pierwsza kompilacja w czystym katalogu (GitHub Actions) nie ma czego
+    # usuwac - rmtree bez sprawdzenia wywracal tam cale wydanie 0.10.0.
+    if os.path.exists(gotowy):
+        shutil.rmtree(gotowy)
     shutil.copytree(os.path.join(roboczy, "punctum.dist"), gotowy)
     # Jeden plik, dwa wejscia: nazwa .exe wybiera, ktore sie uruchomi.
     exe = os.path.join(gotowy, "punctum.exe")
