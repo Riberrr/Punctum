@@ -30,6 +30,7 @@ sys.path.insert(0, REPO)
 from punctum import __version__  # noqa: E402
 from punctum.core.jpeg_loader import JPEG_EXTENSIONS  # noqa: E402
 from punctum.core.loader import RAW_EXTENSIONS  # noqa: E402
+from punctum.core import licencje  # noqa: E402
 from kompiluj import _wersja_czworka  # noqa: E402
 
 SKRYPT = os.path.join(REPO, "tools", "punctum.iss")
@@ -71,11 +72,30 @@ def wpisy_rozszerzen() -> list[str]:
     return linie
 
 
+STRONA_LICENCJI = {
+    "pl": ("Punctum korzysta z bibliotek innych autorów, udostępnianych na ich własnych licencjach:",
+           "Pełne teksty licencji znajdziesz po instalacji w pliku {plik} w katalogu programu "
+           "oraz w programie: Ustawienia ▸ O programie ▸ Licencje zewnętrzne.\n\n"
+           "Biblioteki Qt są dołączone jako osobne pliki i można je wymienić na własną "
+           "zgodną wersję (LGPL v3)."),
+    "en": ("Punctum uses libraries by other authors, distributed under their own licenses:",
+           "The full license texts are installed with the program in {plik} and shown in "
+           "Settings ▸ About ▸ Third-party licenses.\n\nThe Qt libraries are shipped as "
+           "separate files and may be replaced with your own compatible build (LGPL v3)."),
+}
+
+
+def strona_licencji(kod: str) -> str:
+    """Tekst strony "Licencje zewnetrzne" w kreatorze (punkt 18, etap 3)."""
+    naglowek, stopka = STRONA_LICENCJI[kod]
+    return "\n".join([naglowek, ""] + licencje.spis() + ["", stopka.format(plik=licencje.NAZWA_PLIKU)]) + "\n"
+
+
 def main() -> int:
     argumenty = sys.argv[1:]
     katalog = os.path.abspath(argumenty[0] if argumenty else os.path.join(REPO, "..", "kompilacja"))
     zrodlo = os.path.join(katalog, "Punctum")
-    for plik in ("Punctum.exe", "PunctumMCP.exe"):
+    for plik in ("Punctum.exe", "PunctumMCP.exe", licencje.NAZWA_PLIKU):
         if not os.path.isfile(os.path.join(zrodlo, plik)):
             print(f"brak {plik} w {zrodlo} - najpierw tools/kompiluj.py")
             return 1
@@ -96,6 +116,13 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="punctum-instalator-") as generowane:
         with open(os.path.join(generowane, "rozszerzenia.iss"), "w", encoding="utf-8-sig") as f:
             f.write("\n".join(wpisy_rozszerzen()) + "\n")
+        # Strona "Informacje" w kreatorze: spis bibliotek i ich licencji
+        # (pelne teksty instaluja sie z programem). Inno czyta plik .txt jako
+        # Unicode tylko z BOM.
+        for kod in ("pl", "en"):
+            with open(os.path.join(generowane, f"licencje.{kod}.txt"), "w",
+                      encoding="utf-8-sig", newline="\r\n") as f:
+                f.write(strona_licencji(kod))
         polecenie = [
             iscc, "/Q",
             f"/DWersja={__version__}",

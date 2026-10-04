@@ -253,8 +253,20 @@ class GpuRenderer:
         self._vao.release()
 
         self._renderer_name = self._describe_hardware()
+        # Odszumianie koloru na karcie (punkt 32). Gdy shadery sie nie
+        # skompiluja, karta dalej liczy tor tonalny, a kolor robi procesor.
+        from .gpu_kolor import KolorNaKarcie
+
+        kolor = KolorNaKarcie(self._context, self._vao)
+        self._kolor = kolor if kolor.gotowy else None
+        self._kolor_blad = kolor.blad
         self._context.doneCurrent()
         return True
+
+    @property
+    def kolor_dostepny(self) -> bool:
+        """Czy render(kolor=...) odszumia kolor na karcie."""
+        return getattr(self, "_kolor", None) is not None
 
     def _gl_string(self, constant: int) -> str:
         try:
@@ -376,14 +388,23 @@ class GpuRenderer:
         region: tuple[int, int, int, int] | None = None,
         scale: float = 1.0,
         nearest: bool = False,
+        kolor: float = 0.0,
     ) -> np.ndarray | None:
         """Zwraca obraz RGB uint8 albo None, jesli karta nie jest dostepna.
 
         `nearest` przelacza powiekszanie na najblizszego sasiada - przy duzym
         zblizeniu chcemy widziec prawdziwe piksele, a nie ich interpolacje.
+        `kolor` to suwak "Szum koloru" (0..100); dziala, gdy `kolor_dostepny`.
         """
         if not self._ready or self._texture is None:
             return None
+        z_kolorem = kolor >= 0.5 and self.kolor_dostepny  # prog jak w denoise.py
+        docelowy = (int(out_width), int(out_height))
+        if z_kolorem and scale > 1.0 and region is not None:
+            # Jak develop_region: odszumianie w skali natywnej, potem powiekszenie.
+            # Inaczej ziarno rozciagniete ponad zasieg filtrow zostaloby w obrazie.
+            out_width, out_height = max(1, int(region[2])), max(1, int(region[3]))
+            scale = 1.0
         if not self._context.makeCurrent(self._surface):
             return None
 
@@ -444,7 +465,14 @@ class GpuRenderer:
             self._texture.release(0)
             self._vao.release()
             program.release()
-            image = fbo.toImage()
+            if z_kolorem:
+                wynik = self._kolor.odszum(fbo.texture(), int(out_width), int(out_height),
+                                           kolor / 100.0 * 16.0)
+                if docelowy != (int(out_width), int(out_height)):
+                    wynik = self._kolor.skaluj(wynik, *docelowy, najblizszy=nearest)
+                image = wynik.toImage()
+            else:
+                image = fbo.toImage()
             fbo.release()
             return _qimage_to_rgb(image)
         except Exception as exc:

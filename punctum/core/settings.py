@@ -127,6 +127,9 @@ class Settings:
     ui_scale: float = 1.0
     reopen_last_folder: bool = True
     last_folder: str = ""
+    # Wersja, dla ktorej uzytkownik widzial juz "Co nowego" - inna niz
+    # biezaca = pierwszy start po aktualizacji (okno zmian pokazuje sie raz).
+    last_seen_version: str = ""
     # Zapis korekt obok zdjec (sidecar XMP). Dzieki temu obrobke 2000 zdjec
     # mozna rozlozyc na kilka dni - zamkniecie programu nie gubi pracy.
     store_edits: bool = True

@@ -1,0 +1,112 @@
+# Wydanie Punctum (punkt 18, etap 3): instalator Windows budowany tutaj,
+# nie na komputerze autora, z tagu vX.Y.Z na main (zasady: CLAUDE.md,
+# "Galezie i wydania"). Wynik trafia do GitHub Releases razem z sumami
+# SHA-256 i opisem z CHANGELOG.md.
+# Uruchomienie reczne (Actions > Wydanie > Run workflow) = proba budowy:
+# instalator tylko jako artefakt przebiegu, bez wydania.
+name: Wydanie
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write       # gh release create
+  id-token: write       # poswiadczenie pochodzenia
+  attestations: write
+
+concurrency:
+  group: wydanie-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # potrzebne do sprawdzenia, czy tag lezy na main
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Srodowisko (.venv jak na komputerze autora - tego oczekuje testy.bat)
+        run: |
+          python -m venv .venv
+          .venv\Scripts\python -m pip install --upgrade pip
+          .venv\Scripts\python -m pip install -r tools\wymagania-kompilacji.txt
+
+      - name: Tag = numer wersji i lezy na main
+        if: github.ref_type == 'tag'
+        run: |
+          $wersja = .venv\Scripts\python -c "import punctum; print(punctum.__version__)"
+          if ("v$wersja" -ne "${{ github.ref_name }}") {
+            throw "Tag ${{ github.ref_name }} nie zgadza sie z __version__ = $wersja"
+          }
+          git merge-base --is-ancestor $env:GITHUB_SHA origin/main
+          if ($LASTEXITCODE -ne 0) { throw "Tag ${{ github.ref_name }} nie lezy na main" }
+          # Opis wydania od razu - brak sekcji w CHANGELOG.md zatrzymuje przebieg
+          # przed kilkudziesiecioma minutami kompilacji.
+          .venv\Scripts\python tools\opis_wydania.py $wersja opis.md
+          if ($LASTEXITCODE -ne 0) { throw "Brak opisu wydania" }
+
+      - name: Testy bez interfejsu
+        shell: cmd
+        run: tools\testy.bat --szybkie
+
+      - name: Inno Setup
+        # Kreator korzysta z wygladu Inno 6.7 (WizardStyle, tlo) - upgrade
+        # instaluje albo podnosi wersje z obrazu maszyny.
+        run: choco upgrade innosetup -y --no-progress
+
+      - name: Pamiec podreczna Nuitki
+        uses: actions/cache@v4
+        with:
+          path: ~\AppData\Local\Nuitka
+          key: nuitka-${{ hashFiles('tools/wymagania-kompilacji.txt') }}-${{ github.sha }}
+          restore-keys: nuitka-${{ hashFiles('tools/wymagania-kompilacji.txt') }}-
+
+      - name: Kompilacja
+        run: .venv\Scripts\python tools\kompiluj.py "${{ github.workspace }}\kompilacja"
+
+      - name: Instalator i sumy SHA-256
+        run: |
+          .venv\Scripts\python tools\instalator.py "${{ github.workspace }}\kompilacja"
+          if ($LASTEXITCODE -ne 0) { throw "Instalator nie powstal" }
+          Set-Location kompilacja
+          Get-FileHash Punctum-*-setup.exe -Algorithm SHA256 |
+            ForEach-Object { "{0}  {1}" -f $_.Hash.ToLower(), (Split-Path $_.Path -Leaf) } |
+            Out-File SHA256SUMS.txt -Encoding ascii
+          Get-Content SHA256SUMS.txt
+
+      - name: Poswiadczenie pochodzenia
+        # W repozytorium prywatnym moze wymagac wyzszego planu GitHuba -
+        # brak poswiadczenia nie blokuje wydania.
+        continue-on-error: true
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: kompilacja/Punctum-*-setup.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Punctum-instalator
+          path: |
+            kompilacja/Punctum-*-setup.exe
+            kompilacja/SHA256SUMS.txt
+          retention-days: 14
+
+      - name: GitHub Releases
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $instalator = Get-ChildItem kompilacja\Punctum-*-setup.exe | Select-Object -First 1
+          $wersja = "${{ github.ref_name }}".TrimStart("v")
+          gh release create "${{ github.ref_name }}" $instalator.FullName kompilacja\SHA256SUMS.txt `
+            --title "Punctum $wersja" --notes-file opis.md --verify-tag

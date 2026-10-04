@@ -139,6 +139,7 @@ def stage_before_check() -> None:
 
 def stage_after_check() -> None:
     czekaj(app, lambda: len(details) > 0, "ostry fragment po puszczeniu", 30000)
+    pauza(1500)  # pierwszy bywa zastepczy z karty - liczy sie wynik procesora
     rgb8, rect, scale = details[-1]
     reference = gpu_reference(window.display_params(), rect, scale)
     if reference is not None:
@@ -171,6 +172,111 @@ def stage_sharpen_check() -> None:
               f"energia drobnego pasma {e_det:.2f} wobec {e_ref:.2f}")
 
 
+def stage_migniecia() -> None:
+    """Punkt 32: przy 1:1 ruch suwaka nie chowa ostrego fragmentu (pod nim
+    jest rozmyty podglad), a fragment od razu ma biezace nastawy."""
+    pauza(1500)
+    widoczny = [window.view._detail.isVisible()]
+    roznica = None
+    for wartosc in (0.2, 0.4, 0.6):
+        details.clear()
+        window.edit_panel.sliders["exposure"].set_value(wartosc)
+        window._on_params_changed()
+        for _ in range(5):
+            app.processEvents()
+            widoczny.append(window.view._detail.isVisible())
+            time.sleep(0.005)
+        if roznica is None and details and window.gpu_source_ready:
+            # pierwszy fragment po ruchu, zanim dojedzie wynik procesora
+            rgb8, rect, scale = details[0]
+            ref = gpu_reference(window.display_params(), rect, scale)
+            roznica = float(np.mean(np.abs(rgb8.astype(np.int16) - ref.astype(np.int16))))
+    check("ruch suwaka przy 1:1 nie chowa ostrego fragmentu", all(widoczny),
+          f"schowany w {widoczny.count(False)} z {len(widoczny)} probek")
+    if not window.gpu_source_ready:
+        check("fragment zastepczy z karty", True, "brak GPU - pominiete")
+        return
+    check("fragment zastepczy od razu z nowymi nastawami",
+          roznica is not None and roznica < 2.0, f"srednia roznica {roznica}")
+
+
+def stage_stary_szum() -> None:
+    """Punkt 32: odszumianie podgladu policzone dla poprzednich nastaw nie
+    moze wjechac po nowszym podgladzie z karty (bylo widac stary stan)."""
+    if not window.gpu_source_ready:
+        check("stary wynik odszumiania odrzucony", True, "brak GPU - pominiete")
+        return
+    window.edit_panel.sliders["exposure"].set_value(-0.5)
+    window._render_preview()
+    window._noise_pending = (window.current_image, window.display_params())
+    window._render_noise_pass()  # zadanie dla starych nastaw w drodze
+    window.edit_panel.sliders["exposure"].set_value(0.5)
+    window._render_preview()
+    nowy = window.current_image
+    # Bez odszumienia nowych nastaw i bez ponownego podgladu z set_value -
+    # inaczej przykrylyby stary wynik i test niczego by nie zlapal.
+    window.noise_timer.stop()
+    window.debounce.stop()
+    window.pool.waitForDone(30000)
+    pauza(300)
+    jasnosc_nowa = float(nowy.mean())
+    jasnosc = float(window.current_image.mean())
+    check("stary wynik odszumiania odrzucony", abs(jasnosc - jasnosc_nowa) < 2.0,
+          f"jasnosc {jasnosc:.1f} wobec {jasnosc_nowa:.1f}")
+
+
+def stage_kolor_na_karcie() -> None:
+    """Punkt 32: przy dopasowaniu do okna i samym szumie koloru podglad z karty
+    jest od razu kompletny - procesor nic nie doklada, wiec barwy nie
+    przeskakuja po zatrzymaniu suwaka."""
+    if not (window.gpu_source_ready and window.gpu.kolor_dostepny):
+        check("kolor na karcie - podglad bez podmiany", True, "brak GPU - pominiete")
+        return
+    window.view.fit_to_window()
+    window.edit_panel.sliders["noise_luminance"].set_value(0)
+    window.edit_panel.sliders["noise_color"].set_value(25)
+    window.edit_panel.sliders["exposure"].set_value(0.3)
+    window._on_params_changed()
+    pauza(200)
+    obraz = window.current_image
+    check("przy samym szumie koloru procesor nic nie doklada",
+          window._noise_pending is None and window._podglad_dokladka is None)
+    pauza(1200)
+    check("podglad nie zostal podmieniony po chwili ciszy", window.current_image is obraz)
+
+
+def stage_szum_w_ruchu() -> None:
+    """Punkt 32: suwak szumu jasnosci dziala w trakcie przesuwania, nie dopiero
+    po puszczeniu - przebieg procesora idzie na biezaco, a obraz z karty (bez
+    odszumiania) nie jest podmieniany przy kazdym ruchu."""
+    if not window.gpu_source_ready:
+        check("szum jasnosci w trakcie ruchu", True, "brak GPU - pominiete")
+        return
+    window.view.fit_to_window()
+    pauza(800)
+    zrodla = []
+    oryginal = window.view.set_image
+
+    def szpieg(*a, **k):
+        import inspect
+        zrodla.append(inspect.stack()[1].function)
+        return oryginal(*a, **k)
+
+    window.view.set_image = szpieg
+    suwak = window.edit_panel.sliders["noise_luminance"].slider
+    try:
+        for k in range(80):  # ok. 2,5 s ruchu bez zatrzymania
+            suwak.setValue(10 + k // 2)
+            pauza(30)
+    finally:
+        window.view.set_image = oryginal
+    z_procesora = zrodla.count("_on_noise_ready")
+    check("szum jasnosci odswieza podglad w trakcie ruchu", z_procesora >= 2,
+          f"{z_procesora} wynikow procesora w trakcie ruchu")
+    check("w trakcie ruchu karta nie podmienia obrazu", "_show_preview" not in zrodla,
+          f"zrodla: {sorted(set(zrodla))}")
+
+
 KOD = 0
 
 
@@ -187,7 +293,8 @@ def report() -> None:
 
 lancuch(app, [stage_load, stage_noise_on, stage_noise_check, stage_before,
               stage_before_check, stage_after_check, stage_sharpen_only,
-              stage_sharpen_check], report)
+              stage_sharpen_check, stage_migniecia, stage_stary_szum,
+              stage_kolor_na_karcie, stage_szum_w_ruchu], report)
 
 app.exec()
 sys.exit(KOD)

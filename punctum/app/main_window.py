@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from dataclasses import replace
 from datetime import datetime
 
 import numpy as np
@@ -167,6 +168,20 @@ class MainWindow(QMainWindow):
         self._job_counter = 0
         self._latest_job = 0
         self._latest_detail = 0
+        self._geometria_podgladu = None  # przy jej zmianie stary fragment nie pasuje
+        # Nastawy, ktore procesor ma jeszcze dolozyc do current_image (szum
+        # jasnosci, wyostrzanie) - None, gdy podglad jest kompletny. Czyta to
+        # MCP get_preview, zeby nie odszumiac drugi raz.
+        self._podglad_dokladka = None
+        # Suwaki szumu jasnosci i wyostrzania nie zmieniaja obrazu z karty -
+        # przy ich ruchu nie liczymy go od nowa, tylko na biezaco dokladamy
+        # przebieg procesora do zapamietanej bazy (punkt 32). Klucz tonu mowi,
+        # dla jakiego zdjecia i nastaw tonalnych baza jest wazna.
+        self._ton_podgladu = None
+        self._baza_podgladu = None
+        self._szum_zadanie = None  # numer przebiegu procesora w toku
+        self._detal_zadanie = None  # numer ostrego fragmentu z procesora w toku
+        self._detal_oczekuje = False
         # przytrzymany "Przed / po": podglad pokazuje zdjecie bez korekt i nic,
         # co przyjdzie w tym czasie z watkow, nie moze go podmienic
         self._before_shown = False
@@ -555,6 +570,9 @@ class MainWindow(QMainWindow):
         ai_help_action = QAction(t("Sterowanie przez AI (MCP)…"), self)
         ai_help_action.triggered.connect(self._pomoc_mcp)
         help_menu.addAction(ai_help_action)
+        news_action = QAction(t("Co nowego"), self)
+        news_action.triggered.connect(self._co_nowego)
+        help_menu.addAction(news_action)
         about_action = QAction(t("O programie"), self)
         about_action.triggered.connect(lambda: self.open_settings(PAGE_ABOUT))
         help_menu.addAction(about_action)
@@ -702,6 +720,11 @@ class MainWindow(QMainWindow):
         from .pomoc import pokaz_pomoc_mcp
 
         pokaz_pomoc_mcp(self)
+
+    def _co_nowego(self) -> None:
+        from .pomoc import pokaz_co_nowego
+
+        pokaz_co_nowego(self)
 
     # ------------------------------------------------------------ ustawienia
 
@@ -1489,6 +1512,10 @@ class MainWindow(QMainWindow):
             return
         params = self.display_params()
         out_w, out_h = geometry_size(self.full_raw, params)
+        if (self.gpu_source_ready and self._baza_podgladu is not None
+                and self._klucz_tonu(params) == self._ton_podgladu):
+            self._tylko_detal(params, (out_w, out_h))
+            return
 
         if self.gpu_source_ready:
             # Rysujemy caly kadr pomniejszony do rozmiaru podgladu. Karta robi
@@ -1498,12 +1525,22 @@ class MainWindow(QMainWindow):
             rgb8 = self.gpu.render(
                 self.full_raw, params,
                 max(1, round(out_w * scale)), max(1, round(out_h * scale)),
-                region=(0, 0, out_w, out_h), scale=scale,
+                region=(0, 0, out_w, out_h), scale=scale, kolor=self._kolor_karty(params),
             )
             if rgb8 is not None:
-                self._show_preview(rgb8, (out_w, out_h), params)
+                # Odszumianie podgladu liczone dla poprzednich nastaw moze
+                # jeszcze byc w drodze - po dojechaniu pokazaloby na chwile
+                # stary stan suwaka (punkt 32), wiec je uniewazniamy.
+                self._job_counter += 1
+                self._latest_job = self._job_counter
+                # baza dla przebiegow procesora przy ruchu suwakow szumu
+                self._baza_podgladu = rgb8
+                self._ton_podgladu = self._klucz_tonu(params)
+                self._show_preview(rgb8, (out_w, out_h), params,
+                                   kolor_z_karty=self.gpu.kolor_dostepny)
                 return
             self.gpu_source_ready = False  # karta odmowila, wracamy na procesor
+        self._baza_podgladu = None
 
         self._job_counter += 1
         self._latest_job = self._job_counter
@@ -1511,23 +1548,116 @@ class MainWindow(QMainWindow):
         task.signals.render_ready.connect(self._on_render_ready)
         self.pool.start(task)
 
-    def _show_preview(self, rgb8: np.ndarray, image_size: tuple, params: EditParams) -> None:
+    def _klucz_tonu(self, params: EditParams) -> tuple:
+        """Wszystko, od czego zalezy obraz z karty - bez pol, ktore liczy
+        tylko procesor (szum jasnosci, wyostrzanie; kolor, gdy karta go nie umie)."""
+        bez = replace(params, noise_luminance=0.0, sharpen_amount=0.0, sharpen_radius=1.0,
+                      sharpen_detail=0.0, sharpen_masking=0.0)
+        if not self.gpu.kolor_dostepny:
+            bez = replace(bez, noise_color=0.0)
+        return (id(self.full_raw), self.settings.preview_size, bez)
+
+    def _tylko_detal(self, params: EditParams, image_size: tuple) -> None:
+        """Ruch suwaka szumu jasnosci albo wyostrzania.
+
+        Obraz z karty bylby ten sam, wiec go nie liczymy - podmiana na wersje
+        bez odszumiania przy kazdym ruchu dawalaby miganie. Przebieg procesora
+        idzie od razu, bez czekania na chwile ciszy: gdy jeden sie liczy,
+        nastepny rusza zaraz po nim z najnowszymi nastawami. Dzieki temu efekt
+        widac w trakcie przesuwania, a nie dopiero po puszczeniu suwaka.
+        """
+        baza = self._baza_podgladu
+        kolor = self.gpu.kolor_dostepny
+        self.noise_timer.stop()
+        if params.needs_detail_pass(baza.shape[1] / float(max(1, image_size[0])),
+                                    bez_koloru=kolor):
+            cpu = replace(params, noise_color=0.0) if kolor else params
+            self._noise_pending = (baza, cpu)
+            self._podglad_dokladka = cpu
+            self._render_noise_pass()
+        else:
+            # suwak zjechal do zera - wystarczy sama baza z karty
+            self._noise_pending = None
+            self._podglad_dokladka = None
+            self._job_counter += 1
+            self._latest_job = self._job_counter  # przebieg w toku jest juz zbedny
+            self.current_image = baza
+            if not self._before_shown:
+                self.view.set_image(baza, image_size, odswiez_detal=False)
+                self.navigator.set_pixmap(self.view.base_pixmap())
+                self.histogram_widget.set_histogram(histogram(baza))
+        if not self._before_shown:
+            self._detal_ciagly()
+
+    def _detal_ciagly(self) -> None:
+        """Ostry fragment przy powiekszeniu - tez na biezaco, po jednym naraz."""
+        fragment = self.view.widoczny_fragment()
+        if fragment is None or self.full_raw is None:
+            return
+        if self._detal_zadanie is not None:
+            self._detal_oczekuje = True
+            return
+        self._render_detail(*fragment, zastepczy=False)
+
+    def _kolor_karty(self, params: EditParams) -> float:
+        """Suwak szumu koloru dla karty - odszumia go sama (punkt 32), wiec
+        podglad nie zmienia barw po chwili, gdy dochodzi przebieg procesora."""
+        return params.noise_color if self.gpu.kolor_dostepny else 0.0
+
+    def _show_preview(self, rgb8: np.ndarray, image_size: tuple, params: EditParams,
+                      kolor_z_karty: bool = False) -> None:
         self.current_image = rgb8
-        # odszumianie liczy procesor, wiec dokladamy je dopiero po chwili ciszy
-        if params.needs_detail_pass(rgb8.shape[1] / float(max(1, image_size[0]))):
-            self._noise_pending = (rgb8, params)
+        # Szum jasnosci i wyostrzanie liczy procesor, wiec dokladamy je dopiero
+        # po chwili ciszy. Kolor zrobila juz karta - drugi raz byloby za mocno.
+        if params.needs_detail_pass(rgb8.shape[1] / float(max(1, image_size[0])),
+                                    bez_koloru=kolor_z_karty):
+            cpu = replace(params, noise_color=0.0) if kolor_z_karty else params
+            self._noise_pending = (rgb8, cpu)
+            self._podglad_dokladka = cpu
             self.noise_timer.start()
         else:
             self._noise_pending = None
+            self._podglad_dokladka = None
             self.noise_timer.stop()
         if self._before_shown:
             return  # pokazemy po puszczeniu przycisku
+        # Fragment liczony na procesorze dla poprzednich nastaw nie moze
+        # wjechac po tym podgladzie.
+        self._latest_detail = -1
+        geometria = (params.orientation, params.rotation, params.crop)
+        if geometria != self._geometria_podgladu:
+            self._geometria_podgladu = geometria
+            self.view.clear_detail()
         self.view.set_image(rgb8, image_size)
+        self._detal_zastepczy(params)
         self._odswiez_przed(rgb8, image_size)
         self.navigator.set_pixmap(self.view.base_pixmap())
         self.histogram_widget.set_histogram(histogram(rgb8))
         if self.crop_mode:
             self.view.set_crop_fractions(self.crop)
+
+    def _detal_zastepczy(self, params: EditParams) -> None:
+        """Ostry fragment z karty od razu po ruchu suwaka.
+
+        Pelny fragment (z odszumianiem i wyostrzaniem) liczy procesor dopiero
+        po zegarze widoku. Do tego czasu przy powiekszeniu wisialby fragment
+        ze starymi nastawami - albo, gdyby go schowac, rozmyty podglad.
+        Karta liczy wycinek w milisekundach, wiec nadaje sie na kazdy ruch.
+        """
+        if not self.gpu_source_ready or self.full_raw is None:
+            return
+        fragment = self.view.widoczny_fragment()
+        if fragment is None:
+            return
+        rect, scale = fragment
+        rgb8 = self.gpu.render(
+            self.full_raw, params,
+            max(1, round(rect.width() * scale)), max(1, round(rect.height() * scale)),
+            region=(rect.x(), rect.y(), rect.width(), rect.height()), scale=scale,
+            nearest=scale >= self.settings.pixel_peek_zoom, kolor=self._kolor_karty(params),
+        )
+        if rgb8 is not None:
+            self.view.set_detail(rgb8, rect, scale)
 
     def _on_render_ready(self, job_id: int, rgb8: np.ndarray) -> None:
         if job_id != self._latest_job or self.full_raw is None:
@@ -1538,7 +1668,10 @@ class MainWindow(QMainWindow):
     def _render_noise_pass(self) -> None:
         if self._noise_pending is None:
             return
+        if self._szum_zadanie is not None:
+            return  # ruszy po zakonczeniu biezacego (_on_noise_ready)
         image, params = self._noise_pending
+        self._noise_pending = None
         self._job_counter += 1
         self._latest_job = self._job_counter
         # podglad bywa pomniejszony - promien wyostrzania liczymy w pikselach zdjecia
@@ -1546,19 +1679,33 @@ class MainWindow(QMainWindow):
         task = NoiseReductionTask(self._job_counter, image, params, scale,
                                   quality=self.settings.preview_noise_quality)
         task.signals.render_ready.connect(self._on_noise_ready)
+        self._szum_zadanie = self._job_counter
         self.pool.start(task)
 
     def _on_noise_ready(self, job_id: int, rgb8: np.ndarray) -> None:
-        if job_id != self._latest_job or self.full_raw is None:
+        if job_id == self._szum_zadanie:
+            self._szum_zadanie = None
+        aktualny = job_id == self._latest_job and self.full_raw is not None
+        # Kolejny przebieg czekal na ten - rusza dopiero po sprawdzeniu, czy
+        # ten wynik jest aktualny (start podbija _latest_job). Przy ruchu
+        # suwakow tonalnych zegar ciszy jeszcze tyka - wtedy ruszy sam.
+        if self._noise_pending is not None and not self.noise_timer.isActive():
+            QTimer.singleShot(0, self._render_noise_pass)
+        if not aktualny:
             return
         self.current_image = rgb8
+        if self._noise_pending is None:
+            self._podglad_dokladka = None  # podglad jest juz kompletny
         if self._before_shown:
             return
-        self.view.set_image(rgb8, self.view.image_size)
+        # te same nastawy - ostry fragment jest juz wlasciwy albo w drodze
+        self.view.set_image(rgb8, self.view.image_size, odswiez_detal=False)
         self.navigator.set_pixmap(self.view.base_pixmap())
         self.histogram_widget.set_histogram(histogram(rgb8))
 
-    def _render_detail(self, rect: QRect, scale: float) -> None:
+    def _render_detail(self, rect: QRect, scale: float, zastepczy: bool = True) -> None:
+        """`zastepczy=False`: bez fragmentu z karty - przy ruchu suwakow szumu
+        mialby te same tony, ale bez odszumiania, i zakrywalby wynik procesora."""
         if self.full_raw is None:
             return
         if self._compare_shown():
@@ -1572,33 +1719,49 @@ class MainWindow(QMainWindow):
         # Shader nie odszumia ani nie wyostrza. Gdy ktores jest wlaczone, ostry
         # fragment liczymy na procesorze; z karty wjezdzal fragment BEZ tych
         # efektow na gotowy podglad i efekt suwaka znikal po chwili.
-        denoise = params.needs_detail_pass(min(scale, 1.0))
+        # Kolor odszumia karta, jesli umie - procesor jest wtedy potrzebny
+        # tylko do szumu jasnosci i wyostrzania.
+        denoise = params.needs_detail_pass(
+            min(scale, 1.0), bez_koloru=self.gpu_source_ready and self.gpu.kolor_dostepny)
 
-        if self.gpu_source_ready and not denoise:
+        if self.gpu_source_ready and (zastepczy or not denoise):
             rgb8 = self.gpu.render(
                 self.full_raw, params,
                 max(1, round(rect.width() * scale)), max(1, round(rect.height() * scale)),
                 region=(rect.x(), rect.y(), rect.width(), rect.height()), scale=scale,
-                nearest=scale >= self.settings.pixel_peek_zoom,
+                nearest=scale >= self.settings.pixel_peek_zoom, kolor=self._kolor_karty(params),
             )
             if rgb8 is not None:
+                # Przy odszumianiu/wyostrzaniu fragment z karty jest tylko
+                # zastepczy: ma juz biezace tony, wiec do czasu wyniku
+                # procesora nie widac ani rozmycia, ani starych nastaw.
                 self.view.set_detail(rgb8, rect, scale)
-                self.detail_label.setText(t("pełna ostrość"))
-                return
+                if not denoise:
+                    self.detail_label.setText(t("pełna ostrość"))
+                    return
 
         self._job_counter += 1
         self._latest_detail = self._job_counter
         task = DetailRenderTask(self._job_counter, self.full_raw, params, rect, scale,
                                 quality=self.settings.preview_noise_quality)
         task.signals.detail_ready.connect(self._on_detail_ready)
+        self._detal_zadanie = self._job_counter
         self.pool.start(task)
         self.detail_label.setText(t("ostrzenie…"))
 
     def _on_detail_ready(self, job_id: int, rgb8, rect: QRect, scale: float) -> None:
+        if job_id == self._detal_zadanie:
+            self._detal_zadanie = None
         if job_id != self._latest_detail:
+            if self._detal_oczekuje and self._detal_zadanie is None:
+                self._detal_oczekuje = False
+                self._detal_ciagly()
             return
         self.view.set_detail(rgb8, rect, scale)
         self.detail_label.setText(t("pełna ostrość"))
+        if self._detal_oczekuje and self._detal_zadanie is None:
+            self._detal_oczekuje = False
+            self._detal_ciagly()
 
     def _on_view_rect(self, rect: QRectF) -> None:
         self.navigator.set_view_rect(None if rect.isNull() else rect)
@@ -1734,6 +1897,7 @@ class MainWindow(QMainWindow):
     def _show_after(self) -> None:
         self._before_shown = False
         self._latest_detail = -1  # fragment "przed" nie moze wjechac na "po"
+        self.view.clear_detail()  # set_image juz go nie chowa
         if self.current_image is not None and self.full_raw is not None:
             size = geometry_size(self.full_raw, self.display_params())
             self.view.set_image(self.current_image, size)

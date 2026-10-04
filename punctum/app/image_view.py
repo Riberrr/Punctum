@@ -158,8 +158,13 @@ class ImageView(QGraphicsView):
 
     # ----------------------------------------------------------- obrazy
 
-    def set_image(self, rgb8: np.ndarray, image_size: tuple[int, int]) -> None:
-        """Ustawia podglad. `image_size` to rozmiar obrazu w pelnej rozdzielczosci."""
+    def set_image(self, rgb8: np.ndarray, image_size: tuple[int, int],
+                  odswiez_detal: bool = True) -> None:
+        """Ustawia podglad. `image_size` to rozmiar obrazu w pelnej rozdzielczosci.
+
+        `odswiez_detal=False`: ten sam stan nastaw (np. dojechalo odszumianie
+        podgladu) - ostry fragment jest juz wlasciwy albo w drodze.
+        """
         width, height = image_size
         first = self._base.pixmap().isNull()
         resized = self._image_size != (width, height)
@@ -171,14 +176,16 @@ class ImageView(QGraphicsView):
         self._image_size = (width, height)
         self._scene.setSceneRect(0.0, 0.0, float(width), float(height))
 
-        # Tylko fragment "po": ruch suwaka nie zmienia strony "przed", wiec
-        # jej ostry fragment zostaje (zmiane geometrii zalatwia set_before_image).
-        self._detail.hide()
+        # Ostry fragment zostaje na miejscu, dopoki nie przyjdzie nowy (punkt 32):
+        # chowanie go przy kazdym ruchu suwaka odslanialo na chwile rozmyty
+        # podglad pod spodem - to byly mikromigniecia przy powiekszeniu.
+        # Zmiane geometrii (obrot, kadr) zalatwia okno przez clear_detail.
         if first or resized:
+            self._detail.hide()
             if not self._crop_mode or first:
                 self._crop = QRectF(0.0, 0.0, float(width), float(height))
             self.fit_to_window()
-        else:
+        elif odswiez_detal:
             self._schedule_detail()
         self._update_split()
         self._emit_view_rect()
@@ -314,26 +321,34 @@ class ImageView(QGraphicsView):
     def _schedule_detail(self) -> None:
         self._detail_timer.start()
 
-    def _request_detail(self) -> None:
+    def widoczny_fragment(self) -> tuple[QRect, float] | None:
+        """Wycinek zdjecia na ekranie i powiekszenie - albo None, gdy ostry
+        fragment nie jest potrzebny (podglad wystarcza albo trwa kadrowanie)."""
         if self._base.pixmap().isNull() or self._crop_mode:
-            return
+            return None
         if self._zoom <= self._proxy_scale * 1.1:
-            self.clear_detail()  # proxy jest juz wystarczajaco ostre
-            return
-
+            return None
         visible = self.mapToScene(self.viewport().rect()).boundingRect()
-        bounds = self._scene.sceneRect()
-        region = visible.intersected(bounds)
+        region = visible.intersected(self._scene.sceneRect())
         if region.width() < 2 or region.height() < 2:
-            return
-
+            return None
         rect = QRect(
             int(np.floor(region.left())),
             int(np.floor(region.top())),
             int(np.ceil(region.width())),
             int(np.ceil(region.height())),
         )
-        self.detail_needed.emit(rect, float(self._zoom))
+        return rect, float(self._zoom)
+
+    def _request_detail(self) -> None:
+        if self._base.pixmap().isNull() or self._crop_mode:
+            return
+        if self._zoom <= self._proxy_scale * 1.1:
+            self.clear_detail()  # proxy jest juz wystarczajaco ostre
+            return
+        fragment = self.widoczny_fragment()
+        if fragment is not None:
+            self.detail_needed.emit(*fragment)
 
     # ------------------------------------------------------ powiekszanie
 

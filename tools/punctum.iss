@@ -55,8 +55,10 @@ CloseApplications=yes
 RestartApplications=no
 
 [Languages]
-Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"
-Name: "english"; MessagesFile: "compiler:Default.isl"
+; Strona "Informacje": spis bibliotek i ich licencji - pliki generuje
+; tools\instalator.py z punctum/core/licencje.py (punkt 18, etap 3).
+Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"; InfoBeforeFile: "{#Generowane}\licencje.pl.txt"
+Name: "english"; MessagesFile: "compiler:Default.isl"; InfoBeforeFile: "{#Generowane}\licencje.en.txt"
 
 [Messages]
 polish.WelcomeLabel1=Witaj w instalatorze Punctum
@@ -66,6 +68,10 @@ polish.WelcomeLabel2=Zainstalujesz edytor zdjęć RAW i JPEG — [name/ver].%n%n
 english.WelcomeLabel2=This will install the RAW and JPEG photo editor — [name/ver].%n%nClose other applications before continuing.
 polish.FinishedHeadingLabel=Punctum jest gotowy
 english.FinishedHeadingLabel=Punctum is ready
+polish.WizardInfoBefore=Licencje zewnętrzne
+english.WizardInfoBefore=Third-party licenses
+polish.InfoBeforeMsg=Biblioteki innych autorów dołączone do Punctum.
+english.InfoBeforeMsg=Libraries by other authors included with Punctum.
 
 [CustomMessages]
 polish.Haslo=Dla tego jednego szczegółu.

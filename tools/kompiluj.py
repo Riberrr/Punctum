@@ -65,6 +65,10 @@ def _polecenie(wyjscie: str, szybko: bool) -> list[str]:
         "--include-package=punctum",
         f"--include-data-dir={os.path.join(REPO, 'punctum', 'lang')}=punctum/lang",
         f"--include-data-dir={os.path.join(REPO, 'punctum', 'assets')}=punctum/assets",
+        # Historia zmian dla Pomoc > Co nowego: obok exe, tak jak w repo
+        # obok pakietu (app/pomoc.py szuka jej trzy poziomy nad soba).
+        f"--include-data-files={os.path.join(REPO, 'CHANGELOG.md')}=CHANGELOG.md",
+        f"--include-data-files={os.path.join(REPO, 'CHANGELOG.pl.md')}=CHANGELOG.pl.md",
         # Wtyczka pyside6 dolacza wszystkie tlumaczenia Qt; interfejs ma dwa jezyki.
         "--noinclude-qt-translations",
         # Zbedny balast (~110 MB): narzedzia deweloperskie przegladarki mapy
@@ -144,6 +148,11 @@ def main() -> int:
     exe = os.path.join(gotowy, "punctum.exe")
     shutil.copy2(exe, os.path.join(gotowy, "PunctumMCP.exe"))
     os.replace(exe, os.path.join(gotowy, "Punctum.exe"))
+    # Licencje bibliotek z paczki (punkt 18, etap 3). Liczone tutaj, bo
+    # skompilowany program nie ma juz metadanych pakietow, z ktorych powstaja.
+    from punctum.core import licencje
+
+    licencje.zapisz(gotowy, nuitka=True)
     rozmiar = sum(os.path.getsize(os.path.join(k, p)) for k, _, pp in os.walk(gotowy) for p in pp)
     print(f"gotowe: {gotowy} ({rozmiar / 2**20:.0f} MB)")
     return 0

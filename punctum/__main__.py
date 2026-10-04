@@ -87,6 +87,9 @@ def main() -> int:
 
     # Ekran schodzi dopiero, gdy pierwsze zdjecie i widoczne miniatury sa na
     # miejscu - samo zbudowanie okna to jeszcze nie gotowosc do pracy.
+    from .app.pomoc import co_nowego_po_aktualizacji
+
+    ekran.po_schowaniu = lambda: co_nowego_po_aktualizacji(window)
     ekran.czekaj_na(window, window.stan_startu)
     return app.exec()
 

@@ -355,8 +355,9 @@ class PoleceniaMCP:
         def stan() -> tuple:
             o = self.okno
             return (os.path.basename(o.current_path), o.full_raw, o.proxy,
-                    o.display_params(), o._before_params(), o.settings.preview_noise_quality)
-        nazwa, raw, proxy, nastawy, przed_nastawy, jakosc = self.w_gui(stan)
+                    o.display_params(), o._before_params(), o.settings.preview_noise_quality,
+                    o._podglad_dokladka)
+        nazwa, raw, proxy, nastawy, przed_nastawy, jakosc, dokladka = self.w_gui(stan)
         if raw is None:
             raise BladNarzedzia("The open photo is still loading.")
         szer, wys = geometry_size(raw, nastawy)
@@ -377,8 +378,11 @@ class PoleceniaMCP:
             # to samo co uzytkownik po chwili.
             po = podglad
             skala = po.shape[1] / float(max(1, szer))
-            if nastawy.needs_detail_pass(skala):
-                po = apply_detail(po, nastawy, jakosc, skala)
+            # Okno wie, czego podgladowi brakuje (kolor mogla juz odszumic
+            # karta, a przebieg procesora mogl juz dojsc) - bez tego
+            # odszumialibysmy drugi raz.
+            if dokladka is not None and dokladka.needs_detail_pass(skala):
+                po = apply_detail(po, dokladka, jakosc, skala)
             przed = develop(proxy, przed_nastawy, denoise=False) if widok != "after" else None
             opis = f"{nazwa} - whole frame ({szer}x{wys} px full size)"
 

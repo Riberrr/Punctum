@@ -146,8 +146,50 @@ Pisząc test z interfejsem:
 
 ## Git
 
-- Gałąź `main`, zdalne `origin` = https://github.com/Riberrr/Punctum
+- Zdalne `origin` = https://github.com/Riberrr/Punctum
 - Autor ustawiony lokalnie dla repozytorium (brak konfiguracji globalnej).
+
+### Gałęzie i wydania
+
+- **`main` = wersja stabilna**, gotowa do pobrania i instalacji. Trafiają
+  tam tylko wersje przyjęte przez użytkownika. **Nie commitować na `main`
+  bezpośrednio.**
+- **`dev` = bieżąca praca.** Każda sesja zaczyna od `git switch dev`
+  i `git pull`; commit i push idą na `dev`.
+- **Równoległe sesje:** każda na własnej gałęzi od `dev`
+  (`git switch -c dev-<temat>`), scalanej do `dev` po zamknięciu obszaru
+  i potem usuwanej. Dzięki temu jedna sesja nie zabiera do commita zmian
+  drugiej. Przed `git add` zawsze `git status` — dodawać tylko własne pliki.
+- **Numer wersji** tylko w `punctum/__init__.py` (`__version__`).
+  Poprawki podbijają PATCH (0.9.0 → 0.9.1), nowe funkcje MINOR
+  (0.9.x → 0.10.0); 1.0.0 dopiero po próbie użytkownika przy prawdziwej
+  obróbce zdjęć.
+- **Wydanie — tylko na wyraźne słowo użytkownika**, w tej kolejności:
+  1. na `dev`: w `CHANGELOG.md` i `CHANGELOG.pl.md` sekcja
+     „Unreleased” / „Nieopublikowane” zamieniona na `## X.Y.Z — RRRR-MM-DD`
+     (bez tego `test_changelog` nie przejdzie), `__version__` podbity, pełna
+     seria testów przeszła, commit „Wydanie X.Y.Z”;
+  2. `git switch main`, `git pull`, `git merge --no-ff dev`
+     (commit scalenia „Wydanie X.Y.Z”);
+  3. `git tag -a vX.Y.Z -m "Punctum X.Y.Z"`;
+  4. `git push origin main vX.Y.Z`;
+  5. `git switch dev` i dalsza praca.
+- Znacznik `v*` na `main` jest jedynym źródłem wydania (budowanie
+  instalatora w GitHub Actions i załącznik w GitHub Releases — stamtąd
+  ludzie pobierają program, nie z gałęzi). Robi to
+  `.github/workflows/wydanie.yml`: sprawdza, że tag = `__version__` i leży
+  na `main`, puszcza `testy.bat --szybkie`, kompiluje z przypiętych wersji
+  (`tools/wymagania-kompilacji.txt` — przy podbiciu biblioteki zmienić
+  tam i w venv), dołącza instalator, `SHA256SUMS.txt` i opis z sekcji
+  wersji w `CHANGELOG.md` (`tools/opis_wydania.py`). Ręczne uruchomienie
+  workflow = próba budowy bez wydania (instalator jako artefakt).
+- Licencje bibliotek: `punctum/core/licencje.py` liczy je z metadanych
+  pakietów; kompilacja zapisuje `THIRD-PARTY-LICENSES.txt` obok exe,
+  instalator pokazuje ich spis na osobnej stronie kreatora. Nowa
+  zależność trafia tam sama; biblioteka wszyta w pakiet (jak LibRaw
+  w rawpy) — uwaga w `UWAGI`.
+- Poprawka pilna do wydanej wersji też idzie przez `dev` i zwykłe wydanie
+  (PATCH) — bez osobnych gałęzi poprawkowych, dopóki jest jeden autor.
 - Opisy commitów po polsku, podawane przez plik (`git commit -F <plik>`),
   zapisany **poza** katalogiem `.git`. Opis mówi, jaki problem zamyka commit
   i jaką decyzję zapisuje — nie wylicza zmienionych plików.

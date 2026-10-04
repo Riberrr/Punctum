@@ -782,8 +782,21 @@ class SettingsDialog(QDialog):
         line2.setFrameShape(QFrame.HLine)
         layout.addWidget(line2)
         layout.addWidget(_hint(self._library_versions()))
+        # Licencje bibliotek z paczki: obowiazek LGPL (Qt) i pozostalych.
+        licencje_button = QPushButton(t("Licencje zewnętrzne"))
+        podpowiedz(licencje_button, "ustawienia.licencje")
+        licencje_button.clicked.connect(self._pokaz_licencje)
+        wiersz_licencji = QHBoxLayout()
+        wiersz_licencji.addWidget(licencje_button)
+        wiersz_licencji.addStretch(1)
+        layout.addLayout(wiersz_licencji)
         layout.addStretch(1)
         return page
+
+    def _pokaz_licencje(self) -> None:
+        from .pomoc import pokaz_licencje
+
+        pokaz_licencje(self)
 
     def _library_versions(self) -> str:
         entries = []

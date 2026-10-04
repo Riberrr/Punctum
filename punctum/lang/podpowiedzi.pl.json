@@ -187,6 +187,7 @@
   "ustawienia.mcp_token_pokaz": {"tytul": "Pokaż token", "opis": "Pokazuje albo ukrywa token."},
   "ustawienia.mcp_token_nowy": {"tytul": "Nowy token", "opis": "Unieważnia dotychczasowy token i tworzy nowy. Przydaje się, gdy token trafił w niepowołane ręce."},
   "ustawienia.mcp_klient": {"tytul": "Połącz z programem AI", "opis": "Dopisuje Punctum do konfiguracji wybranego programu AI albo go z niej usuwa. Poprzednia wersja pliku zostaje jako kopia .punctum-kopia. Po połączeniu uruchom program AI ponownie."},
+  "ustawienia.licencje": {"tytul": "Licencje zewnętrzne", "opis": "Pokazuje biblioteki innych autorów dołączone do Punctum (Qt, LibRaw, OpenCV, Python i inne) z pełnymi tekstami ich licencji."},
   "ustawienia.mcp_kopiuj": {"tytul": "Kopiuj konfigurację", "opis": "Kopiuje do schowka wpis serwera MCP w formacie mcpServers - do wklejenia w programie AI spoza listy."},
   "ustawienia.mcp_pomoc": {"tytul": "Jak to działa?", "opis": "Otwiera pomoc: jak połączyć programy AI, co asystent może zrobić, przykłady poleceń i bezpieczeństwo."}
 }

@@ -37,6 +37,11 @@ python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
+Gotowy instalator dla Windows (bez Pythona) leży na stronie
+[wydań](../../releases) razem z sumami SHA-256. Licencje bibliotek
+dołączonych do programu: Ustawienia ▸ O programie ▸ Licencje zewnętrzne
+(w instalacji także plik `THIRD-PARTY-LICENSES.txt`).
+
 ## Co działa
 
 **Przeglądanie** — pasek miniatur wczytywany z podglądów wbudowanych w pliki

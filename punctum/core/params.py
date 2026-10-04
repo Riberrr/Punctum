@@ -105,17 +105,21 @@ class EditParams:
     def is_default(self, jpeg: bool = False) -> bool:
         return self == default_params(jpeg)
 
-    def needs_detail_pass(self, scale: float = 1.0) -> bool:
+    def needs_detail_pass(self, scale: float = 1.0, bez_koloru: bool = False) -> bool:
         """Czy obraz w skali `scale` wymaga przebiegu na procesorze.
 
-        Shader nie odszumia ani nie wyostrza, wiec kazde miejsce pokazujace
+        `bez_koloru=True`: obraz przyszedl z karty juz z odszumionym kolorem
+        (app/gpu_kolor.py, punkt 32), wiec liczy sie tylko szum jasnosci
+        i wyostrzanie.
+
+        Shader nie odszumia jasnosci ani nie wyostrza, wiec kazde miejsce pokazujace
         obraz musi wtedy isc torem CPU - inaczej efekt znika po dorysowaniu
         fragmentu. Wyostrzanie liczy sie dopiero, gdy promien w pikselach
         obrazu przekracza SHARPEN_MIN_RADIUS: na podgladzie dopasowanym do
         okna i tak nie byloby go widac, a przebieg CPU po kazdym ruchu
         suwaka dawalby tylko mrugniecie.
         """
-        if self.noise_luminance > 0.5 or self.noise_color > 0.5:
+        if self.noise_luminance > 0.5 or (self.noise_color > 0.5 and not bez_koloru):
             return True
         return self.sharpen_amount > 0.5 and self.sharpen_radius * scale >= SHARPEN_MIN_RADIUS
 
