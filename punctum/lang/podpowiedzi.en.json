@@ -102,6 +102,7 @@
   "ustawienia.autor": {"tytul": "Default author", "opis": "Suggested in the export window. Whether it goes into the files is decided on each export."},
   "ustawienia.prawa": {"tytul": "Default copyright", "opis": "Suggested in the export window. Whether it goes into the files is decided on each export.", "uwaga": "e.g. © 2026 First Last"},
   "ustawienia.jezyk": {"tytul": "Program language", "opis": "Language of labels, tooltips and numbers. The list comes from the translation files, so a new language shows up here by itself once its file is added.", "uwaga": "The change takes effect after restarting the program."},
+  "ustawienia.uruchom_ponownie": {"tytul": "Save and restart", "opis": "Saves the settings, closes the program and opens it again in the chosen language - with the same photo and the settings window in the same place.", "uwaga": "Edits to the current photo are saved before closing."},
   "ustawienia.ostatni_folder": {"tytul": "Last folder on startup", "opis": "After starting, the program immediately opens the folder you last worked in."},
   "ustawienia.xmp": {"tytul": "Keeping edits", "opis": "Each photo's edits go into an XMP file next to the original and return to the sliders the next time it is opened, so editing a large folder can be spread over several days. The photo file is never changed."},
   "ustawienia.domyslne": {"tytul": "Restore defaults", "opis": "Sets every field in this window to its factory value. They are saved only after you click “Save”."},

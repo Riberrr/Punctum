@@ -78,6 +78,9 @@ QMainWindow::separator { background: #131315; width: 1px; height: 1px; }
 #cameraLabel { color: #e8e8ea; font-weight: 600; }
 #settingsLabel { color: #b8b8be; }
 #metaLabel { color: #86868c; }
+#ostrzezenieLabel { color: #e0b252; }
+#linkButton { background: transparent; border: none; padding: 0; color: #8a83ff; text-decoration: underline; }
+#linkButton:hover { color: #b3aeff; }
 #sidePanel { background: #1b1b1d; border-left: 1px solid #2e2e32; }
 
 /* Chowany fragment sekcji z danymi zdjecia: strzalka zamiast przycisku,

@@ -113,6 +113,10 @@ UWAGI_KLIENTA = {
 # lepiej zaczac od Ogolnych niz od przypadkowej strony sprzed tygodnia.
 _last_page = PAGE_GENERAL
 
+# Pola, na ktore program wraca po ponownym uruchomieniu (punkt 33):
+# nazwa z flagi --ustawienia= -> (strona, atrybut okna).
+POLA = {"jezyk": (PAGE_GENERAL, "language_box")}
+
 
 class _PrzewijanaWPionie(QScrollArea):
     """Przewija tylko w pionie; szerokosc bierze z tresci.
@@ -133,6 +137,8 @@ class _PrzewijanaWPionie(QScrollArea):
 class SettingsDialog(QDialog):
     # Ustawienia zatwierdzone bez zamykania okna - okno glowne stosuje je od razu.
     zatwierdzono = Signal(object)
+    # "Zapisz i uruchom ponownie" - okno glowne restartuje program po zapisie.
+    uruchom_ponownie = False
 
     def __init__(self, settings: Settings, system: SystemInfo, parent=None, probka=None):
         super().__init__(parent)
@@ -201,6 +207,7 @@ class SettingsDialog(QDialog):
         layout.addWidget(buttons)
 
         self._load_into_widgets()
+        self._pokaz_ostrzezenie_jezyka()
         self.show_page(_last_page)
 
     def _dopasuj_kategorie(self) -> None:
@@ -245,7 +252,24 @@ class SettingsDialog(QDialog):
         language_form.addRow(t("Język:"), self.language_box)
         podpowiedz_wiersza(language_form, self.language_box, "ustawienia.jezyk")
         language_layout.addLayout(language_form)
-        language_layout.addWidget(_hint(t("Nowy język obowiązuje od ponownego uruchomienia programu.")))
+        # Ostrzezenie tylko po zmianie: napisy licza sie przy budowie widzetow,
+        # wiec nowy jezyk wymaga nowego procesu (punkt 33).
+        self.jezyk_ostrzezenie = QWidget()
+        ostrzezenie_layout = QHBoxLayout(self.jezyk_ostrzezenie)
+        marginesy(ostrzezenie_layout, 0, 0, 0, 0)
+        odstep(ostrzezenie_layout, 10)
+        ostrzezenie = QLabel(t("Zmiana języka zadziała po ponownym uruchomieniu programu."))
+        ostrzezenie.setObjectName("ostrzezenieLabel")
+        ostrzezenie.setWordWrap(True)
+        ostrzezenie_layout.addWidget(ostrzezenie, 1)
+        self.restart_button = QPushButton(t("Zapisz i uruchom ponownie"))
+        self.restart_button.setObjectName("linkButton")
+        self.restart_button.setCursor(Qt.PointingHandCursor)
+        podpowiedz(self.restart_button, "ustawienia.uruchom_ponownie")
+        self.restart_button.clicked.connect(self._on_restart)
+        ostrzezenie_layout.addWidget(self.restart_button)
+        language_layout.addWidget(self.jezyk_ostrzezenie)
+        self.language_box.currentIndexChanged.connect(self._pokaz_ostrzezenie_jezyka)
         layout.addWidget(language)
 
         files = QGroupBox(t("Pliki i foldery"))
@@ -914,6 +938,23 @@ class SettingsDialog(QDialog):
     def _on_accept(self) -> None:
         self.settings = self._collect_from_widgets()
         self.accept()
+
+    def _pokaz_ostrzezenie_jezyka(self) -> None:
+        # Porownanie z jezykiem, w ktorym program faktycznie mowi, nie
+        # z zapisanym - zapisany moze juz czekac na restart.
+        self.jezyk_ostrzezenie.setVisible(self.language_box.currentData() != jezyk())
+
+    def _on_restart(self) -> None:
+        # Okno glowne po "Zapisz" sprawdza te flage i uruchamia sie od nowa.
+        self.uruchom_ponownie = True
+        self._on_accept()
+
+    def pokaz_pole(self, pole: str) -> None:
+        """Strona i fokus na polu po ponownym uruchomieniu (punkt 33)."""
+        if pole in POLA:
+            strona, widget = POLA[pole]
+            self.show_page(strona)
+            getattr(self, widget).setFocus()
 
     def result_settings(self) -> Settings:
         return self.settings
