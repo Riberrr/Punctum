@@ -8,7 +8,7 @@ opisuje `core.params.EditParams`.
 # metadane eksportu, serwer MCP i kompilacja (zasoby .exe, instalator).
 # Schemat MAJOR.MINOR.PATCH; 0.x, dopoki program nie przejdzie proby przy
 # prawdziwej obrobce - wtedy 1.0.0.
-__version__ = "0.10.1"
+__version__ = "0.11.0"
 
 # Identyfikator programu dla Windows (pasek zadan, skroty). Ten sam musi
 # stac w oknie i w skrocie - inaczej przypiety skrot i uruchomione okno

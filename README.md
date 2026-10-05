@@ -444,7 +444,9 @@ translation breaks nothing.
 
 The program is in English and Polish. The language is chosen in
 `Settings ▸ General ▸ Language`; the change takes effect after a
-restart, because labels are computed when the windows are built. On first
+restart, because labels are computed when the windows are built — the
+"Save and restart" link under the field does it right away and comes back
+to the same photo and the same place in the settings. On first
 start the program uses the system language, and English when it does not
 know it.
 

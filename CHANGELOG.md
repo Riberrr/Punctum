@@ -4,6 +4,20 @@ Notable changes to Punctum, newest first. Version numbers follow
 MAJOR.MINOR.PATCH: fixes bump the last number, new features the middle one.
 Wersja polska: [CHANGELOG.pl.md](CHANGELOG.pl.md).
 
+## 0.11.0 — 2026-10-05
+
+### Added
+
+- After changing the language in Settings ▸ General a warning appears
+  with a "Save and restart" link: the program saves your work and opens
+  again in the chosen language - with the same photo and the settings
+  window in the same place.
+
+### Changed
+
+- Double-clicking a photo while Punctum is open opens it in the running
+  window (and brings it to the front) instead of starting a second copy.
+
 ## 0.10.1 — 2026-10-04
 
 ### Fixed

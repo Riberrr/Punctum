@@ -4,6 +4,20 @@ Istotne zmiany w Punctum, od najnowszych. Numer wersji ma postać
 GŁÓWNA.POBOCZNA.POPRAWKA: poprawki podbijają ostatnią liczbę, nowe funkcje
 środkową. English version: [CHANGELOG.md](CHANGELOG.md).
 
+## 0.11.0 — 2026-10-05
+
+### Nowe
+
+- Po zmianie języka w Ustawieniach ▸ Ogólne pojawia się ostrzeżenie
+  i link "Zapisz i uruchom ponownie": program zapisuje pracę, otwiera
+  się od nowa w wybranym języku - z tym samym zdjęciem i z oknem
+  ustawień w tym samym miejscu.
+
+### Zmienione
+
+- Dwuklik zdjęcia przy otwartym Punctum otwiera je w działającym oknie
+  (i wyciąga je na wierzch) zamiast uruchamiać drugi program.
+
 ## 0.10.1 — 2026-10-04
 
 ### Poprawione

@@ -757,14 +757,50 @@ class MainWindow(QMainWindow):
         elif self.gpu_allowed() and self.full_raw is not None and not self.gpu_source_ready:
             self.gpu_source_ready = self.gpu.set_source(self.full_raw.camera_linear)
 
-    def open_settings(self, page: str | None = None) -> None:
+    def open_settings(self, page: str | None = None, pole: str = "") -> None:
         dialog = SettingsDialog(self.settings, self.system, self, probka=self.current_image)
         if page is not None:
             dialog.show_page(page)
+        if pole:
+            dialog.pokaz_pole(pole)
         dialog.zatwierdzono.connect(self._przyjmij_ustawienia)
         if dialog.exec() != SettingsDialog.Accepted:
             return
         self._przyjmij_ustawienia(dialog.result_settings())
+        if dialog.uruchom_ponownie:
+            self.uruchom_ponownie("jezyk")
+
+    # Gniazdo jednej instancji (punkt 34) - ustawia je __main__; restart
+    # musi je zamknac, zanim wystartuje nowy proces.
+    serwer_instancji = None
+
+    def uruchom_ponownie(self, pole: str = "") -> None:
+        """Nowy proces z tym samym zdjeciem, potem zamkniecie (punkt 33).
+
+        Wszystko trafia na dysk przed startem nowego procesu - on od razu
+        czyta ustawienia i sidecary. Nowy proces startuje przed zamknieciem
+        okna, zeby przy bledzie startu program po prostu zostal otwarty.
+        """
+        from .jedna_instancja import FLAGA_USTAWIEN, uruchom_ponownie
+
+        self.remember_current_edits()
+        self.settings.save()
+        argumenty = [self.current_path or self.settings.last_folder or ""]
+        if pole:
+            argumenty.append(FLAGA_USTAWIEN + pole)
+        argumenty = [a for a in argumenty if a]
+        if self.serwer_instancji is not None:
+            self.serwer_instancji.zamknij()
+        if not uruchom_ponownie(argumenty):
+            if self.serwer_instancji is not None:
+                self.serwer_instancji.uruchom()
+            QMessageBox.warning(self, "Punctum", t("Nie udało się uruchomić programu ponownie. "
+                                                   "Zamknij go i otwórz samodzielnie."))
+            return
+        self.close()
+        # Otwarta pomoc albo mapa w osobnym oknie nie moze trzymac starego
+        # procesu przy zyciu obok nowego.
+        QApplication.quit()
 
     def _przyjmij_ustawienia(self, nowe: Settings) -> None:
         """Stosuje ustawienia z okna - po "Zapisz" i po "Zatwierdz zmiany"."""
