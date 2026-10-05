@@ -444,7 +444,9 @@ niczego nie psuje.
 
 Program jest po polsku i po angielsku. Język wybiera się w
 `Ustawienia ▸ Ogólne ▸ Język`; zmiana działa po ponownym
-uruchomieniu, bo napisy liczą się przy tworzeniu okien. Przy pierwszym
+uruchomieniu, bo napisy liczą się przy tworzeniu okien — link „Zapisz
+i uruchom ponownie” pod polem robi to od razu i wraca do tego samego
+zdjęcia i miejsca w ustawieniach. Przy pierwszym
 starcie program bierze język systemu, a gdy go nie zna — angielski.
 
 Kod pisze napisy po polsku i przepuszcza je przez `t()`: `t("Zapisz")`.
