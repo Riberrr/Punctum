@@ -78,7 +78,6 @@ def _flagi_systemu() -> list[str]:
         return [
             # Paczka .app od Nuitki: frameworki Qt (z QtWebEngineProcess)
             # ulozone tak, jak ich szuka system; Info.plist dopisujemy potem.
-            "--macos-create-app-bundle",
             "--macos-app-mode=gui",
             "--macos-app-name=Punctum",
             f"--macos-app-icon={IKONA_MAC}",
@@ -135,7 +134,9 @@ def _polecenie(wyjscie: str, szybko: bool) -> list[str]:
 
     polecenie = [
         sys.executable, "-m", "nuitka",
-        "--mode=standalone",
+        # Nuitka 4: tryb "app" = standalone w paczce .app na macOS (stara flaga
+        # --macos-create-app-bundle koliduje z --mode).
+        "--mode=app" if MACOS else "--mode=standalone",
         "--assume-yes-for-downloads",
         f"--output-dir={wyjscie}",
         *_flagi_systemu(),
