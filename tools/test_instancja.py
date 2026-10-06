@@ -49,6 +49,21 @@ check("sciezka wzgledna -> bezwzgledna",
 check("nazwa gniazda bez znakow specjalnych",
       all(c.isalnum() or c in "_.-" for c in ji.nazwa_serwera()))
 
+# --- plik od systemu zdarzeniem (macOS: Finder, Dock; punkt 31 D)
+from PySide6.QtGui import QFileOpenEvent  # noqa: E402
+
+plikowy = ji.SerwerInstancji(f"punctum-test-plik-{os.getpid()}")
+plikowy.sluchaj_otwierania(app)
+ZDARZENIE = os.path.join(REPO, "a.jpg")
+QApplication.sendEvent(app, QFileOpenEvent(ZDARZENIE))
+check("zdarzenie otwarcia czeka przed oknem", plikowy.przejmij_czekajace() == [ZDARZENIE])
+check("kolejka po przejeciu pusta", plikowy.przejmij_czekajace() == [])
+odebrane = []
+plikowy.ustaw_odbiorce(odebrane.append)
+QApplication.sendEvent(app, QFileOpenEvent(ZDARZENIE))
+check("zdarzenie otwarcia do gotowego okna", odebrane == [[ZDARZENIE]], str(odebrane))
+app.removeEventFilter(plikowy)
+
 # --- polecenie restartu ze zrodel
 program, args, katalog = ji.polecenie_restartu(["x.jpg", "--ustawienia=jezyk"])
 check("restart: -m punctum z argumentami", args == ["-m", "punctum", "x.jpg", "--ustawienia=jezyk"], str(args))

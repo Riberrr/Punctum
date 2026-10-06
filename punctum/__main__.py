@@ -104,6 +104,7 @@ def main() -> int:
     if serwer is None:
         return 0
     serwer.setParent(app)
+    serwer.sluchaj_otwierania(app)
     _ikona_programu(app)
     # Jezyk przed pierwszym oknem - napisy licza sie przy tworzeniu widzetow,
     # a ekran startowy tez juz mowi w wybranym jezyku.
@@ -122,6 +123,8 @@ def main() -> int:
     ekran.raise_()  # na wypadek, gdyby system zignorowal "na wierzchu" przy aktywacji okna
 
     sciezka, pole = rozbierz_argumenty(argumenty)
+    if not sciezka:
+        sciezka, _ = rozbierz_argumenty(serwer.przejmij_czekajace())
     folder, plik = rozpoznaj_argument(sciezka)
     if not folder and window.settings.reopen_last_folder:
         folder = window.settings.last_folder

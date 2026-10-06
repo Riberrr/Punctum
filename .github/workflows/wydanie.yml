@@ -1,14 +1,16 @@
-# Wydanie Punctum (punkt 18, etap 3): instalator Windows budowany tutaj,
-# nie na komputerze autora, z tagu vX.Y.Z na main (zasady: CLAUDE.md,
-# "Galezie i wydania"). Wynik trafia do GitHub Releases razem z sumami
-# SHA-256 i opisem z CHANGELOG.md.
-# Uruchomienie reczne (Actions > Wydanie > Run workflow) = proba budowy:
-# instalator tylko jako artefakt przebiegu, bez wydania.
+# Wydanie Punctum (punkt 18, etap 3; macOS: punkt 31 D): instalator Windows
+# i obraz .dmg na macOS budowane tutaj, nie na komputerze autora, z tagu
+# vX.Y.Z na main (zasady: CLAUDE.md, "Galezie i wydania"). Wynik trafia do
+# GitHub Releases razem z sumami SHA-256 i opisem z CHANGELOG.md.
+# Proba budowy bez wydania (pliki tylko jako artefakty przebiegu):
+# uruchomienie reczne (Actions > Wydanie > Run workflow) albo push na
+# galaz proba-wydania* (dziala tez bez uprawnien do recznego uruchamiania).
 name: Wydanie
 
 on:
   push:
     tags: ["v*"]
+    branches: ["proba-wydania*"]
   workflow_dispatch:
 
 permissions:
@@ -82,8 +84,8 @@ jobs:
           Set-Location kompilacja
           Get-FileHash Punctum-*-setup.exe -Algorithm SHA256 |
             ForEach-Object { "{0}  {1}" -f $_.Hash.ToLower(), (Split-Path $_.Path -Leaf) } |
-            Out-File SHA256SUMS.txt -Encoding ascii
-          Get-Content SHA256SUMS.txt
+            Out-File SHA256SUMS-windows.txt -Encoding ascii
+          Get-Content SHA256SUMS-windows.txt
 
       - name: Poswiadczenie pochodzenia
         # W repozytorium prywatnym moze wymagac wyzszego planu GitHuba -
@@ -95,18 +97,84 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Punctum-instalator
-          path: |
-            kompilacja/Punctum-*-setup.exe
-            kompilacja/SHA256SUMS.txt
+          name: Punctum-windows
+          path: kompilacja/Punctum-*-setup.exe
           retention-days: 14
 
-      - name: GitHub Releases
-        if: github.ref_type == 'tag'
+  macos:
+    # Apple Silicon. Paczka podpisana ad hoc (bez Developer ID - etap 31 E):
+    # pierwsze uruchomienie wymaga "Otworz mimo to" w Ustawieniach systemowych.
+    runs-on: macos-15
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Srodowisko
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r tools/wymagania-kompilacji.txt
+
+      - name: Testy bez interfejsu
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: tools/testy.sh --szybkie
+
+      - name: Pamiec podreczna Nuitki
+        uses: actions/cache@v4
+        with:
+          path: ~/Library/Caches/Nuitka
+          key: nuitka-macos-${{ hashFiles('tools/wymagania-kompilacji.txt') }}-${{ github.sha }}
+          restore-keys: nuitka-macos-${{ hashFiles('tools/wymagania-kompilacji.txt') }}-
+
+      - name: Kompilacja (Punctum.app)
+        run: .venv/bin/python tools/kompiluj.py "$GITHUB_WORKSPACE/kompilacja"
+
+      - name: Proba startu (mostek MCP i program offscreen)
+        run: .venv/bin/python tools/proba_paczki.py "$GITHUB_WORKSPACE/kompilacja"
+
+      - name: Obraz .dmg
+        run: .venv/bin/python tools/dmg.py "$GITHUB_WORKSPACE/kompilacja"
+
+      - name: Poswiadczenie pochodzenia
+        continue-on-error: true
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: kompilacja/Punctum-*.dmg
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Punctum-macos
+          path: kompilacja/Punctum-*.dmg
+          retention-days: 14
+
+  wydanie:
+    # Po obu budowach. Paczka na Maca nie przeszla jeszcze proby na
+    # prawdziwym komputerze (31 C), wiec jej porazka nie wstrzymuje wydania
+    # dla Windows - wychodzi wtedy sam instalator.
+    needs: [windows, macos]
+    if: always() && github.ref_type == 'tag' && needs.windows.result == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: pliki
+          merge-multiple: true
+
+      - name: Sumy SHA-256 i GitHub Releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $instalator = Get-ChildItem kompilacja\Punctum-*-setup.exe | Select-Object -First 1
-          $wersja = "${{ github.ref_name }}".TrimStart("v")
-          gh release create "${{ github.ref_name }}" $instalator.FullName kompilacja\SHA256SUMS.txt `
-            --title "Punctum $wersja" --notes-file opis.md --verify-tag
+          wersja="${GITHUB_REF_NAME#v}"
+          python3 tools/opis_wydania.py "$wersja" opis.md
+          cd pliki
+          sha256sum Punctum-* > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          gh release create "$GITHUB_REF_NAME" Punctum-* SHA256SUMS.txt \
+            --title "Punctum $wersja" --notes-file ../opis.md --verify-tag

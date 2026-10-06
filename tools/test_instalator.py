@@ -41,6 +41,15 @@ check("domyslny program: kazdy RAW, zaden JPEG",
 check("OpenWithProgids dla wszystkich typow",
       sum("OpenWithProgids" in l for l in linie) == len(RAW_EXTENSIONS) + len(JPEG_EXTENSIONS))
 
+# Paczka na macOS (punkt 31 D): te same rozszerzenia w Info.plist.
+import kompiluj  # noqa: E402
+
+w_plist = {"." + e for typ in kompiluj.typy_dokumentow() for e in typ["CFBundleTypeExtensions"]}
+check("macOS: kazde rozszerzenie w CFBundleDocumentTypes",
+      w_plist == set(RAW_EXTENSIONS + JPEG_EXTENSIONS), str(w_plist ^ set(RAW_EXTENSIONS + JPEG_EXTENSIONS)))
+check("macOS: bez odbierania plikow domyslnemu programowi",
+      all(typ["LSHandlerRank"] == "Alternate" for typ in kompiluj.typy_dokumentow()))
+
 with open(instalator.SKRYPT, "rb") as f:
     dane = f.read()
 check("punctum.iss w UTF-8 z BOM (inaczej ISCC psuje polskie napisy)", dane.startswith(b"\xef\xbb\xbf"))

@@ -18,7 +18,7 @@ import re
 import sys
 import time
 
-from PySide6.QtCore import QDir, QLockFile, QObject, QProcess, QTimer
+from PySide6.QtCore import QDir, QEvent, QLockFile, QObject, QProcess, QTimer
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 
 from .. import APP_ID
@@ -157,6 +157,25 @@ class SerwerInstancji(QObject):
         # Wczytanie katalogu trwa - odpowiedz ma wyjsc najpierw, zeby drugi
         # proces nie czekal na nie i nie uznal nas za zawieszonych.
         QTimer.singleShot(0, lambda: self._dostarcz(argumenty))
+
+    def sluchaj_otwierania(self, app: QObject) -> None:
+        """Pliki otwierane z systemu przez zdarzenie, nie przez argv (macOS:
+        dwuklik w Finderze, upuszczenie na ikone w Docku, "Otworz za pomoca").
+        Ida ta sama droga co pliki od drugiego uruchomienia (punkt 31 D)."""
+        app.installEventFilter(self)
+
+    def eventFilter(self, obiekt: QObject, zdarzenie: QEvent) -> bool:
+        if zdarzenie.type() == QEvent.FileOpen and zdarzenie.file():
+            self._dostarcz([zdarzenie.file()])
+            return True
+        return False
+
+    def przejmij_czekajace(self) -> list[str]:
+        """Pierwsze czekajace argumenty (albo pusta lista), wyjete z kolejki.
+        Program uruchomiony dwuklikiem na macOS dostaje plik zdarzeniem
+        jeszcze w trakcie ekranu startowego - wtedy otwiera od razu jego
+        katalog zamiast ostatniego, zamiast wczytywac oba po kolei."""
+        return self._czekajace.pop(0) if self._czekajace else []
 
     def _dostarcz(self, argumenty: list[str]) -> None:
         if self._odbiorca is None:
