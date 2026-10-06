@@ -122,7 +122,9 @@ jobs:
       - name: Testy bez interfejsu
         env:
           QT_QPA_PLATFORM: offscreen
-        run: tools/testy.sh --szybkie
+        run: |
+          set -o pipefail
+          bash tools/testy.sh --szybkie 2>&1 | tee -a wynik.txt
 
       - name: Pamiec podreczna Nuitki
         uses: actions/cache@v4
@@ -132,13 +134,19 @@ jobs:
           restore-keys: nuitka-macos-${{ hashFiles('tools/wymagania-kompilacji.txt') }}-
 
       - name: Kompilacja (Punctum.app)
-        run: .venv/bin/python tools/kompiluj.py "$GITHUB_WORKSPACE/kompilacja"
+        run: |
+          set -o pipefail
+          .venv/bin/python tools/kompiluj.py "$GITHUB_WORKSPACE/kompilacja" 2>&1 | tee -a wynik.txt
 
       - name: Proba startu (mostek MCP i program offscreen)
-        run: .venv/bin/python tools/proba_paczki.py "$GITHUB_WORKSPACE/kompilacja"
+        run: |
+          set -o pipefail
+          .venv/bin/python tools/proba_paczki.py "$GITHUB_WORKSPACE/kompilacja" 2>&1 | tee -a wynik.txt
 
       - name: Obraz .dmg
-        run: .venv/bin/python tools/dmg.py "$GITHUB_WORKSPACE/kompilacja"
+        run: |
+          set -o pipefail
+          .venv/bin/python tools/dmg.py "$GITHUB_WORKSPACE/kompilacja" 2>&1 | tee -a wynik.txt
 
       - name: Poswiadczenie pochodzenia
         continue-on-error: true
@@ -151,6 +159,15 @@ jobs:
           name: Punctum-macos
           path: kompilacja/Punctum-*.dmg
           retention-days: 14
+
+      # Dziennik przebiegu wymaga zalogowania, adnotacje sa publiczne (jak
+      # w testy.yml) - koncowka wyniku pozwala przeczytac blad kompilacji.
+      - name: Koncowka wyniku jako adnotacja
+        if: failure()
+        run: |
+          touch wynik.txt
+          tekst=$(tail -n 60 wynik.txt | tr -d '\r' | sed -e 's/%/%25/g' | awk 'BEGIN{ORS="%0A"} {print}')
+          echo "::error title=Wynik budowy (macOS)::${tekst}"
 
   wydanie:
     # Po obu budowach. Paczka na Maca nie przeszla jeszcze proby na
