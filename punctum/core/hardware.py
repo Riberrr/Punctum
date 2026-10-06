@@ -16,6 +16,7 @@ import platform
 import subprocess
 from dataclasses import dataclass, field
 from ..przeklad import N_, t
+from . import platforma
 
 
 @dataclass
@@ -93,14 +94,14 @@ def _cpu_name_linux() -> str:
 
 
 def _cpu_name_macos() -> str:
+    return platforma.sysctl("machdep.cpu.brand_string")
+
+
+def _sysctl_int(nazwa: str) -> int:
     try:
-        output = subprocess.run(
-            ["sysctl", "-n", "machdep.cpu.brand_string"],
-            capture_output=True, text=True, timeout=3, check=False,
-        )
-        return output.stdout.strip()
-    except Exception:
-        return ""
+        return int(platforma.sysctl(nazwa))
+    except ValueError:
+        return 0
 
 
 def _physical_cores_windows() -> int:
@@ -132,7 +133,7 @@ def _physical_cores_windows() -> int:
 
 def _physical_cores() -> int:
     """Rdzenie fizyczne - istotne, bo watki logiczne nie daja pelnej wydajnosci."""
-    if platform.system() == "Windows":
+    if platforma.WINDOWS:
         try:
             cores = _physical_cores_windows()
             if cores:
@@ -149,6 +150,11 @@ def _physical_cores() -> int:
             return int(output.stdout.strip())
         except Exception:
             return 0
+    if platforma.MACOS:
+        # Na procesorach M rdzenie wydajne i oszczedne razem - oszczedne
+        # tez licza, a /proc, z ktorego bralismy to dotad, na Macu nie ma
+        # (wychodzilo 0 i psulo dobor watkow).
+        return _sysctl_int("hw.physicalcpu")
     try:
         with open("/proc/cpuinfo", encoding="utf-8", errors="replace") as handle:
             ids = {line.split(":")[1].strip() for line in handle if line.startswith("core id")}
@@ -158,7 +164,7 @@ def _physical_cores() -> int:
 
 
 def _memory_gb() -> float:
-    if platform.system() == "Windows":
+    if platforma.WINDOWS:
         try:
             import ctypes
 
@@ -181,6 +187,8 @@ def _memory_gb() -> float:
             return status.ullTotalPhys / (1024**3)
         except Exception:
             return 0.0
+    if platforma.MACOS:
+        return _sysctl_int("hw.memsize") / (1024**3)
     try:
         with open("/proc/meminfo", encoding="utf-8", errors="replace") as handle:
             for line in handle:
@@ -192,10 +200,9 @@ def _memory_gb() -> float:
 
 
 def detect_cpu() -> CpuInfo:
-    system = platform.system()
     name = (
-        _cpu_name_windows() if system == "Windows"
-        else _cpu_name_macos() if system == "Darwin"
+        _cpu_name_windows() if platforma.WINDOWS
+        else _cpu_name_macos() if platforma.MACOS
         else _cpu_name_linux()
     )
     return CpuInfo(

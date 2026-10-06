@@ -14,6 +14,8 @@ from dataclasses import asdict, dataclass
 
 from PIL import Image, ImageDraw, ImageFont
 
+from . import platforma
+
 RODZAJ_TEKST = "tekst"
 RODZAJ_OBRAZ = "obraz"
 
@@ -33,7 +35,7 @@ KAT_KAFELKOW = 30.0
 # Kolejnosc prob: pismo interfejsu Windows (polzgrube czyta sie lepiej przy
 # niskim kryciu), potem pisma, ktore sa prawie wszedzie. Wszystkie maja
 # polskie znaki; wbudowane pismo Pillow jest tylko ostatnia deska ratunku.
-CZCIONKI = ("seguisb.ttf", "segoeui.ttf", "arial.ttf", "DejaVuSans.ttf")
+CZCIONKI = platforma.CZCIONKI_ZNAKU + ("DejaVuSans.ttf",)
 
 
 @dataclass

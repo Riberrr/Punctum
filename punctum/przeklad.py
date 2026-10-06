@@ -18,6 +18,8 @@ import glob
 import json
 import os
 
+from .core.platforma import skroty_w_tekscie
+
 LANG_DIRECTORY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "lang")
 BAZOWY = "pl"
 NAZWA_BAZOWEGO = "Polski"
@@ -96,7 +98,7 @@ def t(tekst: str, **pola) -> str:
     Pola podaje sie po nazwie, a nie doklejaniem kawalkow - w innym jezyku
     liczba albo nazwa pliku stoja czesto w innym miejscu zdania.
     """
-    wynik = _katalog.get(tekst, tekst)
+    wynik = skroty_w_tekscie(_katalog.get(tekst, tekst))
     return wynik.format(**pola) if pola else wynik
 
 

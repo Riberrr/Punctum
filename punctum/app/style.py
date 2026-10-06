@@ -11,6 +11,8 @@ from __future__ import annotations
 import os
 import re
 
+from ..core import platforma
+
 ASSETS_DIRECTORY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
 
 
@@ -61,7 +63,7 @@ STYLESHEET_TEMPLATE = """
 QWidget {
     background: #1e1e20;
     color: #c8c8cc;
-    font-family: "Segoe UI", sans-serif;
+    font-family: @PISMA@;
     font-size: 12px;
 }
 QMainWindow::separator { background: #131315; width: 1px; height: 1px; }
@@ -296,3 +298,8 @@ QMenu { background: #232326; border: 1px solid #3a3a40; }
 QMenu::item:selected { background: #34343c; }
 QToolTip { background: #2e2e33; color: #e0e0e4; border: 1px solid #45454d; }
 """
+# Pisma zaleza od systemu (punkt 31); arkusz ma klamry CSS, wiec
+# zamiana znacznika zamiast format().
+STYLESHEET_TEMPLATE = STYLESHEET_TEMPLATE.replace(
+    "@PISMA@", platforma.pisma_css(platforma.PISMA_INTERFEJSU))
+

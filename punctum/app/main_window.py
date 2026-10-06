@@ -109,6 +109,20 @@ def _granice(widget, zakres: tuple[int, int], wymiar: str) -> None:
         widget.setMaximumHeight(high)
 
 
+def _bez_zgadywania_rol(akcje) -> None:
+    """Wylacza zgadywanie roli akcji po nazwie (pasek menu macOS).
+
+    Domyslnie Qt przenosi do menu programu kazda pozycje zaczynajaca sie
+    od "About", "Settings", "Quit"... - wtedy np. katalog o takiej nazwie
+    w Ostatnich zniknalby z menu Plik. Role ustawione jawnie zostaja.
+    """
+    for akcja in akcje:
+        if akcja.menuRole() == QAction.MenuRole.TextHeuristicRole:
+            akcja.setMenuRole(QAction.MenuRole.NoRole)
+        if akcja.menu() is not None:
+            _bez_zgadywania_rol(akcja.menu().actions())
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -577,6 +591,15 @@ class MainWindow(QMainWindow):
         about_action.triggered.connect(lambda: self.open_settings(PAGE_ABOUT))
         help_menu.addAction(about_action)
 
+        # Na macOS Ustawienia, O programie i Zakoncz ida do menu programu
+        # (pierwsze menu paska systemowego) - tak sie ich tam szuka. Role
+        # jawnie, bo Qt zgaduje je po angielskich nazwach: po polsku nie
+        # trafilby wcale, a po angielsku moglby zabrac inna pozycje.
+        settings_action.setMenuRole(QAction.MenuRole.PreferencesRole)
+        about_action.setMenuRole(QAction.MenuRole.AboutRole)
+        quit_action.setMenuRole(QAction.MenuRole.QuitRole)
+        _bez_zgadywania_rol(self.menuBar().actions())
+
     # ------------------------------------------------------------ uklad okna
 
     def showEvent(self, event) -> None:
@@ -657,6 +680,7 @@ class MainWindow(QMainWindow):
         clear = QAction(t("Wyczyść listę"), self)
         clear.triggered.connect(self._clear_recent)
         self.recent_menu.addAction(clear)
+        _bez_zgadywania_rol(self.recent_menu.actions())
 
     def _clear_recent(self) -> None:
         self.settings.recent_folders = []

@@ -14,6 +14,7 @@ from PySide6.QtWidgets import QApplication
 from .app.ekran_startowy import ASSETS, EkranStartowy
 from .app.jedna_instancja import bezwzgledne, rozbierz_argumenty, zglos_sie
 from .app.jezyk import zastosuj_jezyk
+from .core import platforma
 from .core.settings import Settings
 from . import APP_ID
 from .przeklad import t
@@ -21,7 +22,7 @@ from .przeklad import t
 
 def _ikona_programu(app: QApplication) -> None:
     app.setWindowIcon(QIcon(os.path.join(ASSETS, "punctum.ico")))
-    if sys.platform == "win32":
+    if platforma.WINDOWS:
         # Bez wlasnego identyfikatora Windows grupuje okno pod python.exe
         # i na pasku zadan pokazuje ikone Pythona zamiast naszej.
         try:

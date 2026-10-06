@@ -21,6 +21,7 @@ from PySide6.QtCore import QEvent, QObject, Qt
 from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import QProxyStyle, QStyle, QStyleOptionMenuItem
 
+from ..core.platforma import skroty_w_tekscie
 from .skala import metryka, px
 
 LANG_DIRECTORY = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "lang")
@@ -121,7 +122,7 @@ def podpowiedz(widget, klucz: str, *, suwak: bool = False, dopisek: str | None =
     Etykieta dostaje ten sam dymek, bo w formularzu naturalnie najezdza sie
     na napis, a nie na pole obok niego.
     """
-    tresc = tekst(klucz, suwak=suwak, dopisek=dopisek)
+    tresc = skroty_w_tekscie(tekst(klucz, suwak=suwak, dopisek=dopisek))
     widget.setToolTip(tresc)
     widget.setProperty(WLASCIWOSC, klucz)
     if etykieta is not None:

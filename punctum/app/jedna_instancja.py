@@ -22,6 +22,7 @@ from PySide6.QtCore import QDir, QLockFile, QObject, QProcess, QTimer
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 
 from .. import APP_ID
+from ..core import platforma
 
 CZAS_MS = 1500
 # Flaga ponownego uruchomienia: po starcie otworz ustawienia na tej stronie
@@ -59,7 +60,7 @@ def bezwzgledne(argumenty: list[str]) -> list[str]:
 def _pozwol_na_wierzch() -> None:
     # Windows nie pozwala procesowi w tle wyciagnac okna na wierzch. Prawo do
     # tego ma proces, ktory uruchomil uzytkownik (my) - oddajemy je dalej.
-    if sys.platform == "win32":
+    if platforma.WINDOWS:
         try:
             import ctypes
 
