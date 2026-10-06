@@ -54,10 +54,24 @@ jobs:
 
       - name: Testy bez interfejsu (macOS)
         if: runner.os != 'Windows'
-        run: bash tools/testy.sh --szybkie
+        run: |
+          set -o pipefail
+          bash tools/testy.sh --szybkie 2>&1 | tee -a wynik.txt
 
       - name: Okno programu bez zdjec
         shell: bash
         run: |
+          set -o pipefail
           if [ "$RUNNER_OS" = "Windows" ]; then PY=.venv/Scripts/python; else PY=.venv/bin/python; fi
-          $PY tools/test_panele_gui.py
+          $PY tools/test_panele_gui.py 2>&1 | tee -a wynik.txt
+
+      # Dziennik przebiegu wymaga zalogowania, a adnotacje sa publiczne
+      # (API check-runs) - koncowka wyniku jako jedna adnotacja pozwala
+      # przeczytac blad bez dostepu do konta.
+      - name: Koncowka wyniku jako adnotacja
+        if: failure()
+        shell: bash
+        run: |
+          touch wynik.txt
+          tekst=$(tail -n 60 wynik.txt | tr -d '\r' | sed -e 's/%/%25/g' | awk 'BEGIN{ORS="%0A"} {print}')
+          echo "::error title=Wynik testow (${RUNNER_OS})::${tekst}"
