@@ -9,7 +9,11 @@ import faulthandler
 # Awaria w kodzie natywnym (Qt, OpenGL, LibRaw) konczy skompilowany program
 # bez sladu; tak przynajmniej na stderr zostaje stos funkcji Pythona.
 # Tylko tutaj (plik startowy kompilacji) - ze zrodel nic sie nie zmienia.
-faulthandler.enable(all_threads=True)
+# Program bez konsoli (Windows) nie ma stderr - wtedy enable() rzuca wyjatek.
+try:
+    faulthandler.enable(all_threads=True)
+except (RuntimeError, AttributeError, ValueError):
+    pass
 
 from punctum.__main__ import main  # noqa: E402
 
