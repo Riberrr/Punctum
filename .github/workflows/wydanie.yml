@@ -165,9 +165,14 @@ jobs:
       - name: Koncowka wyniku jako adnotacja
         if: failure()
         run: |
+          # Adnotacja ma limit dlugosci (~4 KB) - koncowka w kilku czesciach,
+          # od najstarszej; dlugie linie (opcje Nuitki) przyciete.
           touch wynik.txt
-          tekst=$(tail -n 60 wynik.txt | tr -d '\r' | sed -e 's/%/%25/g' | awk 'BEGIN{ORS="%0A"} {print}')
-          echo "::error title=Wynik budowy (macOS)::${tekst}"
+          tail -n 80 wynik.txt | tr -d '\r' | cut -c1-300 > koniec.txt
+          for od in 1 21 41 61; do
+            tekst=$(sed -n "${od},$((od + 19))p" koniec.txt | sed -e 's/%/%25/g' | awk 'BEGIN{ORS="%0A"} {print}')
+            [ -n "$tekst" ] && echo "::error title=Wynik budowy (macOS) od linii ${od}::${tekst}"
+          done
 
   wydanie:
     # Po obu budowach. Paczka na Maca nie przeszla jeszcze proby na
