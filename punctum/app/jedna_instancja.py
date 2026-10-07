@@ -20,6 +20,7 @@ import time
 
 from PySide6.QtCore import QDir, QEvent, QLockFile, QObject, QProcess, QTimer
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
+from PySide6.QtWidgets import QApplication
 
 from .. import APP_ID
 from ..core import platforma
@@ -158,17 +159,10 @@ class SerwerInstancji(QObject):
         # proces nie czekal na nie i nie uznal nas za zawieszonych.
         QTimer.singleShot(0, lambda: self._dostarcz(argumenty))
 
-    def sluchaj_otwierania(self, app: QObject) -> None:
-        """Pliki otwierane z systemu przez zdarzenie, nie przez argv (macOS:
-        dwuklik w Finderze, upuszczenie na ikone w Docku, "Otworz za pomoca").
-        Ida ta sama droga co pliki od drugiego uruchomienia (punkt 31 D)."""
-        app.installEventFilter(self)
-
-    def eventFilter(self, obiekt: QObject, zdarzenie: QEvent) -> bool:
-        if zdarzenie.type() == QEvent.FileOpen and zdarzenie.file():
-            self._dostarcz([zdarzenie.file()])
-            return True
-        return False
+    def sluchaj_otwierania(self, app: "Aplikacja") -> None:
+        """Pliki otwierane z systemu zdarzeniem (Aplikacja) ida ta sama
+        droga co pliki od drugiego uruchomienia (punkt 31 D)."""
+        app.odbiorca_plikow = lambda plik: self._dostarcz([plik])
 
     def przejmij_czekajace(self) -> list[str]:
         """Pierwsze czekajace argumenty (albo pusta lista), wyjete z kolejki.
@@ -182,6 +176,29 @@ class SerwerInstancji(QObject):
             self._czekajace.append(argumenty)
         else:
             self._odbiorca(argumenty)
+
+
+class Aplikacja(QApplication):
+    """QApplication, ktora oddaje pliki otwierane z systemu zdarzeniem.
+
+    Na macOS plik z Findera, z Docku albo z "Otworz za pomoca" nie
+    przychodzi w argv, tylko jako QFileOpenEvent do obiektu aplikacji
+    (punkt 31 D). Nadpisane event() zamiast filtra zdarzen na calej
+    aplikacji: filtr w Pythonie dostaje tez zdarzenia obiektow w trakcie
+    konstrukcji (np. zadan sieciowych przegladarki mapy) i PySide padal
+    na nich w skompilowanym programie (SIGSEGV w getWrapperForQObject).
+    """
+
+    def __init__(self, argv: list[str]) -> None:
+        super().__init__(argv)
+        self.odbiorca_plikow = None
+
+    def event(self, zdarzenie: QEvent) -> bool:
+        if (zdarzenie.type() == QEvent.FileOpen and self.odbiorca_plikow is not None
+                and zdarzenie.file()):
+            self.odbiorca_plikow(zdarzenie.file())
+            return True
+        return super().event(zdarzenie)
 
 
 def zglos_sie(argumenty: list[str], nazwa: str | None = None,

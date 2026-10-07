@@ -12,7 +12,7 @@ from PySide6.QtWidgets import QApplication
 # Tylko lekkie moduly na gorze: ekran startowy ma sie pokazac, zanim zaladuja
 # sie rawpy, OpenCV i glowne okno (to one sa wlasciwym czasem startu).
 from .app.ekran_startowy import ASSETS, EkranStartowy
-from .app.jedna_instancja import bezwzgledne, rozbierz_argumenty, zglos_sie
+from .app.jedna_instancja import Aplikacja, bezwzgledne, rozbierz_argumenty, zglos_sie
 from .app.jezyk import zastosuj_jezyk
 from .core import platforma
 from .core.settings import Settings
@@ -94,7 +94,7 @@ def przyjmij_argumenty(window, argumenty: list[str]) -> None:
 
 
 def main() -> int:
-    app = QApplication(sys.argv)
+    app = Aplikacja(sys.argv)
     app.setApplicationName("Punctum")
     app.setOrganizationName("Punctum")
     # Drugie uruchomienie (dwuklik zdjecia przy otwartym programie) oddaje

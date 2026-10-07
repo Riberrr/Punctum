@@ -33,7 +33,7 @@ def check(name: str, ok: bool, detail: str = "") -> None:
     results.append((name, bool(ok), detail))
 
 
-app = QApplication(sys.argv)
+app = ji.Aplikacja(sys.argv)
 
 # --- argumenty
 check("argumenty: zdjecie i flaga",
@@ -62,7 +62,7 @@ odebrane = []
 plikowy.ustaw_odbiorce(odebrane.append)
 QApplication.sendEvent(app, QFileOpenEvent(ZDARZENIE))
 check("zdarzenie otwarcia do gotowego okna", odebrane == [[ZDARZENIE]], str(odebrane))
-app.removeEventFilter(plikowy)
+app.odbiorca_plikow = None
 
 # --- polecenie restartu ze zrodel
 program, args, katalog = ji.polecenie_restartu(["x.jpg", "--ustawienia=jezyk"])
