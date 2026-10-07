@@ -133,6 +133,12 @@ jobs:
           key: nuitka-macos-${{ hashFiles('tools/wymagania-kompilacji.txt') }}-${{ github.sha }}
           restore-keys: nuitka-macos-${{ hashFiles('tools/wymagania-kompilacji.txt') }}-
 
+      - name: Proba startu ze zrodel (porownanie przy awarii paczki)
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          .venv/bin/python tools/proba_paczki.py --zrodla 2>&1 | tee -a wynik.txt
+
       - name: Kompilacja (Punctum.app)
         run: |
           set -o pipefail
@@ -168,6 +174,8 @@ jobs:
           # Adnotacja ma limit dlugosci (~4 KB) - koncowka w kilku czesciach,
           # od najstarszej; dlugie linie (opcje Nuitki) przyciete.
           touch wynik.txt
+          tekst=$(grep -E '^(program|mostek):' wynik.txt | sed -e 's/%/%25/g' | awk 'BEGIN{ORS="%0A"} {print}')
+          [ -n "$tekst" ] && echo "::error title=Proby startu (zrodla, potem paczka)::${tekst}"
           tail -n 80 wynik.txt | tr -d '\r' | cut -c1-300 > koniec.txt
           for od in 1 21 41 61; do
             tekst=$(sed -n "${od},$((od + 19))p" koniec.txt | sed -e 's/%/%25/g' | awk 'BEGIN{ORS="%0A"} {print}')
