@@ -176,9 +176,18 @@ def stage_wylacznik() -> None:
     check("dymek pokazuje sie po najechaniu", dymek_po_zdarzeniu(target))
     window.settings.show_tooltips = False
     window._apply_settings()
-    check("wylaczone podpowiedzi: dymek sie nie pokazuje", not dymek_po_zdarzeniu(target))
+    # Wylacznik dziala przez opoznienie dymka w stylu (punkt 31 D) - dymek
+    # wywolany recznie zdarzeniem nadal by sie pokazal, ale Qt nigdy go
+    # nie wywola, bo czas oczekiwania jest praktycznie nieskonczony.
+    from PySide6.QtWidgets import QStyle
+
+    czekanie = QApplication.style().styleHint(QStyle.SH_ToolTip_WakeUpDelay)
+    check("wylaczone podpowiedzi: dymek sie nie doczeka", czekanie >= 10**8, str(czekanie))
     window.settings.show_tooltips = True
     window._apply_settings()
+    czekanie = QApplication.style().styleHint(QStyle.SH_ToolTip_WakeUpDelay)
+    check("wlaczone z powrotem: zwykle opoznienie",
+          czekanie == window.settings.tooltip_delay_ms, str(czekanie))
     check("wlaczone z powrotem od razu", dymek_po_zdarzeniu(target))
     QToolTip.hideText()
     # opoznienie czyta Qt ze stylu widzetu - ten z arkuszem stylow musi je

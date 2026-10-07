@@ -17,7 +17,7 @@ import html
 import json
 import os
 
-from PySide6.QtCore import QEvent, QObject, Qt
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QPalette
 from PySide6.QtWidgets import QProxyStyle, QStyle, QStyleOptionMenuItem
 
@@ -134,6 +134,15 @@ def podpowiedz_wiersza(form, pole, klucz: str) -> None:
     podpowiedz(pole, klucz, etykieta=form.labelForField(pole))
 
 
+# Opoznienie dymka przy wylaczonych podpowiedziach: dymek nigdy sie nie
+# doczeka (ok. 11 dni), a QTimer przyjmuje te wartosc bez ostrzezen.
+WYLACZONE_MS = 10**9
+
+
+def opoznienie_dymka(wlaczone: bool, opoznienie_ms: int) -> int:
+    return opoznienie_ms if wlaczone else WYLACZONE_MS
+
+
 class StylPodpowiedzi(QProxyStyle):
     """Nakladka na styl aplikacji, ktora podaje wlasne opoznienie dymka.
 
@@ -141,15 +150,22 @@ class StylPodpowiedzi(QProxyStyle):
     (SH_ToolTip_WakeUpDelay) przy kazdym ruchu myszy, wiec zmiana pola
     `opoznienie_ms` dziala od razu. Nakladka na styl o tej samej nazwie,
     zeby wyglad okien sie nie zmienil.
+
+    Tez wylacznik podpowiedzi (`wlaczone`). Dawniej byl nim filtr zdarzen
+    na calej aplikacji - ale filtr w Pythonie dostaje zdarzenia obiektow
+    w trakcie konstrukcji (zadania sieciowe przegladarki mapy) i PySide
+    padal na nich w skompilowanym programie na macOS (SIGSEGV
+    w getWrapperForQObject, punkt 31 D). Nie dodawac filtrow na QApplication.
     """
 
     def __init__(self, nazwa_stylu: str, opoznienie_ms: int = 700):
         super().__init__(nazwa_stylu)
         self.opoznienie_ms = opoznienie_ms
+        self.wlaczone = True
 
     def styleHint(self, hint, option=None, widget=None, returnData=None):  # noqa: N802
         if hint == QStyle.SH_ToolTip_WakeUpDelay:
-            return self.opoznienie_ms
+            return opoznienie_dymka(self.wlaczone, self.opoznienie_ms)
         return super().styleHint(hint, option, widget, returnData)
 
     def pixelMetric(self, metric, option=None, widget=None):  # noqa: N802
@@ -181,18 +197,3 @@ class StylPodpowiedzi(QProxyStyle):
             return
         super().drawControl(element, option, painter, widget)
 
-
-class WylacznikPodpowiedzi(QObject):
-    """Filtr zdarzen na calej aplikacji: gdy podpowiedzi sa wylaczone,
-    zjada zdarzenie ToolTip, zanim dotrze do widzetu.
-
-    Filtr zamiast czyszczenia tekstow: wlaczenie z powrotem dziala od razu,
-    bez odtwarzania dymkow w kazdym oknie.
-    """
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.wlaczone = True
-
-    def eventFilter(self, obj, event) -> bool:  # noqa: N802 - nazwa z Qt
-        return event.type() == QEvent.ToolTip and not self.wlaczone

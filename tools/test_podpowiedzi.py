@@ -21,7 +21,7 @@ import tempfile
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from PySide6.QtCore import QCoreApplication, QEvent  # noqa: E402
+from PySide6.QtCore import QCoreApplication  # noqa: E402
 
 from wspolne import wypisz  # noqa: E402
 
@@ -120,12 +120,8 @@ finally:
     shutil.rmtree(tmp, ignore_errors=True)
 
 # --- wylacznik ---------------------------------------------------------------
-wyl = pp.WylacznikPodpowiedzi()
-dymek, inne = QEvent(QEvent.ToolTip), QEvent(QEvent.Enter)
-check("wlaczone: dymek przechodzi", wyl.eventFilter(None, dymek) is False)
-wyl.wlaczone = False
-check("wylaczone: dymek zjedzony", wyl.eventFilter(None, dymek) is True)
-check("wylaczone: inne zdarzenia przechodza", wyl.eventFilter(None, inne) is False)
+check("wlaczone: dymek po ustawionym czasie", pp.opoznienie_dymka(True, 700) == 700)
+check("wylaczone: dymek sie nie doczeka", pp.opoznienie_dymka(False, 700) >= 10**8)
 s = Settings()
 check("podpowiedzi domyslnie wlaczone", s.show_tooltips is True)
 s.show_tooltips = False

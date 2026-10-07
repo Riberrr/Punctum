@@ -71,7 +71,7 @@ from .image_view import BeforeView, ImageView
 from .map_view import MapView
 from .navigator import Navigator
 from .panele import LEWY, PRAWY, UkladPaneli
-from .podpowiedzi import StylPodpowiedzi, WylacznikPodpowiedzi, podpowiedz
+from .podpowiedzi import StylPodpowiedzi, podpowiedz
 # "O programie" nie ma osobnego okna - to strona w ustawieniach.
 from .settings_dialog import PAGE_ABOUT, SettingsDialog
 from .style import czcionki_aplikacji, ikona, stylesheet
@@ -229,10 +229,6 @@ class MainWindow(QMainWindow):
         self.noise_timer.setSingleShot(True)
         self.noise_timer.timeout.connect(self._render_noise_pass)
 
-        # Wylacznik dymkow jest filtrem na calej aplikacji: dziala od razu
-        # po zmianie ustawienia, bez odtwarzania podpowiedzi w oknach.
-        self.tooltip_switch = WylacznikPodpowiedzi(self)
-        QApplication.instance().installEventFilter(self.tooltip_switch)
         self._apply_settings()
 
         # Mapa powstaje TERAZ, zanim okno zostanie pokazane - i jest to
@@ -770,7 +766,7 @@ class MainWindow(QMainWindow):
         self.debounce.setInterval(DEBOUNCE_GPU_MS if self.gpu_allowed() else DEBOUNCE_CPU_MS)
         self.noise_timer.setInterval(s.noise_delay_ms)
         self.view.set_detail_delay(s.detail_delay_ms)
-        self.tooltip_switch.wlaczone = s.show_tooltips
+        self.tooltip_style.wlaczone = s.show_tooltips
         self.tooltip_style.opoznienie_ms = s.tooltip_delay_ms
         self.edit_panel.set_wheel_protection(s.wheel_lockout_ms, s.wheel_dwell_ms)
 
