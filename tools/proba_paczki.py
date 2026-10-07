@@ -72,12 +72,13 @@ def _raport_awarii(nazwa: str, od: float) -> None:
     system zapisuje wtedy raport z nazwami funkcji bibliotek - jedyny
     sposob, zeby zobaczyc winowajce bez Maca pod reka.
     """
-    katalog = os.path.expanduser("~/Library/Logs/DiagnosticReports")
-    try:
-        pliki = [os.path.join(katalog, n) for n in os.listdir(katalog)
-                 if n.startswith(nazwa) and n.endswith(".ips")]
-    except OSError:
-        return
+    pliki = []
+    for katalog in (os.path.expanduser("~/Library/Logs/DiagnosticReports"), "/Library/Logs/DiagnosticReports"):
+        try:
+            pliki += [os.path.join(katalog, n) for n in os.listdir(katalog)
+                      if n.startswith(nazwa) and n.endswith(".ips")]
+        except OSError:
+            pass
     pliki = [p for p in pliki if os.path.getmtime(p) >= od - 5]
     if not pliki:
         print("brak raportu awarii")
@@ -124,7 +125,7 @@ def proba_okna(program: str | list[str]) -> bool:
     if not zyje or "Traceback" in tresc:
         print(tresc[-5000:])
     if not zyje and sys.platform == "darwin":
-        time.sleep(5)  # raport awarii powstaje chwile po smierci procesu
+        time.sleep(20)  # raport awarii powstaje chwile po smierci procesu
         _raport_awarii(os.path.basename(polecenie[0]), start)
     return zyje and "Traceback" not in tresc
 
