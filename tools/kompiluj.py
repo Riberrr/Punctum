@@ -45,6 +45,7 @@ MACOS = sys.platform == "darwin"
 # Identyfikator paczki - nie zmieniac po pierwszym wydaniu na Maca: system
 # wiaze z nim uprawnienia do katalogow i skojarzenia plikow (jak AppId w .iss).
 IDENTYFIKATOR = "org.punctum.Punctum"
+PROGRAM_MAC = "PunctumApp"  # plik w Contents/MacOS (dlaczego nie "Punctum": _wejscia)
 MAC_MIN = "12.0"  # najnizszy macOS obslugiwany przez Qt 6.11
 
 
@@ -105,10 +106,13 @@ def _wejscia(roboczy: str) -> list[str]:
     Nuitka 4.2.2 porownuje nazwe uruchomionego pliku po os.path.normcase
     z nazwa skryptu wzieta doslownie. Na Windows normcase daje male litery,
     stad pliki w repo malymi literami (punctum.exe pasuje mimo "Punctum").
-    Na macOS normcase niczego nie zmienia, a programy nazywaja sie Punctum
-    i PunctumMCP - wiec kopie skryptow z tymi nazwami w katalogu roboczym.
+    Na macOS normcase niczego nie zmienia - wiec kopie skryptow z nazwami
+    programow w katalogu roboczym. Program nie moze sie tam nazywac
+    "Punctum": system plikow Maca nie rozroznia wielkosci liter, a obok
+    pliku wykonywalnego lezy katalog danych pakietu "punctum" (Nuitka
+    padala na makedirs). Nazwe w Finderze i Docku daje Info.plist.
     """
-    nazwy = {"punctum.py": "Punctum.py", "punctummcp.py": "PunctumMCP.py"}
+    nazwy = {"punctum.py": PROGRAM_MAC + ".py", "punctummcp.py": "PunctumMCP.py"}
     if not MACOS:
         return [os.path.join(WEJSCIA, n) for n in nazwy]
     katalog = os.path.join(roboczy, "wejscia")
@@ -258,25 +262,21 @@ def _paczka_macos(roboczy: str, gotowy: str) -> int:
     # copytree bez symlinks=True zamienilby w kopie (i zepsul podpis).
     shutil.move(os.path.join(roboczy, paczki[0]), gotowy)
     programy = os.path.join(gotowy, "Contents", "MacOS")
-    # Plik wykonywalny nazywa sie jak pierwszy skrypt startowy; pewnosci,
-    # ze multidist z paczka nie zmieni tego w kolejnej wersji Nuitki, nie ma.
-    glowny = [n for n in os.listdir(programy)
-              if n.lower() == "punctum" and os.path.isfile(os.path.join(programy, n))]
-    if len(glowny) != 1:
-        print(f"brak pliku wykonywalnego Punctum w {programy}")
+    # Plik wykonywalny nazywa sie jak pierwszy skrypt startowy.
+    program = os.path.join(programy, PROGRAM_MAC)
+    if not os.path.isfile(program):
+        print(f"brak {program}; w Contents/MacOS: {sorted(os.listdir(programy))[:20]}")
         return 1
-    if glowny[0] != "Punctum":
-        os.replace(os.path.join(programy, glowny[0]), os.path.join(programy, "Punctum"))
     # Mostek MCP: ten sam plik pod druga nazwa (jak PunctumMCP.exe).
     mostek = os.path.join(programy, "PunctumMCP")
     if not os.path.exists(mostek):
-        shutil.copy2(os.path.join(programy, "Punctum"), mostek)
+        shutil.copy2(program, mostek)
 
     plist = os.path.join(gotowy, "Contents", "Info.plist")
     with open(plist, "rb") as f:
         dane = plistlib.load(f)
     dane.update({
-        "CFBundleExecutable": "Punctum",
+        "CFBundleExecutable": PROGRAM_MAC,
         "CFBundleName": "Punctum",
         "CFBundleDisplayName": "Punctum",
         "CFBundleIdentifier": IDENTYFIKATOR,

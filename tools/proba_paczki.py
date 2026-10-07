@@ -25,7 +25,7 @@ CZAS_OKNA_S = 30
 def programy(kompilacja: str) -> tuple[str, str]:
     if sys.platform == "darwin":
         katalog = os.path.join(kompilacja, "Punctum.app", "Contents", "MacOS")
-        return os.path.join(katalog, "Punctum"), os.path.join(katalog, "PunctumMCP")
+        return os.path.join(katalog, "PunctumApp"), os.path.join(katalog, "PunctumMCP")
     katalog = os.path.join(kompilacja, "Punctum")
     return os.path.join(katalog, "Punctum.exe"), os.path.join(katalog, "PunctumMCP.exe")
 
