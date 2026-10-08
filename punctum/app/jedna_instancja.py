@@ -18,10 +18,12 @@ import re
 import sys
 import time
 
-from PySide6.QtCore import QDir, QLockFile, QObject, QProcess, QTimer
+from PySide6.QtCore import QDir, QEvent, QLockFile, QObject, QProcess, QTimer
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
+from PySide6.QtWidgets import QApplication
 
 from .. import APP_ID
+from ..core import platforma
 
 CZAS_MS = 1500
 # Flaga ponownego uruchomienia: po starcie otworz ustawienia na tej stronie
@@ -59,7 +61,7 @@ def bezwzgledne(argumenty: list[str]) -> list[str]:
 def _pozwol_na_wierzch() -> None:
     # Windows nie pozwala procesowi w tle wyciagnac okna na wierzch. Prawo do
     # tego ma proces, ktory uruchomil uzytkownik (my) - oddajemy je dalej.
-    if sys.platform == "win32":
+    if platforma.WINDOWS:
         try:
             import ctypes
 
@@ -157,11 +159,46 @@ class SerwerInstancji(QObject):
         # proces nie czekal na nie i nie uznal nas za zawieszonych.
         QTimer.singleShot(0, lambda: self._dostarcz(argumenty))
 
+    def sluchaj_otwierania(self, app: "Aplikacja") -> None:
+        """Pliki otwierane z systemu zdarzeniem (Aplikacja) ida ta sama
+        droga co pliki od drugiego uruchomienia (punkt 31 D)."""
+        app.odbiorca_plikow = lambda plik: self._dostarcz([plik])
+
+    def przejmij_czekajace(self) -> list[str]:
+        """Pierwsze czekajace argumenty (albo pusta lista), wyjete z kolejki.
+        Program uruchomiony dwuklikiem na macOS dostaje plik zdarzeniem
+        jeszcze w trakcie ekranu startowego - wtedy otwiera od razu jego
+        katalog zamiast ostatniego, zamiast wczytywac oba po kolei."""
+        return self._czekajace.pop(0) if self._czekajace else []
+
     def _dostarcz(self, argumenty: list[str]) -> None:
         if self._odbiorca is None:
             self._czekajace.append(argumenty)
         else:
             self._odbiorca(argumenty)
+
+
+class Aplikacja(QApplication):
+    """QApplication, ktora oddaje pliki otwierane z systemu zdarzeniem.
+
+    Na macOS plik z Findera, z Docku albo z "Otworz za pomoca" nie
+    przychodzi w argv, tylko jako QFileOpenEvent do obiektu aplikacji
+    (punkt 31 D). Nadpisane event() zamiast filtra zdarzen na calej
+    aplikacji: filtr w Pythonie dostaje tez zdarzenia obiektow w trakcie
+    konstrukcji (np. zadan sieciowych przegladarki mapy) i PySide padal
+    na nich w skompilowanym programie (SIGSEGV w getWrapperForQObject).
+    """
+
+    def __init__(self, argv: list[str]) -> None:
+        super().__init__(argv)
+        self.odbiorca_plikow = None
+
+    def event(self, zdarzenie: QEvent) -> bool:
+        if (zdarzenie.type() == QEvent.FileOpen and self.odbiorca_plikow is not None
+                and zdarzenie.file()):
+            self.odbiorca_plikow(zdarzenie.file())
+            return True
+        return super().event(zdarzenie)
 
 
 def zglos_sie(argumenty: list[str], nazwa: str | None = None,

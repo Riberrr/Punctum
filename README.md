@@ -42,6 +42,12 @@ A ready-made Windows installer (no Python needed) is on the
 libraries included with the program: Settings ▸ About ▸ Third-party
 licenses (the installation also contains `THIRD-PARTY-LICENSES.txt`).
 
+For Macs with Apple Silicon (M1 or later, macOS 12+) the same page has a
+`.dmg` image — open it and drag Punctum to Applications. The program is not
+signed by Apple yet, so macOS stops it on first launch: System Settings ▸
+Privacy & Security ▸ "Open Anyway" (or right-click Punctum ▸ Open). The Mac
+version is preliminary — it has not been tried on a real Mac yet.
+
 ## What works
 
 **Browsing** — a thumbnail strip loaded from the previews embedded in RAW

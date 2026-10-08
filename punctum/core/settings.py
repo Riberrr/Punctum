@@ -14,10 +14,10 @@ from __future__ import annotations
 
 import json
 import os
-import platform
 from dataclasses import asdict, dataclass, field, fields
 from typing import Any
 from ..przeklad import N_, jezyki
+from . import platforma
 
 APP_NAME = "Punctum"
 
@@ -47,14 +47,7 @@ NOISE_QUALITY_LABELS = {
 
 
 def config_directory() -> str:
-    system = platform.system()
-    if system == "Windows":
-        base = os.environ.get("APPDATA") or os.path.expanduser("~")
-    elif system == "Darwin":
-        base = os.path.expanduser("~/Library/Application Support")
-    else:
-        base = os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config")
-    return os.path.join(base, APP_NAME)
+    return platforma.katalog_ustawien()
 
 
 # Zakres skali interfejsu. Ponizej 75 % napisy sa nieczytelne, a powyzej

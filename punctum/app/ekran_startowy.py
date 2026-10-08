@@ -20,6 +20,7 @@ from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QApplication, QSplashScreen
 
 from .. import __version__
+from ..core import platforma
 from ..przeklad import N_, t
 
 ASSETS = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets")
@@ -53,12 +54,13 @@ FIOLET, FIOLET_JASNY = QColor("#6c63ff"), QColor("#7b73ff")
 
 
 def _czcionka(piksele: float, gruba: bool = False) -> QFont:
-    font = QFont("Segoe UI")
+    font = QFont()
+    font.setFamilies(list(platforma.PISMA_INTERFEJSU))
     font.setPixelSize(round(piksele))
     if gruba:
-        # Na Windows polgruby kroj to osobna rodzina; sama waga DemiBold
-        # dawala zwykly Segoe UI i nazwa wygladala blado.
-        font.setFamilies(["Segoe UI Semibold", "Segoe UI"])
+        # Polgruby kroj bywa osobna rodzina (Segoe UI Semibold) - lista
+        # w platformie mowi, ktora.
+        font.setFamilies(list(platforma.PISMA_POGRUBIONE))
         font.setWeight(QFont.Weight.DemiBold)
         font.setLetterSpacing(QFont.SpacingType.AbsoluteSpacing, -0.5)
     return font

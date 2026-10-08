@@ -42,6 +42,13 @@ Gotowy instalator dla Windows (bez Pythona) leży na stronie
 dołączonych do programu: Ustawienia ▸ O programie ▸ Licencje zewnętrzne
 (w instalacji także plik `THIRD-PARTY-LICENSES.txt`).
 
+Na Maca z Apple Silicon (M1 i nowsze, macOS 12+) na tej samej stronie leży
+obraz `.dmg` — otwórz go i przeciągnij Punctum do Aplikacji. Program nie ma
+jeszcze podpisu Apple, więc przy pierwszym uruchomieniu macOS go zatrzyma:
+Ustawienia systemowe ▸ Prywatność i ochrona ▸ „Otwórz mimo to” (albo prawy
+klik na Punctum ▸ Otwórz). Wersja na Maca jest wstępna — nie przeszła
+jeszcze prób na prawdziwym komputerze.
+
 ## Co działa
 
 **Przeglądanie** — pasek miniatur wczytywany z podglądów wbudowanych w pliki

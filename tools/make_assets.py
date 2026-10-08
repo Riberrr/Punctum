@@ -181,6 +181,15 @@ obrazy[-1].save(
     append_images=obrazy[:-1],
 )
 print(f"  {'punctum.ico':<28} {', '.join(str(r) for r in ROZMIARY_ICO)}")
+
+# Ikona macOS (punkt 31). Siatka Apple: plytka 824 px na plotnie 1024 px -
+# ikona na pelne plotno wygladalaby w Docku na wieksza od sasiednich.
+# Pillow zapisuje ICNS na kazdym systemie (iconutil jest tylko na Macu)
+# i sam robi mniejsze rozmiary z 1024 px.
+plotno = Image.new("RGBA", (1024, 1024), (0, 0, 0, 0))
+plotno.alpha_composite(svg_do_obrazu(LOGA["logo-fiolet.svg"], 824), (100, 100))
+plotno.save(os.path.join(ASSETS, "punctum.icns"))
+print(f"  {'punctum.icns':<28} 1024 (plytka 824)")
 svg_do_obrazu(LOGA["logo.svg"], 512).save(os.path.join(ASSETS, "logo-512.png"))
 print(f"  {'logo-512.png':<28} 512x512 (README)")
 

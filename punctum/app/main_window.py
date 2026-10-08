@@ -71,7 +71,7 @@ from .image_view import BeforeView, ImageView
 from .map_view import MapView
 from .navigator import Navigator
 from .panele import LEWY, PRAWY, UkladPaneli
-from .podpowiedzi import StylPodpowiedzi, WylacznikPodpowiedzi, podpowiedz
+from .podpowiedzi import StylPodpowiedzi, podpowiedz
 # "O programie" nie ma osobnego okna - to strona w ustawieniach.
 from .settings_dialog import PAGE_ABOUT, SettingsDialog
 from .style import czcionki_aplikacji, ikona, stylesheet
@@ -107,6 +107,20 @@ def _granice(widget, zakres: tuple[int, int], wymiar: str) -> None:
     else:
         widget.setMinimumHeight(low)
         widget.setMaximumHeight(high)
+
+
+def _bez_zgadywania_rol(akcje) -> None:
+    """Wylacza zgadywanie roli akcji po nazwie (pasek menu macOS).
+
+    Domyslnie Qt przenosi do menu programu kazda pozycje zaczynajaca sie
+    od "About", "Settings", "Quit"... - wtedy np. katalog o takiej nazwie
+    w Ostatnich zniknalby z menu Plik. Role ustawione jawnie zostaja.
+    """
+    for akcja in akcje:
+        if akcja.menuRole() == QAction.MenuRole.TextHeuristicRole:
+            akcja.setMenuRole(QAction.MenuRole.NoRole)
+        if akcja.menu() is not None:
+            _bez_zgadywania_rol(akcja.menu().actions())
 
 
 class MainWindow(QMainWindow):
@@ -215,10 +229,6 @@ class MainWindow(QMainWindow):
         self.noise_timer.setSingleShot(True)
         self.noise_timer.timeout.connect(self._render_noise_pass)
 
-        # Wylacznik dymkow jest filtrem na calej aplikacji: dziala od razu
-        # po zmianie ustawienia, bez odtwarzania podpowiedzi w oknach.
-        self.tooltip_switch = WylacznikPodpowiedzi(self)
-        QApplication.instance().installEventFilter(self.tooltip_switch)
         self._apply_settings()
 
         # Mapa powstaje TERAZ, zanim okno zostanie pokazane - i jest to
@@ -577,6 +587,15 @@ class MainWindow(QMainWindow):
         about_action.triggered.connect(lambda: self.open_settings(PAGE_ABOUT))
         help_menu.addAction(about_action)
 
+        # Na macOS Ustawienia, O programie i Zakoncz ida do menu programu
+        # (pierwsze menu paska systemowego) - tak sie ich tam szuka. Role
+        # jawnie, bo Qt zgaduje je po angielskich nazwach: po polsku nie
+        # trafilby wcale, a po angielsku moglby zabrac inna pozycje.
+        settings_action.setMenuRole(QAction.MenuRole.PreferencesRole)
+        about_action.setMenuRole(QAction.MenuRole.AboutRole)
+        quit_action.setMenuRole(QAction.MenuRole.QuitRole)
+        _bez_zgadywania_rol(self.menuBar().actions())
+
     # ------------------------------------------------------------ uklad okna
 
     def showEvent(self, event) -> None:
@@ -657,6 +676,7 @@ class MainWindow(QMainWindow):
         clear = QAction(t("Wyczyść listę"), self)
         clear.triggered.connect(self._clear_recent)
         self.recent_menu.addAction(clear)
+        _bez_zgadywania_rol(self.recent_menu.actions())
 
     def _clear_recent(self) -> None:
         self.settings.recent_folders = []
@@ -746,7 +766,7 @@ class MainWindow(QMainWindow):
         self.debounce.setInterval(DEBOUNCE_GPU_MS if self.gpu_allowed() else DEBOUNCE_CPU_MS)
         self.noise_timer.setInterval(s.noise_delay_ms)
         self.view.set_detail_delay(s.detail_delay_ms)
-        self.tooltip_switch.wlaczone = s.show_tooltips
+        self.tooltip_style.wlaczone = s.show_tooltips
         self.tooltip_style.opoznienie_ms = s.tooltip_delay_ms
         self.edit_panel.set_wheel_protection(s.wheel_lockout_ms, s.wheel_dwell_ms)
 

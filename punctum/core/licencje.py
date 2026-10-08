@@ -167,9 +167,12 @@ def skladniki(nuitka: bool = False) -> list[Skladnik]:
 
 
 def _python_teksty() -> list[tuple[str, str]]:
-    sciezka = os.path.join(sys.base_prefix, "LICENSE.txt")
-    if not os.path.isfile(sciezka):
-        sciezka = os.path.join(sys.base_prefix, "LICENSE")
+    # Windows trzyma licencje Pythona w katalogu glownym instalacji, macOS
+    # i Linux obok biblioteki standardowej (lib/python3.X/LICENSE.txt).
+    kandydaci = [os.path.join(sys.base_prefix, "LICENSE.txt"),
+                 os.path.join(sys.base_prefix, "LICENSE"),
+                 os.path.join(os.path.dirname(os.__file__), "LICENSE.txt")]
+    sciezka = next((k for k in kandydaci if os.path.isfile(k)), kandydaci[0])
     try:
         with open(sciezka, encoding="utf-8", errors="replace") as f:
             return [("LICENSE.txt", f.read().strip())]

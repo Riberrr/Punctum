@@ -26,6 +26,8 @@ import sys
 from dataclasses import dataclass, field
 from typing import Callable
 
+from ..core import platforma
+
 NAZWA = "punctum"
 KOPIA = ".punctum-kopia"
 
@@ -42,6 +44,10 @@ def _kat(nazwa: str) -> str:
         return _KATALOGI[nazwa]
     if nazwa == "HOME":
         return os.path.expanduser("~")
+    if nazwa == "APPDATA":
+        # Na macOS ~/Library/Application Support - tam Claude Desktop,
+        # VS Code i Cline trzymaja konfiguracje, jak w %APPDATA% na Windows.
+        return platforma.katalog_danych_aplikacji()
     return os.environ.get(nazwa, "")
 
 
@@ -71,19 +77,14 @@ def polecenie_mostka() -> dict:
     # containing_dir to katalog z Punctum.exe.
     skompilowany = globals().get("__compiled__")
     if skompilowany is not None:
-        mostek = os.path.join(skompilowany.containing_dir, "PunctumMCP.exe")
+        mostek = os.path.join(skompilowany.containing_dir,
+                              platforma.nazwa_mostka_skompilowanego())
         return {"command": mostek, "args": [], "env": {}}
     # Najpierw Scripts venv: program startowany przez Punctum.exe (punkt 29)
     # ma sys.executable w .venv\Punctum, a mostek nie powinien udawac
     # w Menedzerze zadan drugiego Punctum. Wpis w konfiguracji klienta
     # zostaje przy tym taki sam jak przy starcie z pythonw.
-    interpreter = sys.executable
-    for katalog in (os.path.join(sys.prefix, "Scripts"), os.path.dirname(interpreter)):
-        kandydaci = [os.path.join(katalog, n) for n in ("pythonw.exe", "python.exe")]
-        znaleziony = next((k for k in kandydaci if os.path.isfile(k)), None)
-        if znaleziony:
-            interpreter = znaleziony
-            break
+    interpreter = platforma.interpreter_mostka(sys.prefix, sys.executable)
     pakiet = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     return {"command": interpreter, "args": ["-m", "punctum.mcp"],
             "env": {"PYTHONPATH": pakiet}}
@@ -229,6 +230,11 @@ def _claude_desktop_pliki() -> list[str]:
     # choc przycisk "Edit Config" w samej aplikacji otwiera %APPDATA%
     # (claude-code #26073). Zapisujemy do obu - ktory by nie byl czytany,
     # wpis tam jest.
+    if not _kat("LOCALAPPDATA"):
+        pliki: list[str] = []
+        if _istnieje(_kat("APPDATA"), "Claude"):
+            pliki.append(os.path.join(_kat("APPDATA"), "Claude", "claude_desktop_config.json"))
+        return pliki
     pliki = sorted(glob.glob(os.path.join(
         _kat("LOCALAPPDATA"), "Packages", "Claude_*", "LocalCache", "Roaming", "Claude",
         "claude_desktop_config.json")))

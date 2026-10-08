@@ -12,8 +12,9 @@ from PySide6.QtWidgets import QApplication
 # Tylko lekkie moduly na gorze: ekran startowy ma sie pokazac, zanim zaladuja
 # sie rawpy, OpenCV i glowne okno (to one sa wlasciwym czasem startu).
 from .app.ekran_startowy import ASSETS, EkranStartowy
-from .app.jedna_instancja import bezwzgledne, rozbierz_argumenty, zglos_sie
+from .app.jedna_instancja import Aplikacja, bezwzgledne, rozbierz_argumenty, zglos_sie
 from .app.jezyk import zastosuj_jezyk
+from .core import platforma
 from .core.settings import Settings
 from . import APP_ID
 from .przeklad import t
@@ -21,7 +22,7 @@ from .przeklad import t
 
 def _ikona_programu(app: QApplication) -> None:
     app.setWindowIcon(QIcon(os.path.join(ASSETS, "punctum.ico")))
-    if sys.platform == "win32":
+    if platforma.WINDOWS:
         # Bez wlasnego identyfikatora Windows grupuje okno pod python.exe
         # i na pasku zadan pokazuje ikone Pythona zamiast naszej.
         try:
@@ -93,7 +94,7 @@ def przyjmij_argumenty(window, argumenty: list[str]) -> None:
 
 
 def main() -> int:
-    app = QApplication(sys.argv)
+    app = Aplikacja(sys.argv)
     app.setApplicationName("Punctum")
     app.setOrganizationName("Punctum")
     # Drugie uruchomienie (dwuklik zdjecia przy otwartym programie) oddaje
@@ -103,6 +104,7 @@ def main() -> int:
     if serwer is None:
         return 0
     serwer.setParent(app)
+    serwer.sluchaj_otwierania(app)
     _ikona_programu(app)
     # Jezyk przed pierwszym oknem - napisy licza sie przy tworzeniu widzetow,
     # a ekran startowy tez juz mowi w wybranym jezyku.
@@ -121,6 +123,8 @@ def main() -> int:
     ekran.raise_()  # na wypadek, gdyby system zignorowal "na wierzchu" przy aktywacji okna
 
     sciezka, pole = rozbierz_argumenty(argumenty)
+    if not sciezka:
+        sciezka, _ = rozbierz_argumenty(serwer.przejmij_czekajace())
     folder, plik = rozpoznaj_argument(sciezka)
     if not folder and window.settings.reopen_last_folder:
         folder = window.settings.last_folder

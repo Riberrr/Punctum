@@ -1,0 +1,77 @@
+# Testy na Windows i macOS przy kazdym wypchnieciu na galezie robocze
+# (punkt 31, etap B). Autor nie ma Maca - to jedyne miejsce, gdzie kod
+# przechodzi przez macOS przed proba u testera.
+# Bez zdjec: na maszynach CI nie ma prywatnych zdjec (zasada prywatnosci),
+# wiec ida testy bez interfejsu i test okna, ktory zdjec nie potrzebuje.
+# Karty graficznej tez nie ma - Qt na platformie offscreen.
+name: Testy
+
+on:
+  push:
+    branches: ["dev", "dev-*", "macos"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: testy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testy:
+    strategy:
+      fail-fast: false   # padniecie na jednym systemie nie ukrywa wyniku drugiego
+      matrix:
+        os: [windows-latest, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    env:
+      QT_QPA_PLATFORM: offscreen
+      PYTHONUTF8: "1"   # polskie znaki w wydrukach testow na konsoli Windows
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: tools/wymagania-kompilacji.txt
+
+      # Te same dokladne wersje co przy budowie wydania - test sprawdza to,
+      # co pozniej trafi do paczki. .venv jak na komputerze autora: tego
+      # oczekuja testy.bat / testy.sh.
+      - name: Srodowisko
+        shell: bash
+        run: |
+          python -m venv .venv
+          if [ "$RUNNER_OS" = "Windows" ]; then PY=.venv/Scripts/python; else PY=.venv/bin/python; fi
+          $PY -m pip install --upgrade pip
+          $PY -m pip install -r tools/wymagania-kompilacji.txt
+
+      - name: Testy bez interfejsu (Windows)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: tools\testy.bat --szybkie
+
+      - name: Testy bez interfejsu (macOS)
+        if: runner.os != 'Windows'
+        run: |
+          set -o pipefail
+          bash tools/testy.sh --szybkie 2>&1 | tee -a wynik.txt
+
+      - name: Okno programu bez zdjec
+        shell: bash
+        run: |
+          set -o pipefail
+          if [ "$RUNNER_OS" = "Windows" ]; then PY=.venv/Scripts/python; else PY=.venv/bin/python; fi
+          $PY tools/test_panele_gui.py 2>&1 | tee -a wynik.txt
+
+      # Dziennik przebiegu wymaga zalogowania, a adnotacje sa publiczne
+      # (API check-runs) - koncowka wyniku jako jedna adnotacja pozwala
+      # przeczytac blad bez dostepu do konta.
+      - name: Koncowka wyniku jako adnotacja
+        if: failure()
+        shell: bash
+        run: |
+          touch wynik.txt
+          tekst=$(tail -n 60 wynik.txt | tr -d '\r' | sed -e 's/%/%25/g' | awk 'BEGIN{ORS="%0A"} {print}')
+          echo "::error title=Wynik testow (${RUNNER_OS})::${tekst}"
