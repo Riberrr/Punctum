@@ -4,6 +4,14 @@ Notable changes to Punctum, newest first. Version numbers follow
 MAJOR.MINOR.PATCH: fixes bump the last number, new features the middle one.
 Wersja polska: [CHANGELOG.pl.md](CHANGELOG.pl.md).
 
+## Unreleased
+
+### Added
+
+- Preliminary version for Macs with Apple Silicon (macOS 12 or later): a
+  `.dmg` image on the releases page. Photos can also be opened from Finder
+  ("Open With") and by dropping them on the Punctum icon in the Dock.
+
 ## 0.11.0 — 2026-10-05
 
 ### Added

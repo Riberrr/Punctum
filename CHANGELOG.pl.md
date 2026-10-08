@@ -4,6 +4,14 @@ Istotne zmiany w Punctum, od najnowszych. Numer wersji ma postać
 GŁÓWNA.POBOCZNA.POPRAWKA: poprawki podbijają ostatnią liczbę, nowe funkcje
 środkową. English version: [CHANGELOG.md](CHANGELOG.md).
 
+## Nieopublikowane
+
+### Nowe
+
+- Wstępna wersja na Maca z Apple Silicon (macOS 12 i nowsze): obraz `.dmg`
+  na stronie wydań. Zdjęcia otwiera się też z Findera („Otwórz za pomocą”)
+  i przez upuszczenie na ikonę Punctum w Docku.
+
 ## 0.11.0 — 2026-10-05
 
 ### Nowe
