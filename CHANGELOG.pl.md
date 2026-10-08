@@ -4,7 +4,7 @@ Istotne zmiany w Punctum, od najnowszych. Numer wersji ma postać
 GŁÓWNA.POBOCZNA.POPRAWKA: poprawki podbijają ostatnią liczbę, nowe funkcje
 środkową. English version: [CHANGELOG.md](CHANGELOG.md).
 
-## Nieopublikowane
+## 0.12.0 — 2026-10-08
 
 ### Nowe
 

@@ -4,7 +4,7 @@ Notable changes to Punctum, newest first. Version numbers follow
 MAJOR.MINOR.PATCH: fixes bump the last number, new features the middle one.
 Wersja polska: [CHANGELOG.pl.md](CHANGELOG.pl.md).
 
-## Unreleased
+## 0.12.0 — 2026-10-08
 
 ### Added
 
